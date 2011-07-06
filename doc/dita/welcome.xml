@@ -1,0 +1,13 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!-- This document was created with Syntext Serna Free. --><!DOCTYPE topic PUBLIC "-//OASIS//DTD DITA Topic//EN" "topic.dtd" []>
+<topic xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" id="topic-1" xsi:noNamespaceSchemaLocation="urn:oasis:names:tc:dita:xsd:topic.xsd:1.1">
+  <title>Welcome to BLSS</title>
+  <prolog>
+    <author>Eduardo Lago Aguilar, eduardo.lago.aguilar@gmail.com</author>
+  </prolog>
+  <body>
+    <p>BLSS stands for Bootstrapped Linux-Server Systems, it&apos;s a collection of command line tools to quickly assemble, without user interaction, multiple small and optimized Linux-Server Systems with the purpose of an easy deployment of distributed systems, like Apache Hadoop Cloudera Distribution, where every Linux-Server may have a different role in the computational cluster or grid.</p>
+    <p>With BLSS you can finally verify -<i>with just one Enter key pressing</i>- if your package-based system really works when you distribute it, and pay any technical debt you posses with yourself not accomplished yet because you don’t have the necessary time for install 10 or 100 servers coordinating jobs in a network.</p>
+    <p>Systems you manage with BLSS scripts fit better for servicing purpose, they are reduced in size and have a small memory footprint.  The  lifecycle of such systems is composed of three phases, each one with a corresponding script: prototyping with  <cmdname>lxp</cmdname>, cloning with  <cmdname>lxc</cmdname> and deployment with <cmdname>lxd</cmdname>.   </p>
+  </body>
+</topic>

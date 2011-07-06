@@ -1,0 +1,260 @@
+#!/bin/bash
+#
+# WELCOME TO BLSS
+#
+# BLSS stands for Bootstrapped Linux-Server Systems, it's a collection of command line tools to
+# quickly assemble, without user interaction, multiple small and optimized Linux-Server Systems
+# with the purpose of an easy deployment of distributed systems, like Apache Hadoop Cloudera
+# Distribution, where every Linux-Server may have a different role in the computational cluster or
+# grid.
+# With BLSS you can finally verify -with just one Enter key pressing- if your package-based
+# system really works when you distribute it, and pay any technical debt you posses with
+# yourself not accomplished yet because you don’t have the necessary time for install 10 or 100
+# servers coordinating jobs in a network.
+# Systems you manage with BLSS scripts fit better for servicing purpose, they are reduced
+# in size and have a small memory footprint. The lifecycle of such systems is composed of
+# three phases, each one with a corresponding script: prototyping with lxc, cloning with lxc and
+# deployment with lxd.
+#
+# AUTHOR
+#   Written by Eduardo Lago Aguilar, eduardo.lago.aguilar@gmail.com
+
+# ut-lxd-opts:
+#
+#   Tests for failing conditions on the command line and conf files options on for lxd script.
+
+# Resolve script location, $0 may be a link
+script="$0"
+# Need this for relative symlinks
+while [ -h "$script" ] ; do
+  lst=$(ls -ld "$script")
+  lnk=$(expr "$lst" : '.*-> \(.*\)$')
+  if expr "$lnk" : '/.*' > /dev/null; then
+    script="$lnk"
+  else
+    script=$(dirname "$script")/"$lnk"
+  fi
+done
+BLSS_HOME=$(dirname "$script")/..
+BIN="$BLSS_HOME"/bin
+ENV="$BLSS_HOME"/env
+EXT="$BLSS_HOME"/ext
+TST="$BLSS_HOME"/tst
+
+. "$TST"/tst-commons 
+
+# Total amount of tests to perfom
+plan_tests 28
+
+# Test Case: Test for environment
+
+export BLSS_ENV=$(mktemp -d) && rmdir "$BLSS_ENV"
+$BIN/lxd --clone-root /tmp/cloneitroot /tmp/deproot &>/dev/null
+not_ok $? "Verify if BLSS_ENV=(non-existing directory) fails"
+$BIN/lxd --clone-root /tmp/cloneitroot /tmp/deproot 2>&1 | {
+  ln_is ">>> ERROR: Environment '$BLSS_ENV' doesn't exists or isn't a readable directory >>>"
+}
+unset BLSS_ENV
+
+export BLSS_ENV=$(mktemp)
+$BIN/lxd --clone-root /tmp/cloneitroot /tmp/deproot &>/dev/null
+not_ok $? "Verify if BLSS_ENV=(non-a-directory) fails"
+$BIN/lxd --clone-root /tmp/cloneitroot /tmp/deproot 2>&1 | {
+  ln_is ">>> ERROR: Environment '$BLSS_ENV' doesn't exists or isn't a readable directory >>>"
+}
+rm "$BLSS_ENV"
+unset BLSS_ENV
+
+# Test Case: Tests for DEPLOYMENT_ROOT command line option
+export BLSS_ENV=$(mktemp -d) # an empty BLSS_ENV
+
+$BIN/lxd &>/dev/null
+not_ok $? "Verify if command line option 'DEPLOYMENT_ROOT' missing fails"
+$BIN/lxd 2>&1 | {
+  ln_like "DEPLOYMENT_ROOT' requires an non-empty argument"
+}
+
+DR=$(mktemp -d) && touch $DR/xfile
+$BIN/lxd --clone-root $DR $DR &>/dev/null
+not_ok $? "Verify if command line option 'DEPLOYMENT_ROOT=(non-empty directory)' missing fails"
+$BIN/lxd --clone-root $DR $DR 2>&1 | {
+  lst_ln_is ">>> ERROR: DEPLOYMENT_ROOT command line option shall be an existing empty directory or a non-existing directory >>>"
+}
+rm -rf $DR
+
+rmdir "$BLSS_ENV" # remove the env
+
+# Test Case: Tests for clone-root command line option
+export BLSS_ENV=$(mktemp -d) # an empty BLSS_ENV
+
+$BIN/lxd /tmp/deproot &>/dev/null
+not_ok $? "Verify if command line option '--clone-root' is missing fails"
+$BIN/lxd /tmp/deproot 2>&1 | {
+  ln_like "clone-root' requires an non-empty argument"
+}
+
+$BIN/lxd /tmp/deproot --clone-root &>/dev/null
+not_ok $? "Verify if command line option '--clone-root' without argument fails"
+$BIN/lxd /tmp/deproot --clone-root 2>&1 | {
+  ln_like "--clone-root' requires an argument"
+}
+
+$BIN/lxd --clone-root "" /tmp/cloneitroot &>/dev/null
+not_ok $? "Verify if command line option '--clone-root' with an empty argument fails"
+$BIN/lxd --clone-root "" /tmp/cloneitroot 2>&1 | {
+  ln_like ">>> ERROR: Command line option '--clone-root' requires an non-empty argument >>>"
+}
+
+PR=$(mktemp -d) && rmdir $PR
+$BIN/lxd --clone-root $PR /tmp/cloneitroot &>/dev/null
+not_ok $? "Verify if command line option '--clone-root=(non-existing directory)' fails"
+$BIN/lxd --clone-root $PR /tmp/cloneitroot 2>&1 | {
+  lst_ln_is ">>> ERROR: --clone-root/clone_root command line/conf file option shall be an existing non-empty directory containing a clone system >>>"
+}
+
+PR=$(mktemp -d)
+$BIN/lxd --clone-root $PR /tmp/cloneitroot &>/dev/null
+not_ok $? "Verify if command line option '--clone-root=(empty directory)' fails"
+$BIN/lxd --clone-root $PR /tmp/cloneitroot 2>&1 | {
+  lst_ln_is ">>> ERROR: --clone-root/clone_root command line/conf file option shall be an existing non-empty directory containing a clone system >>>"
+}
+rmdir $PR
+
+rmdir "$BLSS_ENV" # remove the env
+
+# Test Case: Tests for hypervisor command line option
+# an BLSS_ENV with a clone_root configured to a non-empty directory
+export BLSS_ENV=$(mktemp -d) && CR=$(mktemp -d) && touch $CR/xfile 
+
+$BIN/lxd /tmp/deproot --clone-root $CR --hypervisor "kvm" --hypervisor "kvm" &>/dev/null
+not_ok $? "Verify if a repeated command line option --hypervisor fails"
+$BIN/lxd /tmp/deproot --clone-root $CR --hypervisor "kvm" --hypervisor "kvm" 2>&1 | {
+  ln_is ">>> ERROR: --hypervisor command line option was already specified >>>"
+}
+$BIN/lxd /tmp/deproot --clone-root $CR --hypervisor &>/dev/null
+not_ok $? "Verify if command line option --hypervisor without argument fails"
+$BIN/lxd /tmp/deproot --clone-root $CR --hypervisor 2>&1 | {
+  ln_like "--hypervisor' requires an argument"
+}
+
+$BIN/lxd /tmp/deproot --clone-root $CR --hypervisor "" &>/dev/null
+not_ok $? "Verify if command line option --hypervisor with an empty argument fails"
+$BIN/lxd /tmp/deproot --clone-root $CR --hypervisor "" 2>&1 | {
+  ln_like ">>> ERROR: Command line option '--hypervisor' requires an non-empty argument >>>"
+}
+
+$BIN/lxd /tmp/deproot --clone-root $CR --hypervisor "unknown" &>/dev/null
+not_ok $? "Verify if command line option --hypervisor with an unsupported argument fails"
+$BIN/lxd /tmp/deproot --clone-root $CR --hypervisor "unknown" 2>&1 | {
+  lst_ln_like ">>> ERROR: Command line/conf file option --hypervisor/hypervisor requires a supported argument. See --help command line option for help >>>"
+}
+
+rm -r "$BLSS_ENV" # remove the env
+
+# Test Case: Tests for cpu command line option
+# an BLSS_ENV with a clone_root configured to a non-empty directory
+export BLSS_ENV=$(mktemp -d) && CR=$(mktemp -d) && touch $CR/xfile 
+
+$BIN/lxd /tmp/deproot --clone-root $CR --cpu 2 --cpu 4 &>/dev/null
+not_ok $? "Verify if a repeated command line option --cpu fails"
+$BIN/lxd /tmp/deproot --clone-root $CR --cpu 2 --cpu 4 2>&1 | {
+  ln_is ">>> ERROR: --cpu command line option was already specified >>>"
+}
+
+$BIN/lxd /tmp/deproot --clone-root $CR --cpu &>/dev/null
+not_ok $? "Verify if command line option --cpu without argument fails"
+$BIN/lxd /tmp/deproot --clone-root $CR --cpu 2>&1 | {
+  ln_like "--cpu' requires an argument"
+}
+
+$BIN/lxd /tmp/deproot --clone-root $CR --cpu "" &>/dev/null
+not_ok $? "Verify if command line option --cpu with an empty argument fails"
+$BIN/lxd /tmp/deproot --clone-root $CR --cpu "" 2>&1 | {
+  ln_like ">>> ERROR: Command line option '--cpu' requires an non-empty argument >>>"
+}
+
+$BIN/lxd /tmp/deproot --clone-root $CR --cpu NaN &>/dev/null
+not_ok $? "Verify if command line option --cpu with an unsupported argument fails"
+$BIN/lxd /tmp/deproot --clone-root $CR --cpu NaN 2>&1 | {
+  lst_ln_like ">>> ERROR: Command line/conf file option --cpu/cpu requires a supported argument. See --help command line option for help >>>"
+}
+
+$BIN/lxd /tmp/deproot --clone-root $CR --cpu 0 &>/dev/null
+not_ok $? "Verify if command line option --cpu=0 fails"
+$BIN/lxd /tmp/deproot --clone-root $CR --cpu 0 2>&1 | {
+  lst_ln_like ">>> ERROR: Command line/conf file option --cpu/cpu requires a supported argument. See --help command line option for help >>>"
+}
+
+rm -r "$BLSS_ENV" # remove the env
+
+# Test Case: Tests for memory command line option
+# an BLSS_ENV with a clone_root configured to a non-empty directory
+export BLSS_ENV=$(mktemp -d) && CR=$(mktemp -d) && touch $CR/xfile 
+
+$BIN/lxd /tmp/deproot --clone-root $CR --memory 128 --memory 256 &>/dev/null
+not_ok $? "Verify if a repeated command line option --memory fails"
+$BIN/lxd /tmp/deproot --clone-root $CR --memory 128 --memory 256 2>&1 | {
+  ln_is ">>> ERROR: --memory command line option was already specified >>>"
+}
+
+$BIN/lxd /tmp/deproot --clone-root $CR --memory &>/dev/null
+not_ok $? "Verify if command line option --memory without argument fails"
+$BIN/lxd /tmp/deproot --clone-root $CR --memory 2>&1 | {
+  ln_like "--memory' requires an argument"
+}
+
+$BIN/lxd /tmp/deproot --clone-root $CR --memory "" &>/dev/null
+not_ok $? "Verify if command line option --memory with an empty argument fails"
+$BIN/lxd /tmp/deproot --clone-root $CR --memory "" 2>&1 | {
+  ln_like ">>> ERROR: Command line option '--memory' requires an non-empty argument >>>"
+}
+
+$BIN/lxd /tmp/deproot --clone-root $CR --memory NaN &>/dev/null
+not_ok $? "Verify if command line option --memory with an unsupported argument fails"
+$BIN/lxd /tmp/deproot --clone-root $CR --memory NaN 2>&1 | {
+  lst_ln_like ">>> ERROR: Command line/conf file option --memory/memory requires a supported argument. See --help command line option for help >>>"
+}
+
+$BIN/lxd /tmp/deproot --clone-root $CR --memory 0 &>/dev/null
+not_ok $? "Verify if command line option --memory=0 fails"
+$BIN/lxd /tmp/deproot --clone-root $CR --memory 0 2>&1 | {
+  lst_ln_like ">>> ERROR: Command line/conf file option --memory/memory requires a supported argument. See --help command line option for help >>>"
+}
+
+rm -r "$BLSS_ENV" # remove the env
+
+# Test Case: Tests for size command line option
+# an BLSS_ENV with a clone_root configured to a non-empty directory
+export BLSS_ENV=$(mktemp -d) && CR=$(mktemp -d) && touch $CR/xfile 
+
+$BIN/lxd /tmp/deproot --clone-root $CR --size 1024 --size 2048 &>/dev/null
+not_ok $? "Verify if a repeated command line option --size fails"
+$BIN/lxd /tmp/deproot --clone-root $CR --size 1024 --size 2048 2>&1 | {
+  ln_is ">>> ERROR: --size command line option was already specified >>>"
+}
+
+$BIN/lxd /tmp/deproot --clone-root $CR --size &>/dev/null
+not_ok $? "Verify if command line option --size without argument fails"
+$BIN/lxd /tmp/deproot --clone-root $CR --size 2>&1 | {
+  ln_like "--size' requires an argument"
+}
+
+$BIN/lxd /tmp/deproot --clone-root $CR --size "" &>/dev/null
+not_ok $? "Verify if command line option --size with an empty argument fails"
+$BIN/lxd /tmp/deproot --clone-root $CR --size "" 2>&1 | {
+  ln_like ">>> ERROR: Command line option '--size' requires an non-empty argument >>>"
+}
+
+$BIN/lxd /tmp/deproot --clone-root $CR --size NaN &>/dev/null
+not_ok $? "Verify if command line option --size with an unsupported argument fails"
+$BIN/lxd /tmp/deproot --clone-root $CR --size NaN 2>&1 | {
+  lst_ln_like ">>> ERROR: Command line/conf file option --size/size requires a supported argument. See --help command line option for help >>>"
+}
+
+$BIN/lxd /tmp/deproot --clone-root $CR --size 0 &>/dev/null
+not_ok $? "Verify if command line option --size=0 fails"
+$BIN/lxd /tmp/deproot --clone-root $CR --size 0 2>&1 | {
+  lst_ln_like ">>> ERROR: Command line/conf file option --size/size requires a supported argument. See --help command line option for help >>>"
+}
+
+rm -r "$BLSS_ENV" # remove the env

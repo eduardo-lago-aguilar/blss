@@ -1,0 +1,5 @@
+deb http://ubunturepo.home.dev/mirror/maverick/ubuntu/ maverick main restricted universe multiverse
+deb http://ubunturepo.home.dev/mirror/maverick/ubuntu/ maverick-backports main restricted universe multiverse
+deb http://ubunturepo.home.dev/mirror/maverick/ubuntu/ maverick-proposed main restricted universe multiverse
+deb http://ubunturepo.home.dev/mirror/maverick/ubuntu/ maverick-security main restricted universe multiverse
+deb http://ubunturepo.home.dev/mirror/maverick/ubuntu/ maverick-updates main restricted universe multiverse

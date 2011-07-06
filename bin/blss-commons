@@ -1,0 +1,364 @@
+#!/bin/bash
+#
+# WELCOME TO BLSS
+#
+# BLSS stands for Bootstrapped Linux-Server Systems, it's a collection of command line tools to
+# quickly assemble, without user interaction, multiple small and optimized Linux-Server Systems
+# with the purpose of an easy deployment of distributed systems, like Apache Hadoop Cloudera
+# Distribution, where every Linux-Server may have a different role in the computational cluster or
+# grid.
+# With BLSS you can finally verify -with just one Enter key pressing- if your package-based
+# system really works when you distribute it, and pay any technical debt you posses with
+# yourself not accomplished yet because you don’t have the necessary time for install 10 or 100
+# servers coordinating jobs in a network.
+# Systems you manage with BLSS scripts fit better for servicing purpose, they are reduced
+# in size and have a small memory footprint. The lifecycle of such systems is composed of
+# three phases, each one with a corresponding script: prototyping with lxp, cloning with lxc and
+# deployment with lxd.
+#
+# AUTHOR
+#   Written by Eduardo Lago Aguilar, eduardo.lago.aguilar@gmail.com
+
+# blss-commons:
+#
+#   Common functionalities for all blss scripts. Include this script on with the 
+# 'source' command.
+
+# Supported 
+declare -A SUPPORTED_DISTROS=(["debian"]="debian" ["ubuntu"]="ubuntu")
+declare -A SUPPORTED_SUITES=(["squezed"]="squezed" ["lenny"]="lenny" ["maverick"]="maverick" ["lucid"]="lucid" )
+declare -A DISTRO_PER_SUITE=(["lenny"]="debian" ["squezed"]="debian" ["lucid"]="ubuntu" ["maverick"]="ubuntu")
+declare -A SUITES_PER_DISTRO=(["debian"]="squezed, lenny" ["ubuntu"]="maverick, lucid")
+declare -A SUPPORTED_ARCHS=(["amd64"]="amd64" ["i386"]="i386")
+declare -A SUPPORTED_HYPERVISORS=(["esxi"]="esxi" ["kvm"]="kvm" ["qemu"]="qemu" ["vbox"]="vbox" ["vmserver"]="vmserver" ["vmw6"]="vmw6" ["xen"]="xen")
+
+# Defaults
+declare -A DEF_INSTALL_MIRROR=(["debian"]="http://ftp.debian.org/debian" ["ubuntu"]="http://archive.ubuntu.com/ubuntu")
+DEF_BOOT_MENU_TIMEOUT=0
+DEF_PACKAGES=""
+DEF_HYPERVISOR=kvm
+DEF_CPU=1
+DEF_MEMORY=64
+DEF_SIZE=512
+
+# Profile mirror files
+DEF_EV=".blss"
+
+# process the environment settings
+proc_ev() {
+  # environment where conf files are located
+  mkdir -p "${HOME}/${DEF_EV}"
+  ev=${BLSS_ENV:-"${HOME}/${DEF_EV}"}
+  ( [ -d "$ev" ] && [ -r "$ev" ] ) || (err "Environment '$ev' doesn't exists or isn't a readable directory" >&2 && exit 1)
+}
+
+inf() {
+  cat << EOT
+>>> INFO: $1 >>>
+EOT
+}
+warn() {
+  cat << EOT
+>>> WARN: $1 >>>
+EOT
+}
+err() {
+  cat << EOT
+>>> ERROR: $1 >>>
+EOT
+}
+err_non_empty() {
+  err "Command line option '$1' requires an non-empty argument"
+}
+err_non_sup() {
+  err "Command line/conf file option --$1/${2:-$1} requires a supported argument. See --help command line option for help"
+}
+err_non_r() {
+  err "Command line/conf file option --${1}/${2:-$1} requires an existing-readable file argument. See --help command line option for help"
+}
+_stepnum=0
+step() {
+  cat << EOT
+>>>
+>>> STEP $_stepnum: $1 >>>
+>>>
+EOT
+  _stepnum=$(( $_stepnum + 1 ))
+}
+
+# Trim leading and ending spaces
+trim_spcs() {
+  printf "${1#"${1%%[![:space:]]*}"}"
+}
+
+# regex
+match_ip() {
+  [[ "$1" =~ ^([01]?[[:digit:]][[:digit:]]?|2[0-4][[:digit:]]|25[0-5])\.([01]?[[:digit:]][[:digit:]]?|2[0-4][[:digit:]]|25[0-5])\.([01]?[[:digit:]][[:digit:]]?|2[0-4][[:digit:]]|25[0-5])\.([01]?[[:digit:]][[:digit:]]?|2[0-4][[:digit:]]|25[0-5])$ ]]
+}
+match_ip_lst() {
+  [[ "$1" =~ ^([01]?[[:digit:]][[:digit:]]?|2[0-4][[:digit:]]|25[0-5])\.([01]?[[:digit:]][[:digit:]]?|2[0-4][[:digit:]]|25[0-5])\.([01]?[[:digit:]][[:digit:]]?|2[0-4][[:digit:]]|25[0-5])\.([01]?[[:digit:]][[:digit:]]?|2[0-4][[:digit:]]|25[0-5])(,([01]?[[:digit:]][[:digit:]]?|2[0-4][[:digit:]]|25[0-5])\.([01]?[[:digit:]][[:digit:]]?|2[0-4][[:digit:]]|25[0-5])\.([01]?[[:digit:]][[:digit:]]?|2[0-4][[:digit:]]|25[0-5])\.([01]?[[:digit:]][[:digit:]]?|2[0-4][[:digit:]]|25[0-5]))*$ ]]
+}
+match_positive_num() {
+  [[ "$1" =~ ^[1-9]+[[:digit:]]*$ ]]
+}
+
+# Define wroot based commands
+chr() {
+  env \
+-u LC_ALL \
+LANG="$plang" \
+LANGUAGE="$plang_ctry:$pbaselang" \
+TZ="$tzon" \
+  sudo chroot $wroot $@
+}
+chr_apt_get() {
+  chr env DEBIAN_FRONTEND=noninteractive apt-get --force-yes -y $@
+}
+
+# When use linux-image-server the command depmod fails due to the path
+# /var/lib/modules/<kernel name for server version>/.. doesn't exists but
+# /var/lib/modules/<kernel name for generic version>/.. exists. Seems to be
+# that the command 'uname -r' doesn't prints the correct kernel info to
+# STDOUT. For now use the this command instead of 'uname -r'
+kver() {
+  chr find /boot -maxdepth 1 -type f | grep -m 1 /boot/vmlinuz | sort -r | sed 's/\/boot\/vmlinuz-//'
+}
+
+# Tmp working directory
+tmp_mk() { 
+  _tmp=$(mktemp -d) && inf "Created '$_tmp' directory"
+}
+
+# Tmp cleanup
+tmp_rm() {
+  sudo rm -rf "$_tmp" && inf "Deleted '$_tmp' directory"
+}
+
+# Copies a first boot script to the bootstrapped system a places an script call
+# in /etc/rc.local
+cp_firstboot_script() {
+  local src="$1"
+  if [ -r "$src" ]; then 
+    local dst=$2
+    [ -z "$dst" ] && dst="$src" || true
+    chr << EOT
+mkdir -p "$(dirname $dst)"
+mkdir -p /var/lib/blss"$(dirname $dst)"
+EOT
+    sudo cp "$src" "${wroot}${dst}" && inf "Firstboot script copied to '$dst'" 
+    chr << EOT
+chmod 500 "$dst"
+EOT
+    chr << EOT
+cat >> /etc/rc.local << EOF
+if [ ! -e /var/lib/blss"$dst".done ]; then
+"$dst"
+touch /var/lib/blss"$dst".done
+fi
+EOF
+EOT
+  else
+    warn "No script file found at '$src'"
+  fi
+}
+
+# Copies a mirror file to /etc/apt/sources.list.d/ with an unique local name
+cp_mirror_file() {
+  local mf="$1"
+  if [ -r "$mf" ]; then
+    # .list files must be directly under /etc/apt/sources.list.d/, so on 
+    # directory replaces "/" and " " with "_" to form an unique local name 
+    local dst=/etc/apt/sources.list.d/$(dirname "$mf" | tr "/ " "__")_$(basename "$mf" | tr " " "_")  
+    sudo cp "$mf" "${wroot}""${dst}" && inf "Copied mirror file at: '$dst'" 
+  else
+    warn "No mirror file found at '$mf'"
+  fi
+}
+
+# Disables root remote login trougth SSH, SCP and SFTP
+# See http://www.howtogeek.com/howto/linux/security-tip-disable-root-ssh-login-on-linux/
+disable_root_remote() {
+  chr << EOT
+sed -ie 's/PermitRootLogin yes/PermitRootLogin no/' /etc/ssh/sshd_config
+EOT
+  inf "Remote root login is disabled"
+}
+
+# Disables root direct loging by changing the login shell
+# See http://sathyasays.com/2008/10/10/how-to-solution-for-sudo-must-be-setuid-root-problem/
+disable_root_direct() {
+  chr << EOT
+sed -ie 's/\(root:x:0:0:root:\/root:\)\/bin\/bash/\1\/bin\/false/' /etc/passwd
+EOT
+  inf "Direct root login is disabled"
+}
+
+# Enables root password prompt 
+enable_root_passwd() {
+  chr su -c chpasswd << EOT
+root:$ROOTPASSWD
+EOT
+  inf "Root password prompt was enabled";
+}
+
+# Bind (re-mount) devices on wroot
+bind_devs() {
+  sudo mount --bind /dev "$wroot"/dev && inf "Bounded '/dev' device"
+  sudo mount -t proc proc "$wroot"/proc && inf "Bounded 'proc' device"
+  sudo mount --bind /dev/pts "$wroot"/dev/pts && inf "Bounded '/dev/pts' device"
+}
+
+# Unbind shared devices
+unbind_devs() {
+  sudo umount "$wroot"/dev/pts 2>/dev/null && inf "Unbounded '/dev/pts' device" || true
+  sudo umount "$wroot"/proc 2>/dev/null && inf "Unbounded 'proc' device" || true
+  sudo umount "$wroot"/dev 2>/dev/null && inf "Unbounded '/dev' device" || true
+}
+
+# trap cmd to unbind mounted devices on error
+_unbind_on_err(){
+	local rc=${1:-''}
+	if [[ -z "$rc" ]] ; then
+		rc=$?
+	fi
+  unbind_devs
+	local alt_rc=$?
+	(( alt_rc != 0 )) && rc=$alt_rc
+	trap - INT TERM EXIT
+	exit $rc
+}
+
+# Import a conf file
+imp_conf() {
+  local conf="$1"
+  if [ -e "$conf"  ] ; then 
+    if [ -r "$conf" ] ; then 
+      . "$conf" && inf "Imported conf file '$conf'"
+    else
+      err "Could not import conf file '$conf'" ;
+      exit 1;
+    fi
+  else
+    warn "Non existing conf file '$conf'" ;
+  fi
+}
+
+# setup the hostname
+set_hostname() {
+  inf "Setting hostname at '/etc/hosts' and '/etc/hostname'"
+  chr << EOT
+cat > /etc/hosts << EOF
+127.0.0.1 localhost.localdomain localhost
+127.0.1.1 ${hn}${srch:+" "$hn.$srch}
+
+# The following lines are desirable for IPv6 capable hosts
+## ::1 $hn localhost6.localdomain6 localhost6
+## ::1 localhost ip6-localhost ip6-loopback
+## fe00::0 ip6-localnet
+## ff00::0 ip6-mcastprefix
+## ff02::1 ip6-allnodes
+## ff02::2 ip6-allrouters
+## ff02::3 ip6-allhosts
+EOF
+cat > /etc/hostname << EOF
+$hn
+EOF
+EOT
+}
+
+# setup networking
+set_networking() {
+  inf "Configuring the loopback network interface"
+  chr << EOT
+cat > /etc/network/interfaces << EOF
+# The loopback network interface
+auto lo
+iface lo inet loopback
+EOF
+EOT
+
+  inf "Configuring eth0 network interface"
+  if [ "$dyn" == "yes" ] ; then
+    chr << EOT
+cat >> /etc/network/interfaces << EOF
+
+# The primary network interface
+auto eth0
+iface eth0 inet dhcp
+EOF
+EOT
+  else
+    chr << EOT
+cat >> /etc/network/interfaces << EOF
+
+# The primary network interface
+auto eth0
+iface eth0 inet static
+    address $ip
+    network $nw
+    netmask $msk
+EOF
+EOT
+  fi
+
+  if [ -n "$bcst" ] ; then 
+    chr << EOT
+cat >> /etc/network/interfaces << EOF
+    broadcast $bcst
+EOF
+EOT
+  fi
+  if [ -n "$gw" ] ; then
+    chr << EOT
+cat >> /etc/network/interfaces << EOF
+    gateway $gw
+EOF
+EOT
+  fi
+
+# dns-* options are implemented by the resolvconf package, if installed
+  if [ -n "$dns" ] ; then 
+    chr << EOT
+cat >> /etc/network/interfaces << EOF
+    dns-nameservers $dns
+EOF
+EOT
+  fi
+  if [ -n "$srch" ] ; then 
+    chr << EOT
+cat >> /etc/network/interfaces << EOF
+    dns-search $srch
+EOF
+EOT
+  fi
+}
+
+# install user specified packages
+install_user_pkgs() {
+  step "Install user specified packages"
+  if [ -n "$pkgs" ] ; then
+    inf "Install user specified packages";
+    chr_apt_get install $pkgs
+  else
+    inf "No packages to install"
+  fi
+}
+
+# process locale
+proc_lcl() {
+  if [ -z "$lcl" ]; then
+    host_lang=$(cat /etc/default/locale);
+    host_lang=${host_lang#LANG=\"};
+    lcl=${host_lang%\"};
+  fi
+  lcl=$(grep -v "^#.*" /usr/share/i18n/SUPPORTED | egrep -m 1 "$lcl") || ( err_non_sup locale >&2 && exit 1 )
+  plang=${lcl/ */}
+  plang_ctry=${plang/.*}
+  pbaselang=${plang_ctry/_*/}
+}
+
+# process timezone
+proc_tzon() {
+  tzon=$(find /usr/share/zoneinfo/ -type f -print | sed -e 's/\/usr\/share\/zoneinfo\///' -e 's/posix\///' -e 's/right\///' | egrep -m 1 ^$tzon$) || ( err_non_sup timezone >&2 && exit 1 )
+}
+

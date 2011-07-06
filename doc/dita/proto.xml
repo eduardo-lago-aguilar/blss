@@ -1,0 +1,12 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!-- This document was created with Syntext Serna Free. --><!DOCTYPE topic PUBLIC "-//OASIS//DTD DITA Topic//EN" "topic.dtd" []>
+<topic id="topic-1">
+  <title>Linux-system prototype</title>
+  <prolog>
+    <author>Eduardo Lago Aguilar, eduardo.lago.aguilar@gmail.com</author>
+  </prolog>
+  <body>
+    <p>A Linux-system prototype, or simply a <term>proto</term>, is a Linux-system whose root (<filepath>/</filepath>) directory is a well known path in other Linux-system called <term>host</term>. In such <term>host</term> is where the <cmdname>lxp</cmdname> (LinuX Proto) command is executed for a proto <term>bootstrapping</term> and <term>optimization</term>. Bootstrapping means that the <term>proto</term> is assembled package-by-package by himself from a repository or a mirror, without any kind of user interaction during the process. The <term>optimization</term> has the purpose of creating a high performance Linux-system for a “<term>server role</term>”, small in size and with a low memory footprint. Such <term>optimization</term> is achieved after the bootstrapping is completed, by suppressing unnecessary packages, documentation, foreign locale and time zone data, kernel modules, daemons and cache files. </p>
+    <p>The meaning of “<term>server role</term>” can be ambiguous and this is why a <term>proto</term> is not general-purpose and may not result useful for you, for example, if you plan to use wireless, sound or (more drastically) USB in your server environment. But the user will always have the alternative of suppress/comment the instructions where some of the <term>proto</term> features are disabled, trading-off with performance of course. </p>
+  </body>
+</topic>

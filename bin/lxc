@@ -1,0 +1,289 @@
+#!/bin/bash -e
+#
+# WELCOME TO BLSS
+#
+# BLSS stands for Bootstrapped Linux-Server Systems, it's a collection of command line tools to
+# quickly assemble, without user interaction, multiple small and optimized Linux-Server Systems
+# with the purpose of an easy deployment of distributed systems, like Apache Hadoop Cloudera
+# Distribution, where every Linux-Server may have a different role in the computational cluster or
+# grid.
+# With BLSS you can finally verify -with just one Enter key pressing- if your package-based
+# system really works when you distribute it, and pay any technical debt you posses with
+# yourself not accomplished yet because you don’t have the necessary time for install 10 or 100
+# servers coordinating jobs in a network.
+# Systems you manage with BLSS scripts fit better for servicing purpose, they are reduced
+# in size and have a small memory footprint. The lifecycle of such systems is composed of
+# three phases, each one with a corresponding script: prototyping with lxc, cloning with lxc and
+# deployment with lxd.
+#
+# AUTHOR
+#   Written by Eduardo Lago Aguilar, eduardo.lago.aguilar@gmail.com
+
+# lxc: 
+#
+#   clone creation. See run this script with --help for details.
+
+# Resolve script location, $0 may be a link
+script="$0"
+# Need this for relative symlinks
+while [ -h "$script" ] ; do
+  lst=$(ls -ld "$script")
+  lnk=$(expr "$lst" : '.*-> \(.*\)$')
+  if expr "$lnk" : '/.*' > /dev/null; then
+    script="$lnk"
+  else
+    script=$(dirname "$script")/"$lnk"
+  fi
+done
+BLSS_HOME=$(dirname "$script")/..
+BIN="$BLSS_HOME"/bin
+ENV="$BLSS_HOME"/env
+EXT="$BLSS_HOME"/ext
+TST="$BLSS_HOME"/tst
+
+. "$BIN"/blss-commons
+
+usage() {
+  local IFS=","
+  cat << EOF
+NAME
+  lxc - Clones a Linux-Server System prototype.
+
+SYNOPSIS
+  lxp [GENERAL OPTIONS...] [NETWORKING OPTIONS...] CLONE_ROOT
+
+DESCRIPTION
+  Clones a proto from PROTO_ROOT to CLONE_ROOT and setup specific options for the clone. 
+
+GENERAL OPTIONS
+  --help
+    Show this help
+
+  --proto-root PROTO_ROOT
+    The root directory of the proto to be cloned. This options is mandatory.
+  
+  --packages PACKAGES
+    Space separated list of packages to install after bootstrapping. Defaults to '${DEF_PACKAGES}'. Example package list is: 'nginx  apache2 mysql couchdb'.
+
+NETWORKING OPTIONS
+
+  --hostname HOSTNAME
+    The proto hostname. Defaults to the hostname used in the proto.     
+
+  --address IPADDRESS
+    Static IP address. This option shall be specified among --network and --netmask options, this option excludes --dhcp option. But can be optinally used among the --search and/or --nameservers options. This option shall be specified if DHCP isn't configured on the proto.     
+
+EXAMPLES
+
+  1- Clone a proto located on /tmp/ny-server-proto serveral times and assign a different ip addresses and hostnames:
+  
+    \$ lxc --proto-root /tmp/ny-server-proto --address 192.168.2.111 --hostname ny-server1 /tmp/ny-clone1
+    \$ lxc --proto-root /tmp/ny-server-proto --address 192.168.2.112 --hostname ny-server2 /tmp/ny-clone2
+    \$ lxc --proto-root /tmp/ny-server-proto --address 192.168.2.113 --hostname ny-server3 /tmp/ny-clone3
+    \$ lxc --proto-root /tmp/ny-server-proto --address 192.168.2.114 --hostname ny-server4 /tmp/ny-clone4
+
+  2- Clone a proto located on /tmp/nl-server-proto serveral times, assign a different ip addresses and hostnames, and install different packages depending on the role:
+  
+    \$ lxc --proto-root /tmp/nl-server-proto --address 192.168.3.111 --hostname nl-srv1 --packages nginx /tmp/nl-clone1
+    \$ lxc --proto-root /tmp/nl-server-proto --address 192.168.3.112 --hostname nl-srv2 --packages couchdb /tmp/nl-clone2
+    \$ lxc --proto-root /tmp/nl-server-proto --address 192.168.3.113 --hostname nl-srv3 --packages "apache2 nginx" /tmp/nl-clone3
+    \$ lxc --proto-root /tmp/nl-server-proto --address 192.168.3.114 --hostname nl-srv4 --packages "mysql-server couchdb" /tmp/nl-clone4
+
+  3- Clone a proto located on /tmp/nl-server-proto serveral times and install different packages depending on the role, assumes DHCP previosly configured on the proto:
+  
+    \$ lxc --proto-root /tmp/hv-server-proto --hostname hv-srv1 --packages nginx /tmp/hv-clone1
+    \$ lxc --proto-root /tmp/hv-server-proto --hostname hv-srv2 --packages couchdb /tmp/hv-clone2
+    \$ lxc --proto-root /tmp/hv-server-proto --hostname hv-srv3 --packages "apache2 nginx" /tmp/hv-clone3
+    \$ lxc --proto-root /tmp/hv-server-proto --hostname hv-srv4 --packages "mysql-server couchdb" /tmp/hv-clone4
+
+AUTHOR
+  Written by Eduardo Lago Aguilar, eduardo.lago.aguilar@gmail.com
+
+EOF
+}
+
+# parse command line options
+#
+# NOTE:
+#   - c_ prefix indicates a command line option
+#   - without c_ prefix indicates a conf file option
+#   - short name indicates the effective option
+
+# Quotes around `"$@"' let each cmd-line parameter expand to a separate word. 
+# TEMP variable is necessary, as the `eval set --' would nuke the return value 
+# of getopt.
+set +e
+TEMP=$(getopt -n 'lxc' -o '' --longoptions \
+help,\
+proto-root:,\
+packages:,\
+hostname:,\
+address: \
+-- "$@")
+if [ $? != 0 ] ; then 
+  usage >&2 ; 
+  exit 1 ; 
+fi
+set -e
+
+# quotes around `$TEMP' are essential
+eval set -- "$TEMP"
+
+# unset c_* options
+unset \
+  c_proto_root \
+  c_packages \
+  c_hostname \
+  c_address
+
+declare -A c_os 
+while true; do
+  # flags an option if appears in the command line, options can be specified 
+  # only once
+  (( c_os[$1] == 1 )) && err "$1 command line option was already specified" && usage >&2 && exit 1 ; 
+  c_os[$1]=1 ;
+  case $1 in
+    --help)
+      usage && shift && exit 0 ;;
+    --proto-root)
+      c_proto_root=${2:?$(err_non_empty $1)} ; 
+      shift 2 ;;
+    --packages)
+      c_packages=${2:?$(err_non_empty $1)} ; 
+      shift 2 ;;
+    --hostname)
+      c_hostname=${2:?$(err_non_empty $1)} ;
+      shift 2 ;;
+    --address)
+      c_address=${2:?$(err_non_empty $1)} ;
+      shift 2 ;;
+    --) 
+      shift ; 
+      break ;;
+    *) 
+      err "Error parsing arguments" && usage >&2 && exit 1 ;;
+  esac
+done
+
+# clone root is the remaining
+c_clone_root=$(trim_spcs "$@")
+c_clone_root=${c_clone_root:?$(err_non_empty CLONE_ROOT)}
+
+unset c_os
+
+proc_ev
+
+# unset conf file options before start importing from environment
+unset \
+  proto_root \
+  packages \
+  hostname \
+  address
+
+# import general env opts
+imp_conf "$ev"/lxc.conf
+
+# proto root 
+proot=${c_proto_root:-$proto_root}
+if [ -n "$proot" ] ; then
+  proot=$(realpath "$proot") || ( err "--proto-root/proto_root command line/conf file option shall be an existing non-empty directory containing a proto system" >&2 && exit 1 ) ;
+  [ "$(sudo find "$proot" -maxdepth 0 -type d -empty)" != "" ] && err "--proto-root/proto_root command line/conf file option shall be an existing non-empty directory containing a proto system" >&2 && exit 1 || true
+fi
+
+# packages: command line may override the value imported from the environment, 
+# if the option is missing use the default value
+pkgs=${c_packages:-$packages}
+
+# hostname: command line may override the value imported from the environment, 
+# if the option is missing use the default value based on distro, suite and 
+# architecture
+hn=${c_hostname:-$hostname}
+
+ip=${c_address}
+if [ -n "$ip" ] ; then
+  match_ip $ip || ( err_non_sup address >&2 && exit 1 )
+fi
+
+# CLONE_ROOT
+croot=${c_clone_root}
+if realpath "$croot" &>/dev/null ; then
+  croot=$(realpath "$croot")  
+  [ "$(find "$croot" -maxdepth 1 -type d -empty )" != "$croot" ] && err "CLONE_ROOT command line option shall be an empty directory" >&2 && exit 1 || true
+fi
+
+inf "Detected environment '$ev'. All options were took from the environment conf files. Command line options override environment options" ;
+
+inf "packages = '$pkgs'"
+inf "hostname = '$hn'"
+inf "address = '$ip'"
+inf "clone_root = '$croot'"
+    
+step "Identifying proto settings"
+
+# define working root on proto to extract settings
+wroot=${proot}
+
+p_hn=$(chr cat /etc/hostname)
+p_dyn=$(chr egrep '^[[:space:]]*iface[[:space:]]+eth0[[:space:]]+inet[[:space:]]+dhcp' /etc/network/interfaces | sed -r 's/iface[[:space:]]+eth0[[:space:]]+inet[[:space:]]+dhcp/yes/')
+p_dyn=${p_dyn:-no}
+if [ "$p_dyn" == "yes" ]; then
+ [ -n "$ip" ] && err "--address/address command line/conf file options cannot be specified for cloning a proto with DHCP configured" >&2 && exit 1 || true
+else
+  # --address is mandatory if DHCP isn't configured on proto
+  c_address=${c_address:?$(err_non_empty --address)}
+fi
+
+p_ip=$(chr egrep '^[[:space:]]*address[[:space:]]+.*' /etc/network/interfaces | sed -r 's/[[:space:]]*address[[:space:]]+(.*)/\1/')
+p_nw=$(chr egrep '^[[:space:]]*network[[:space:]]+.*' /etc/network/interfaces | sed -r 's/[[:space:]]*network[[:space:]]+(.*)/\1/')
+p_msk=$(chr egrep '^[[:space:]]*netmask[[:space:]]+.*' /etc/network/interfaces | sed -r 's/[[:space:]]*netmask[[:space:]]+(.*)/\1/')
+p_bcst=$(chr egrep '^[[:space:]]*broadcast[[:space:]]+.*' /etc/network/interfaces | sed -r 's/[[:space:]]*broadcast[[:space:]]+(.*)/\1/')
+p_gw=$(chr egrep '^[[:space:]]*gateway[[:space:]]+.*' /etc/network/interfaces | sed -r 's/[[:space:]]*gateway[[:space:]]+(.*)/\1/')
+p_dns=$(chr egrep '^[[:space:]]*dns-nameservers[[:space:]]+.*' /etc/network/interfaces | sed -r 's/[[:space:]]*dns-nameservers[[:space:]]+(.*)/\1/')
+p_srch=$(chr egrep '^[[:space:]]*dns-search[[:space:]]+.*' /etc/network/interfaces | sed -r 's/[[:space:]]*dns-search[[:space:]]+(.*)/\1/')
+
+inf "Proto hostname = '$p_hn'"
+inf "Proto dhcp = '$p_dyn'"
+inf "Proto address = '$p_ip'"
+inf "Proto network = '$p_nw'"
+inf "Proto netmask = '$p_msk'"
+inf "Proto broadcast = '$p_bcst'"
+inf "Proto gateway = '$p_gw'"
+inf "Proto search = '$p_srch'"
+inf "Proto nameservers = '$p_dns'"
+
+# define working root on clone
+wroot=${croot}
+
+step "Cloning the prototype"
+mkdir -p $wroot
+sudo cp -a "$proot"/* "$wroot"
+
+step "Hostname and network configuration"
+
+# preserve these settings for the clone
+nw=$p_nw
+msk=$p_msk
+bcst=$p_bcst
+gw=$p_gw
+dns=$p_dns
+srch=$p_srch
+
+if [ -n "$hn" ] ; then
+  set_hostname
+fi
+
+if [ -n "$ip" ] ; then 
+  set_networking
+fi
+
+if [ -n "$pkgs" ] ; then
+  # Unbind devices on ERROR
+  trap _unbind_on_err INT TERM EXIT
+  bind_devs
+  install_user_pkgs
+  unbind_devs
+  # No longer need to unbind on error
+  trap - INT TERM EXIT
+fi
+
+inf "Clone completed successfully" && exit 0

@@ -1,0 +1,73 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!-- This document was created with Syntext Serna Free. --><!DOCTYPE topic PUBLIC "-//OASIS//DTD DITA Topic//EN" "topic.dtd" []>
+<topic xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" id="topic-1" xsi:noNamespaceSchemaLocation="urn:oasis:names:tc:dita:xsd:topic.xsd:1.1">
+  <title>Clone structure</title>
+  <prolog>
+    <author>Eduardo Lago Aguilar, eduardo.lago.aguilar@gmail.com</author>
+  </prolog>
+  <body>
+    <p>A <term>clone</term> preserves the same structure of his original <term>proto</term> plus the extra packages installed, files copied, particular settings and custom user modifications. See (A) an example clone with the <codeph>nginx</codeph> package installed for web server role, and (B) another clone with the <codeph>couchdb</codeph> package installed for a database server role, both clones come from the same <term>proto</term> (many files/directories are omitted for simplicity):</p>
+    <example>
+      <codeblock>bin/
+boot/
+dev/
+etc/
+  nginx/
+    fastcgi_params
+    mime.types
+    nginx.conf
+    …
+    init.d/
+      nginx
+var/
+ www/
+   nginx-default/
+     index.html
+     50x.html
+     …    
+log/
+  nginx/
+    lib/
+      nginx/
+sbin/
+  nginx  
+...</codeblock>
+      <title>Example A: <term>clone</term> with the <codeph>nginx</codeph> package installed</title>
+    </example>
+    <example>
+      <codeblock>bin/
+boot/
+dev/
+etc/
+  default/
+    couchdb
+  init.d/
+    couchdb
+  couchdb/
+    default.ini
+    local.ini
+      ...
+/usr
+    bin/
+        couchdb
+        couchjs
+    lib/
+        couchdb/
+            bin/
+                couchjs
+            erlang/
+                lib/
+                    ...    
+    share/
+        couchdb/
+            server/
+                main.js
+            www/
+                _sidebar.html
+                config.html
+                ...
+...</codeblock>
+      <title>Example B: <term>clone</term> with the <codeph>couchdb</codeph> package installed</title>
+    </example>
+  </body>
+</topic>

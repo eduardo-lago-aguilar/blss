@@ -1,0 +1,434 @@
+#!/bin/bash -ex
+#
+# WELCOME TO BLSS
+#
+# BLSS stands for Bootstrapped Linux-Server Systems, it's a collection of command line tools to
+# quickly assemble, without user interaction, multiple small and optimized Linux-Server Systems
+# with the purpose of an easy deployment of distributed systems, like Apache Hadoop Cloudera
+# Distribution, where every Linux-Server may have a different role in the computational cluster or
+# grid.
+# With BLSS you can finally verify -with just one Enter key pressing- if your package-based
+# system really works when you distribute it, and pay any technical debt you posses with
+# yourself not accomplished yet because you don’t have the necessary time for install 10 or 100
+# servers coordinating jobs in a network.
+# Systems you manage with BLSS scripts fit better for servicing purpose, they are reduced
+# in size and have a small memory footprint. The lifecycle of such systems is composed of
+# three phases, each one with a corresponding script: prototyping with lxp, cloning with lxc and
+# deployment with lxd.
+#
+# AUTHOR
+#   Written by Eduardo Lago Aguilar, eduardo.lago.aguilar@gmail.com
+
+# lxd:
+#
+#   clone deployment. See run this script with --help for details.
+
+# Resolve script location, $0 may be a link
+script="$0"
+# Need this for relative symlinks
+while [ -h "$script" ] ; do
+  lst=$(ls -ld "$script")
+  lnk=$(expr "$lst" : '.*-> \(.*\)$')
+  if expr "$lnk" : '/.*' > /dev/null; then
+    script="$lnk"
+  else
+    script=$(dirname "$script")/"$lnk"
+  fi
+done
+BLSS_HOME=$(dirname "$script")/..
+BIN="$BLSS_HOME"/bin
+ENV="$BLSS_HOME"/env
+EXT="$BLSS_HOME"/ext
+TST="$BLSS_HOME"/tst
+
+. "$BIN"/blss-commons
+
+usage() {
+  local IFS=","
+  cat << EOF
+NAME
+  lxd - Deploys a Linux-Server System clone  by creating a virtual disk and a libvirt XML config file.
+
+SYNOPSIS
+  lxd [GENERAL OPTIONS...] [HYPERVISOR OPTIONS...] [DISK OPTIONS...] DEPLOYMENT_ROOT
+
+DESCRIPTION
+
+  TODO: argument it more. explain DEPLOYMENT_ROOT...
+
+  lxd creates a virtual disk in qcow2 format and a libvirt config file from a clone root directory (/) located at CLONE_ROOT. The resulting .qcow2 and .xml files can be used with virsh to define a virtual machine.  
+
+GENERAL OPTIONS
+  --help
+    Show this help
+
+  --clone-root CLONE_ROOT
+    The root directory of the spwecific clone to be loaded into the virtual disk. This parameter is mandatory.
+
+HYPERVISOR OPTIONS
+
+  --hypervisor HYPERVISOR
+    The hypervisor type. Supported values are: ${SUPPORTED_HYPERVISORS[*]}. The complete list of hypervisor drivers can be found at 'http://libvirt.org/drivers.html'. Defaults to ${DEF_HYPERVISOR}.
+
+  --cpu CPU
+    The number of CPU to assign. Defaults to ${DEF_CPU}.
+
+  --memory MEMORY
+    The RAM memory to assign in megabytes. Defaults to ${DEF_MEMORY}. 
+
+DISK OPTIONS
+
+  --size SIZE
+    Hard disk size in megabytes. Defaults to ${DEF_SIZE}.    
+
+EXAMPLES
+
+  TODO: ...
+
+
+AUTHOR
+  Written by Eduardo Lago Aguilar, eduardo.lago.aguilar@gmail.com
+
+EOF
+}
+
+# parse command line options
+#
+# NOTE:
+#   - c_ prefix indicates a command line option
+#   - without c_ prefix indicates a conf file option
+#   - short name indicates the effective option
+
+# Quotes around `"$@"' let each cmd-line parameter expand to a separate word. 
+# TEMP variable is necessary, as the `eval set --' would nuke the return value 
+# of getopt.
+set +e
+TEMP=$(getopt -n 'lxc' -o '' --longoptions \
+help,\
+clone-root:,\
+hypervisor:,\
+cpu:,\
+memory:,\
+size: \
+-- "$@")
+if [ $? != 0 ] ; then 
+  usage >&2 ; 
+  exit 1 ; 
+fi
+set -e
+
+# quotes around `$TEMP' are essential
+eval set -- "$TEMP"
+
+# unset c_* options
+unset \
+  c_clone_root \
+  c_hypervisor \
+  c_cpu \
+  c_memory \
+  c_size
+
+declare -A c_os 
+while true; do
+  # flags an option if appears in the command line, options can be specified 
+  # only once
+  (( c_os[$1] == 1 )) && err "$1 command line option was already specified" && usage >&2 && exit 1 ; 
+  c_os[$1]=1 ;
+  case $1 in
+    --help)
+      usage && shift && exit 0 ;;
+    --clone-root)
+      c_clone_root=${2:?$(err_non_empty $1)} ; 
+      shift 2 ;;
+    --hypervisor)
+      c_hypervisor=${2:?$(err_non_empty $1)} ; 
+      shift 2 ;;
+    --cpu)
+      c_cpu=${2:?$(err_non_empty $1)} ;
+      shift 2 ;;
+    --memory)
+      c_memory=${2:?$(err_non_empty $1)} ;
+      shift 2 ;;
+    --size)
+      c_size=${2:?$(err_non_empty $1)} ;
+      shift 2 ;;
+    --) 
+      shift ; 
+      break ;;
+    *) 
+      err "Error parsing arguments" && usage >&2 && exit 1 ;;
+  esac
+done
+
+# target is the remaining
+c_deployment_root=$(trim_spcs "$@")
+c_deployment_root=${c_deployment_root:?$(err_non_empty DEPLOYMENT_ROOT)}
+
+# target is the remaining
+c_clone_root=${c_clone_root:?$(err_non_empty --clone-root)}
+
+unset c_os
+
+proc_ev
+
+# unset conf file options before start importing from environment
+unset \
+  clone_root \
+  hypervisor \
+  cpu \
+  memory \
+  size
+
+# import general env opts
+imp_conf "$ev"/lxd.conf
+
+# clone root 
+croot=${c_clone_root:-$clone_root}
+if [ -n "$croot" ] ; then
+  croot=$(realpath "$croot") || ( err "--clone-root/clone_root command line/conf file option shall be an existing non-empty directory containing a clone system" >&2 && exit 1 ) ;
+  [ "$(sudo find "$croot" -maxdepth 0 -type d -empty)" != "" ] && err "--clone-root/clone_root command line/conf file option shall be an existing non-empty directory containing a clone system" >&2 && exit 1 || true
+fi
+
+# hypervisor: command line may override the value imported from the 
+# environment, if the option is missing use the default value, finally verify if 
+# the value is supported.    
+hyv=${c_hypervisor:-$hyv} 
+if [ -n "$hyv" ] ; then
+  hyv=${SUPPORTED_HYPERVISORS[$hyv]} ;
+  hyv=${hyv:?$(err_non_sup hypervisor)} ;
+else
+  hyv=$DEF_HYPERVISOR ;
+fi
+
+# cpu: command line may override the value imported from the 
+# environment, if the option is missing use the default value, finally verify if 
+# the value is supported.    
+vcpu=${c_cpu:-$cpu} 
+if [ -n "$vcpu" ] ; then
+  match_positive_num $vcpu || ( err_non_sup cpu >&2 && exit 1 ) ;
+else
+  vcpu=$DEF_CPU ;
+fi
+
+# memory: command line may override the value imported from the 
+# environment, if the option is missing use the default value, finally verify if 
+# the value is supported.    
+mem=${c_memory:-$mem} 
+if [ -n "$mem" ] ; then
+  match_positive_num $mem || ( err_non_sup memory >&2 && exit 1 ) ;
+else
+  mem=$DEF_MEMORY ;
+fi
+
+# size: command line may override the value imported from the 
+# environment, if the option is missing use the default value, finally verify if 
+# the value is supported.    
+sz=${c_size:-$size} 
+if [ -n "$sz" ] ; then
+  match_positive_num $sz || ( err_non_sup size >&2 && exit 1 ) ;
+else
+  sz=$DEF_SIZE ;
+fi
+
+# deployment root
+droot=${c_deployment_root}
+if [ -e "$droot" ] ; then
+  [ "$(find "$droot" -maxdepth 1 -type d -empty )" != "$droot" ] && err "DEPLOYMENT_ROOT command line option shall be an existing empty directory or a non-existing directory" >&2 && exit 1 || true
+fi
+mkdir -p "$droot"
+
+inf "Detected environment '$ev'. All options were took from the environment conf files. Command line options override environment options" ;
+
+inf "clone_root = '$croot'"
+inf "hypervisor = '$hyv'"
+inf "cpu = '$vcpu'"
+inf "memory = '$mem'"
+inf "size = '$sz'"
+inf "deployment_root = '$droot'"
+
+# define working root on random temporal directory
+wroot=$(mktemp -d)
+
+step "Create a raw disk image"
+# TODO: Add support for file system types other than ext3
+
+# Create the new disk image of given size and raw format. 
+# The raw disk image format (default), has the advantage
+# of being simple and easily exportable to all other emulators. If
+# your file system supports holes (for example in ext2 or ext3 on
+# Linux or NTFS on Windows), then only the written sectors will
+# reserve space. Use "qemu-img info" to know the real size used by
+# the image or "ls -ls" on Unix/Linux
+sudo qemu-img create -f raw "$droot"/disk.img ${sz}M
+
+step "Create a new disklabel"
+# Create  a  new  disklabel  (partition table) of label-type.  
+# label-type  should  be  one  of  "bsd",  "dvh", "gpt", "loop", 
+# "mac", "msdos", "pc98", or "sun".
+sudo parted --script "$droot"/disk.img mklabel msdos
+
+step "Make an ext3 primary partition on disk"
+# TODO: check this
+#   Warning: The resulting partition is not properly aligned for best performance.
+# Make a part-type partition with filesystem fs-type (if specified), 
+# beginning at start and ending at  end  (by default in megabytes).  
+# fs-type can be one of "fat16", "fat32", "ext2", "HFS", "linux-swap",
+# "NTFS",  "reiserfs",  or  "ufs".   part-type  should be one of 
+# "primary", "logical", or "extended".
+dend=$(( $sz - 1))
+sudo parted --script -- "$droot"/disk.img mkpart primary ext3 0 $dend
+ 
+step "Add device map: /dev/mapper/XYZ"
+# Create device maps from partition tables.
+#  -a     Add partition mappings
+#  -l     List partition mappings that would be added -a
+details=$(sudo kpartx -av "$droot"/disk.img) 
+
+map=$(printf "$details" | awk '{print $3}')
+inf "Device map: /dev/mapper/$map"
+
+dev=$(printf "$details" | awk '{print $8}')
+inf "Loop device: $dev"
+
+step "Create a filesystem"
+# mke2fs : Create an ext2/ext3/ext4 filesystem. If called as mkfs.ext3 a journal
+# is created as if the -j option was specified.
+sudo mkfs -t ext3 /dev/mapper/$map
+      
+step "Mount the disk image: disk.img into / as a loop device: /dev/loopN"
+# Loop devices on Linux are virtual devices which can be used to mount files 
+# like real devices. For instance, to mount an ISO image you can use a loop 
+# device:
+#
+#   $ mkdir -p /mnt/myiso
+#   $ mount -o loop -t iso9660 ./disk.iso /mnt/myiso
+#
+# The parameter -o loop tells mount to mount this as a loop device. For each 
+# mounted loop device a block device file in /dev is used, named /dev/loopN 
+# where N is a serial number, starting at 0. Normally the first free device is 
+# used but you can also specify manually which one to use with losetup command:
+#
+#   $ losetup /dev/loop3 ./disk.iso
+#   $ mount -t iso9660 /dev/loop3 /mnt/myiso
+#
+# To unmount the ISO file and detatch it from /dev/loop3 run:
+#
+#  $ umount /mnt/myiso
+#  $ losetup -d /dev/loop3
+#
+# For historical reasons you have 8 such loop devices by default, numbered from 
+# 0 to 7. If all devices are occupied, you will get the message “mount: could 
+# not find any free loop device” when trying to allocate more of them. In 
+# current Kernel releases you can of course use more than just 8 loop devices. 
+# To get n loop devices append max_loop=n as parameter to the kernel command 
+# line of your bootloader config.
+#
+# In Debian add this to /etc/modules:
+#
+#  loop max_loop=64
+#
+# In Ubuntu add this to /etc/modprobe.d/options
+#
+#  options loop max_loop=64
+#
+# Then reboot the system and the following command will give you an idea of max 
+# mountable loop devices: 
+#
+#  $ ls /dev/loop* | wc -l
+sudo mount -o loop /dev/mapper/$map $wroot
+
+step "Populate the virtual disk with the system"
+sudo cp -a "$croot"/* "$wroot"
+
+# grab locale
+lcl=$(sudo cat "$wroot"/etc/default/locale)
+lcl=${lcl#LANG=\"}
+lcl=${lcl%\"};
+proc_lcl
+
+# grab timezone
+tzon=$(sudo cat "$wroot"/etc/timezone)
+proc_tzon
+
+# grab hostname
+c_hn=$(chr cat /etc/hostname)
+
+step "Setup grub device mapping : /boot/grub/device.map"
+chr << EOT
+cat > /boot/grub/device.map << EOF
+(hd0) /dev/sda 
+EOF
+EOT
+device_map=$(mktemp)
+cat > $device_map << EOT
+(hd0) ${droot}/disk.img     
+EOT
+sudo grub --device-map=$device_map --batch << EOT
+root (hd0,0)
+setup (hd0)
+EOT
+
+step "Configuring GRUB menu.list: /boot/grub/menu.lst"
+# generate GRUB’s menu.lst file  used by the grub bootloader. Looks in /boot for
+# all files which start with "vmlinuz-". They will be treated as kernels, and 
+# grub menu entries will be created for each.  It will  also create the initial 
+# menu.lst if none exists. Also add initrd lines for ramdisk images found with 
+# the same version as kernels found. e.g. /boot/vmlinuz-2.4.5 and 
+# /boot/initrd-2.4.5 will cause a line of "initrd=/boot/initrd-2.4.5 or similar 
+# to be added for the kernel entry in the menu.lst 
+UUID=$(sudo blkid -s UUID -o value /dev/mapper/$map)
+chr sed -i 's/root=UUID=\([a-z0-9-]*\)\(.*\)/root=UUID='$UUID'\2/g' /boot/grub/menu.lst
+chr update-grub || true
+chr grub-set-default 0
+chr sed -ie 's/([^)]*)/(hd0,0)/' /boot/grub/menu.lst
+
+step "Unmount chroot and detach the loop device"
+# Detach the file or device associated with the specified loop device. 
+# See the above explantaion of loop devices
+sudo umount $wroot
+inf "Unmounted $wroot"
+sudo losetup -d $dev
+inf "Loop device detached: "$dev", mapper: "$map 
+
+step "Generates libvirt domain XML defininion file"
+mem_kb=$(( $mem * 1024))
+cat > "$droot"/libvirt.xml << EOT
+<domain type='${hyv}'>
+  <name>${c_hn}</name>
+  <memory>$mem_kb</memory>
+  <vcpu>${vcpu}</vcpu>
+  <os>
+    <type>hvm</type>
+    <boot dev='hd' />
+  </os>
+  <features>
+    <acpi />
+  </features>
+  <clock offset='utc' />
+  <on_poweroff>destroy</on_poweroff>
+  <on_reboot>restart</on_reboot>
+  <on_crash>destroy</on_crash>
+  <devices>
+    <emulator>$(which $hyv)</emulator>
+    <interface type='bridge'>
+      <source bridge='br0' />
+<!-- 
+This improves the network performances by a lot (factor 10, nearly). But 
+this works only with Ubuntu Hardy or Intrepid guests for the moment, which is why 
+it is not by default. Note that this also corrects the issue some are reporting with 
+their network connections going away after a period of time or data transfer 
+-->
+      <model type='virtio' />
+    </interface>
+    <input type='mouse' bus='ps2' />
+    <graphics type='vnc' port='-1' listen='127.0.0.1' />
+    <disk type='file' device='disk'>
+      <source file='$(realpath "$droot"/disk.img)' />
+      <target dev='hda' />
+    </disk>
+  </devices>
+</domain>
+EOT
+inf "Generated libvirt domain XML defininion file"
+
+inf "Deployment completed successfully" && exit 0

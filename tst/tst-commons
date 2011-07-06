@@ -1,0 +1,183 @@
+#!/bin/bash
+#
+# WELCOME TO BLSS
+#
+# BLSS stands for Bootstrapped Linux-Server Systems, it's a collection of command line tools to
+# quickly assemble, without user interaction, multiple small and optimized Linux-Server Systems
+# with the purpose of an easy deployment of distributed systems, like Apache Hadoop Cloudera
+# Distribution, where every Linux-Server may have a different role in the computational cluster or
+# grid.
+# With BLSS you can finally verify -with just one Enter key pressing- if your package-based
+# system really works when you distribute it, and pay any technical debt you posses with
+# yourself not accomplished yet because you don’t have the necessary time for install 10 or 100
+# servers coordinating jobs in a network.
+# Systems you manage with BLSS scripts fit better for servicing purpose, they are reduced
+# in size and have a small memory footprint. The lifecycle of such systems is composed of
+# three phases, each one with a corresponding script: prototyping with lxp, cloning with lxc and
+# deployment with lxd.
+#
+# AUTHOR
+#   Written by Eduardo Lago Aguilar, eduardo.lago.aguilar@gmail.com
+
+# tst-commons:
+#
+#   Common functionalities used across all tests.
+#
+# The testing framework used is TAP (Test Anything Protocol), which is a 
+# text-based interface between testing modules in a test harness. Tap-functions 
+# is a port of TAP to BASH. 
+# 
+# See http://testanything.org/wiki/index.php/Tap-functions
+
+# Resolve script location, $0 may be a link
+script="$0"
+# Need this for relative symlinks
+while [ -h "$script" ] ; do
+  lst=$(ls -ld "$script")
+  lnk=$(expr "$lst" : '.*-> \(.*\)$')
+  if expr "$lnk" : '/.*' > /dev/null; then
+    script="$lnk"
+  else
+    script=$(dirname "$script")/"$lnk"
+  fi
+done
+BLSS_HOME=$(dirname "$script")/..
+BIN="$BLSS_HOME"/bin
+ENV="$BLSS_HOME"/env
+EXT="$BLSS_HOME"/ext
+TST="$BLSS_HOME"/tst
+
+. "$EXT"/tap-functions
+
+# Verify if a line from stdin is the specified value
+ln_is() {
+  local L
+  read L
+  is "$L" "$@"
+}
+
+# Verify if a line from stdin is empty
+ln_is_empty() {
+  local L
+  read L 
+  is "$L " " "
+}
+
+# Verify if the last line from stdin is the specified value
+lst_ln_is() {
+  local L
+  while read line ; do
+    L=${line}
+  done
+  is "$L" "$@"
+}
+
+# Verify if the last line from stdin match the specified value
+lst_ln_like() {
+  local L
+  while read line ; do
+    L=${line}
+  done
+  like "$L" "$@"
+}
+
+# Verify an exit code different of 0 
+not_ok(){
+	local result=${1:?}
+	local name=${2:-''}
+
+	(( _plan_set == 0 )) && _die "You tried to run a test without a plan!  Gotta have a plan."
+
+	_executed_tests=$(( $_executed_tests + 1 ))
+
+	if [[ -n "$name" ]] ; then
+		if _matches "$name" "^[0-9]+$" ; then
+			diag "    You named your test '$name'.  You shouldn't use numbers for your test names."
+			diag "    Very confusing."
+		fi
+	fi
+
+	if (( result == 0 )) ; then
+		echo -n "not "
+		_failed_tests=$(( _failed_tests + 1 ))
+	fi
+	echo -n "ok $_executed_tests"
+
+	if [[ -n "$name" ]] ; then
+		local ename=${name//\#/\\#}
+		echo -n " - $ename"
+	fi
+
+	if [[ -n "$TODO" ]] ; then
+		echo -n " # TODO $TODO" ;
+		if (( result != 0 )) ; then
+			_failed_tests=$(( _failed_tests - 1 ))
+		fi
+	fi
+
+	echo
+	if (( result == 0 )) ; then
+		local file='tap-functions'
+		local func=
+		local line=
+
+		local i=0
+		local bt=$(caller $i)
+		while _matches "$bt" "tap-functions$" ; do
+			i=$(( $i + 1 ))
+			bt=$(caller $i)
+		done
+		local backtrace=
+		eval $(caller $i | (read line func file ; echo "backtrace=\"$file:$func() at line $line.\""))
+			
+		local t=
+		[[ -n "$TODO" ]] && t="(TODO) "
+
+		if [[ -n "$name" ]] ; then
+			diag "  Failed ${t}test '$name'"
+			diag "  in $backtrace"
+		else
+			diag "  Failed ${t}test in $backtrace"
+		fi
+	fi
+
+	return $result
+}
+
+# Verify if no other line in stdin
+no_ln() {
+  local L
+  read L
+  not_ok $? "$1"
+}
+
+# Verify if one or more lines in stdin
+one_or_more_ln(){
+  local L
+  read L
+  ok $? "$1"
+}
+
+# Verify if only one line in stdin
+one_ln() {
+  local L
+  read L
+  ok $?
+  read L
+  not_ok $? "$1"
+}
+
+# Verify if a line from stdin matches a pattern
+ln_like() {
+  local L
+  read L
+  like "$L" "$@"
+}
+
+# Verify if all lines from stdin match a pattern
+lns_like() {
+  local L
+  while read L ; do
+    like "$L" "$@"
+  done
+}

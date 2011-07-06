@@ -1,0 +1,154 @@
+#!/bin/bash
+#
+# WELCOME TO BLSS
+#
+# BLSS stands for Bootstrapped Linux-Server Systems, it's a collection of command line tools to
+# quickly assemble, without user interaction, multiple small and optimized Linux-Server Systems
+# with the purpose of an easy deployment of distributed systems, like Apache Hadoop Cloudera
+# Distribution, where every Linux-Server may have a different role in the computational cluster or
+# grid.
+# With BLSS you can finally verify -with just one Enter key pressing- if your package-based
+# system really works when you distribute it, and pay any technical debt you posses with
+# yourself not accomplished yet because you don’t have the necessary time for install 10 or 100
+# servers coordinating jobs in a network.
+# Systems you manage with BLSS scripts fit better for servicing purpose, they are reduced
+# in size and have a small memory footprint. The lifecycle of such systems is composed of
+# three phases, each one with a corresponding script: prototyping with lxp, cloning with lxc and
+# deployment with lxd.
+#
+# AUTHOR
+#   Written by Eduardo Lago Aguilar, eduardo.lago.aguilar@gmail.com
+
+# blss-bash-completion:
+#
+#   BLSS bash completion. Locate this script under /etc/bash_completion.d/ 
+# directory for bash completion of script options.
+#
+# See http://devmanual.gentoo.org/tasks-reference/completion/index.html
+# See http://www.debian-administration.org/articles/316
+#
+# Thanks to Eugene for spaces and quoting handling in bash completion at http://stackoverflow.com/questions/1146098/properly-handling-spaces-and-quotes-in-bash-completion
+
+# Suppported 
+declare -A SUPPORTED_SUITES=(["squezed"]="squezed" ["lenny"]="lenny" ["maverick"]="maverick" ["lucid"]="lucid" )
+declare -A DISTRO_PER_SUITE=(["lenny"]="debian" ["squezed"]="debian" ["lucid"]="ubuntu" ["maverick"]="ubuntu")
+declare -A SUPPORTED_ARCHS=(["amd64"]="amd64" ["i386"]="i386")
+
+# Defaults
+declare -A DEF_INSTALL_MIRROR=(["debian"]="http://ftp.debian.org/debian" ["ubuntu"]="http://archive.ubuntu.com/ubuntu")
+
+_find_supported_locales()
+{
+  search=$(eval echo "$cur" 2>/dev/null || eval echo "$cur'" 2>/dev/null || eval echo "$cur\"" 2>/dev/null || "")
+  grep -v '^#.*' /usr/share/i18n/SUPPORTED | grep -- "^$search" | sed -e "{" -e 's#\\#\\\\#g' -e "s#'#\\\'#g" -e 's#"#\\\"#g' -e "}"
+}
+_find_supported_timezones()
+{
+  find /usr/share/zoneinfo/ -type f -print | sed -e 's/\/usr\/share\/zoneinfo\///' -e 's/posix\///' -e 's/right\///' | sort
+}
+
+_find_pkgs() {
+  apt-cache --no-generate pkgnames "$cur" 2> /dev/null
+}
+
+_lxp() {
+  local cur prev opts
+  COMPREPLY=()
+  cur="${COMP_WORDS[COMP_CWORD]}"
+  prev="${COMP_WORDS[COMP_CWORD-1]}"
+  opts="--help --suite --architecture --install-mirror --mirror-file --locale --timezone --first-boot-script --boot-menu-timeout --packages --hostname --dhcp --address --network --netmask --broadcast --gateway --search --nameservers --admin-user --admin-full-name --admin-password --remote-root --root-password"
+
+  # Complete the arguments of long/short options
+  case "${prev}" in
+    --suite)
+        COMPREPLY=( $(compgen -W "${SUPPORTED_SUITES[*]}" -- ${cur}) ) ;
+        return 0 ;;
+    --architecture)
+        COMPREPLY=( $(compgen -W "${SUPPORTED_ARCHS[*]}" -- ${cur}) ) ;
+        return 0 ;;
+    --mirror-file)
+        _filedir ;
+        return 0 ;;
+    --first-boot-script)
+        _filedir ;
+        return 0 ;;
+    --locale)
+        local IFS=$'\n' ;
+        COMPREPLY=( $( compgen -W "$(_find_supported_locales)" -- "$cur" ) ) ;
+
+        local escaped_single_qoute="'\''" ;
+        local i=0 ;
+        for entry in ${COMPREPLY[*]} ; do
+          if [[ "${cur:0:1}" == "'" ]] 
+          then
+            # started with single quote, escaping only other single quotes
+            # [']bla'bla"bla\bla bla --> [']bla'\''bla"bla\bla bla
+            COMPREPLY[$i]="${entry//\'/${escaped_single_qoute}}" 
+          elif [[ "${cur:0:1}" == "\"" ]] 
+          then
+            # started with double quote, escaping all double quotes and all backslashes
+            # ["]bla'bla"bla\bla bla --> ["]bla'bla\"bla\\bla bla
+            entry="${entry//\\/\\\\}" 
+            COMPREPLY[$i]="${entry//\"/\\\"}" 
+          else 
+            # no quotes in front, escaping _everything_
+            # [ ]bla'bla"bla\bla bla --> [ ]bla\'bla\"bla\\bla\ bla
+            entry="${entry//\\/\\\\}" 
+            entry="${entry//\'/\'}" 
+            entry="${entry//\"/\\\"}" 
+            COMPREPLY[$i]="${entry// /\\ }"
+          fi
+          (( i++ ))
+        done
+        return 0 ;;
+    --timezone)
+        COMPREPLY=( $(compgen -W "$(_find_supported_timezones)" -- ${cur}) ) ;
+        return 0 ;;
+    --packages)
+        # TODO: generate a list instead of a single package
+        COMPREPLY=( $(compgen -W "$(_find_pkgs)" -- ${cur}) ) ;
+        return 0 ;;
+    --dhcp|--remote-root)
+        COMPREPLY=( $(compgen -W "yes no" -- ${cur}) ) ;
+        return 0 ;;
+--install-mirror|--boot-menu-timeout|--hostname|--address|--network|--netmask|--broadcast|--gateway|--search|--nameservers|--admin-user|--admin-full-name|--admin-password|--root-password)
+        COMPREPLY=( $(compgen -W "" -- ${cur}) ) ;
+        return 0 ;;
+     *)
+    ;;
+  esac
+
+  # Complete the long/short options
+  COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
+  return 0
+}
+complete -F _lxp lxp
+
+_lxc() {
+  local cur prev opts
+  COMPREPLY=()
+  cur="${COMP_WORDS[COMP_CWORD]}"
+  prev="${COMP_WORDS[COMP_CWORD-1]}"
+  opts="--help --proto-root --packages --hostname --address"
+
+  # Complete the arguments of long/short options
+  case "${prev}" in
+    --proto-root)
+        _filedir ;
+        return 0 ;;
+    --packages)
+        # TODO: generate a list instead of a single package
+        COMPREPLY=( $(compgen -W "$(_find_pkgs)" -- ${cur}) ) ;
+        return 0 ;;
+    --hostname|--address)
+        COMPREPLY=( $(compgen -W "" -- ${cur}) ) ;
+        return 0 ;;
+     *)
+    ;;
+  esac
+
+  # Complete the long/short options
+  COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
+  return 0
+}
+complete -F _lxc lxc

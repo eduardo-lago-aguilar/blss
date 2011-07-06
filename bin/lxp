@@ -1,0 +1,1534 @@
+#!/bin/bash -e
+#
+# WELCOME TO BLSS
+#
+# BLSS stands for Bootstrapped Linux-Server Systems, it's a collection of command line tools to
+# quickly assemble, without user interaction, multiple small and optimized Linux-Server Systems
+# with the purpose of an easy deployment of distributed systems, like Apache Hadoop Cloudera
+# Distribution, where every Linux-Server may have a different role in the computational cluster or
+# grid.
+# With BLSS you can finally verify -with just one Enter key pressing- if your package-based
+# system really works when you distribute it, and pay any technical debt you posses with
+# yourself not accomplished yet because you don’t have the necessary time for install 10 or 100
+# servers coordinating jobs in a network.
+# Systems you manage with BLSS scripts fit better for servicing purpose, they are reduced
+# in size and have a small memory footprint. The lifecycle of such systems is composed of
+# three phases, each one with a corresponding script: prototyping with lxp, cloning with lxc and
+# deployment with lxd.
+#
+# AUTHOR
+#   Written by Eduardo Lago Aguilar, eduardo.lago.aguilar@gmail.com
+
+# lxp:
+#
+#   proto creation. See run this script with --help for details.
+
+# Resolve script location, $0 may be a link
+script="$0"
+# Need this for relative symlinks
+while [ -h "$script" ] ; do
+  lst=$(ls -ld "$script")
+  lnk=$(expr "$lst" : '.*-> \(.*\)$')
+  if expr "$lnk" : '/.*' > /dev/null; then
+    script="$lnk"
+  else
+    script=$(dirname "$script")/"$lnk"
+  fi
+done
+BLSS_HOME=$(dirname "$script")/..
+BIN="$BLSS_HOME"/bin
+ENV="$BLSS_HOME"/env
+EXT="$BLSS_HOME"/ext
+TST="$BLSS_HOME"/tst
+
+. "$BIN"/blss-commons
+
+usage() {
+  local IFS=","
+  cat << EOF
+NAME
+  lxp - Bootstraps a Linux-Server System prototype (or simply a proto) with a reduced size and small memory footprint requirements for servicing purposes.
+
+SYNOPSIS
+  lxp [GENERAL OPTIONS...] [NETWORKING OPTIONS...] [ADMIN USER OPTIONS...] [ROOT OPTIONS...] PROTO_ROOT
+
+DESCRIPTION
+  BLSS stands for Bootstrap Linux-Server System, it can be used to Bootstraps a Linux-Server system with a reduced size and small memory footprint requirements for servicing purposes. It uses Debian debootstrap script to automatically install the system from a repository or mirror without any user interaction to a target directory called "proto root". To save disk space, additional cleanup is performed once the system has been installed. When the installation is finished, the bootstrapped system (or proto) root directory (/) can be cloned and later used to create a virtual machine disk.
+
+  PROTO_ROOT command line/conf file options is mandatory and shall be an existing empty directory.
+
+NOTES
+  i) The script performs several sudo <command> executions, you can append, AT YOUR OWN RISK, entries to the host '/etc/sudoers' archive and avoid repeatedly password typing during execution. It can be also useful when the script is executed with a daemon/service account. Example content appended to host '/etc/sudoers':
+
+  # User privilege specification without password prompt
+  mydaemon ALL=NOPASSWD: ALL
+
+  # Members of the admin group may gain root privileges plus no password prompt
+  %admin ALL=NOPASSWD: ALL
+
+  ii) It's recommended to leave the root password locked under Linux, not allowing login with the root account. To run administrative commands use sudo command, sudo allows an authorized user to execute a command as the superuser.
+
+  iii) Once installed the locales and timezone, the remaining locales and timezones are deleted from the system to save space. So you cannot change locales and timezone later.
+
+  iv) Several modules are removed from the bootstrapped system once get installed. The list includes among others: floppy, cd-rom, snd-pcsp (sound), pcspkr (beep), mouse, usb, wireless, gameport, joystick, touchscreen, parport, telephony, isdn, bluetooth, ieee80211, ipx, mac80211, wireless, x25, firewire, etc...
+
+GENERAL OPTIONS
+  --help
+    Show this help
+
+  --suite SUITE
+    The suite type. Possible values for Debian-based system are: ${SUITES_PER_DISTRO["debian"]}; for Ubuntu-based system: ${SUITES_PER_DISTRO["ubuntu"]}. SUITE defaults to host distribution suite. See 'lsb_release' command.
+
+  --architecture ARCHITECTURE
+    The architecture type. Supported architectures are ${SUPPORTED_ARCHS[*]}. Defaults to host architecture. See 'dpkg-architecture' command.
+
+  --install-mirror INSTALL_MIRROR
+    The mirror base URL to be used on bootstrapping. For Debian defaults to ${DEF_INSTALL_MIRROR["debian"]}, for Ubuntu defaults to ${DEF_INSTALL_MIRROR["ubuntu"]}.
+
+  --mirror-file MIRROR_FILE
+    An extra mirrors file located at MIRROR_FILE to include in '/etc/apt/sources.list.d/'. The script also check the existence of additional mirrors files at '\~/${DEF_EV}/mirrors.list', '\~/${DEF_EV}/DISTRO/mirrors.list' and '\~/${DEF_EV}/DISTRO/SUITE/mirrors.list' for inclusion in '/etc/apt/sources.list.d/'. Examples of such files:
+
+    Debian, security and volatile repository mirror:
+
+    # \~/${DEF_EV}/debian/lenny/mirrors.list
+    deb http://repository/mirror/debian/debian lenny main contrib non-free
+    deb http://repository/mirror/debian/debian-security lenny/updates main contrib non-free
+    deb http://repository/mirror/debian/debian-volatile lenny/volatile main contrib non-free
+
+    A home localized Ubuntu repository mirror:
+
+    # \~/${DEF_EV}/ubuntu/mirrors.list
+    deb http://repository.home.dev/ubuntu maverick main restricted universe multiverse
+
+  --locale LOCALE
+    Supported locale. Defaults to the host locale. Example values: 'en_US.UTF-8 UTF-8', 'nl_NL.UTF-8 UTF-8' and 'es_ES.UTF-8 UTF-8'. See '/usr/share/i18n/SUPPORTED' for the complete list of possible values. See 'locale' command.
+
+  --timezone TIMEZONE
+    Supported time zone. Defaults to host timezone located at '/etc/timezone'. For any Linux distribution '/etc/localtime' is a symlink to the correct timezone file or is the effective timezone file. The file '/etc/timezone' is used by 'dpkg-reconfigure tzdata' command to generate (or symlink) the effective timezone file at '/etc/localtime'. Timezone files are located at '/usr/share/zoneinfo/'. Examples TIMEZONE values are: 'America/New_York', 'Europe/Amsterdam' and 'America/Havana'. See 'tzselect' and 'dpkg-reconfigure tzdata' commands.
+
+  --first-boot-script FIRST_BOOT_SCRIPT
+    An extra script file to be executed on first boot. The path is in the host filesystem. This command also check the existence of additional first boot script files at '\~/${DEF_EV}/firstboot.sh', '\~/${DEF_EV}/DISTRO/firstboot.sh', and '\~/${DEF_EV}/DISTRO/SUITE/firstboot.sh' for including on first boot execution process. Examples of such files are:
+
+    # \~/${DEF_EV}/firstboot.sh
+    apt-get update
+    apt-get --force-yes -y install mc
+
+  --boot-menu-timeout BOOT_MENU_TIMEOUT
+    Timeout in seconds before automatically booting the default entry. Defaults to ${DEF_BOOT_MENU_TIMEOUT}.
+
+  --packages PACKAGES
+    Space separated list of packages to install after bootstrapping. Defaults to '${DEF_PACKAGES}'. Example package list is: 'nginx  apache2 mysql couchdb'.
+
+NETWORKING OPTIONS
+  Networking is mandatory for servicing, therefore there are serveral possible options combinations for networking configuration. See the list below:   
+
+---------------------------------------------------------------------------
+ command line                                           |NC|AA|DS|SS|BC|GW|
+---------------------------------------------------------------------------
+ --dhcp yes                                             |y |y |? |? |? |? | 
+---------------------------------------------------------------------------
+ --dhcp yes (named)                                     |y |y |y |? |? |? |
+---------------------------------------------------------------------------
+ --dhcp yes (named) (suffixed)                          |y |y |y |y |? |? |
+---------------------------------------------------------------------------
+ --dhcp no (fixed)                                      |y |n |n |n |n |n |
+---------------------------------------------------------------------------
+ --dhcp no (fixed) (named)                              |y |n |y |n |n |n |
+---------------------------------------------------------------------------
+ --dhcp no (fixed) (named) (suffixed)                   |y |n |y |y |n |n |
+---------------------------------------------------------------------------
+ --dhcp no (fixed) (casted)                             |y |n |n |n |y |n |
+---------------------------------------------------------------------------
+ --dhcp no (fixed) (routed)                             |y |n |n |n |n |y |
+---------------------------------------------------------------------------
+ --dhcp no (fixed) (casted) (routed)                    |y |n |n |n |y |y |
+---------------------------------------------------------------------------
+ --dhcp no (fixed) (named) (casted)                     |y |n |y |n |y |n |
+---------------------------------------------------------------------------
+ --dhcp no (fixed) (named) (routed)                     |y |n |y |n |n |y |
+---------------------------------------------------------------------------
+ --dhcp no (fixed) (named) (casted) (routed)            |y |n |y |n |y |y |
+---------------------------------------------------------------------------
+ --dhcp no (fixed) (named) (suffixed) (casted)          |y |n |y |y |y |n |
+---------------------------------------------------------------------------
+ --dhcp no (fixed) (named) (suffixed) (routed)          |y |n |y |y |y |n |
+---------------------------------------------------------------------------
+ --dhcp no (fixed) (named) (suffixed) (casted) (routed) |y |n |y |y |y |y |
+---------------------------------------------------------------------------
+
+  fixed:--address 192.168.1.1 --network 192.168.0.0 --netmask 255.255.0.0, named:--nameservers 192.168.0.2, suffixed:--search home.dev, routed:--gateway 192.168.0.1, casted:--broadcast 192.168.255.255
+
+  NC:network configured, AA:configured for automatic address assigning via DHCP, DS:DNS server configured for queriying domain names, SS:configured for suffixing names in domain name queries, BC: broadcasting configured, GW: gateway configured
+
+  y:yes, n:no, x:doesn't matter, ?:depends on the settings of the DHCP server available in the network
+  
+  --hostname HOSTNAME
+    The proto hostname. Defaults to DISTRO-SUITE-ARCHITECTURE. The hostname can be changed later.     
+
+  --dhcp yes|no
+    Configure the network with automatic DHCP settings. If the argument is 'yes', then  --address, --network, --netmask, --broadcast and --gateway options are excluded. But can be optinally used among the --search and --nameservers options. An argument equal to 'no' results in no installation of package 'dhcp3-client'. Defaults to 'yes'.
+
+  --address IPADDRESS
+    Static IP address. This option shall be specified among --network and --netmask options, this option excludes --dhcp option. But can be optinally used among the --search and/or --nameservers options. Defaults no static IP address assigning.     
+
+  --network NETWORK
+    Static network address. This option shall be specified among --address and --netmask options, this option excludes --dhcp option. But can be optinally used among the --search and/or --nameservers options. Defaults to no static network address assigning.     
+
+  --netmask NETMASK
+    Static network mask. This option shall be specified among --address and --network options, this option excludes --dhcp option. But can be optinally used among the --search and/or --nameservers options. Defaults to no static netmask assigning.     
+
+  --broadcast BROADCAST
+    Static broadcast address. This option excludes --dhcp option and if specified then the options --address, --network and --netmask shall be present too. Defaults to no broadcasting.     
+
+  --gateway GATEWAY
+    Static gateway IP address. This option excludes --dhcp option and if specified then the options --address, --network and --netmask shall be present too. Defaults to no gateway.
+
+  --search SEARCH
+    Optional DNS search suffix. If specified then either --dhcp option or the group of options --address, --network and --netmask shall be present too. Defaults to no DNS search suffix.  
+
+  --nameservers NAMESERVERS
+    Optional comma separated list of DNS server IP addresses. If specified then either --dhcp option or the group of options --address, --network and --netmask shall be present too. Defaults to no nameservers.
+
+ADMIN USER OPTIONS
+  --admin-user ADMIN_USER
+    The account ADMIN_USER is created and added to group admin. ADMIN_USER defaults to guest distribution id in lowercase (See 'lsb_release' command). ADMIN_USER can execute a command as the superuser via sudo. See '/etc/sudoers'.
+
+  --admin-full-name ADMIN_FULL_NAME
+    The adim user full name. ADMIN_FULL_NAME defaults to guest distribution id in lowercase. See 'lsb_release' command.
+
+  --admin-password ADMIN_PASSWORD
+    The admin user password. ADMIN_PASSWORD defaults to guest distribution id in lowercase. See 'lsb_release' command.
+
+ROOT OPTIONS
+  By disabling both root remote login (trougth SSH, SCP and SFTP) and direct login you can avoid brute force attacks. But, if you really need root remote/direct login, then password prompt is another security issue to take into account. This command provides four possible combinations for root remote/direct login with/without password:
+
+----------------------------------------------------
+ command line                          |RL |DL |PP |
+----------------------------------------------------
+ (nothing)                             |no |no |X  |
+----------------------------------------------------
+ --root-password xyz --remote-root no  |no |yes|yes|
+----------------------------------------------------
+ --root-password -   --remote-root no  |no |yes|no |
+----------------------------------------------------
+ --root-password xyz --remote-root yes |yes|yes|yes|
+----------------------------------------------------
+
+  or the equivalent in a conf file:
+
+--------------------------------
+ conf file content |RL |DL |PP |
+--------------------------------
+ (nothing)         |no |no |x  |
+--------------------------------
+ root_password=xyz |no |yes|yes|
+ remote_root=no    |   |   |   |
+--------------------------------
+ root_password=-   |no |yes|no |
+ remote_root=no    |   |   |   |
+--------------------------------
+ root_password=xyz |yes|yes|yes|
+ remote_root=yes   |   |   |   |
+--------------------------------
+
+  RL:remote login, DL:direct login, PP:password prompt, x:doesn't matter, -: an special value to indicate no password prompt
+
+    Note that remote login wihtout password prompt is not permitted. It's recommended to use the root default options (both remote and direct login disabled) and setup another user that will have root capabilities to perform admin tasks. See ADMIN USER OPTIONS.
+
+  --root-password [ROOT_PASSWORD]
+    Setup the root password. When a valid value is specified then the password is prompted on login and the --remote-root option can be should be equal to 'yes' or 'no'. When the special value '-' is specified then the password is never prompted on login, therefore the --remote-root option shall be equal to 'no'. 
+      
+  --remote-root yes|no
+    Setup the remote login for root. If the value of this option is 'yes' then --root-password shall be a valid password. 
+
+EXAMPLES
+
+  1- An Ubuntu Maverick proto with amd64 architecture, locale English US, timezone in New York and DHCP network configuration:
+ 
+    \$ lxp --suite maverick --architecture amd64 --locale "en_US.UTF-8 UTF-8" --timezone America/New_York --hostname ny-server --dhcp yes /tmp/ny-server-proto
+
+  2- An Ubuntu Maverick proto with amd64 architecture, locale Netherlands, timezone in Amsterdam and static network configuration
+ 
+    \$ lxp --suite maverick --architecture amd64 --locale "nl_NL.UTF-8 UTF-8" --timezone Europe/Amsterdam --hostname nl-server --dhcp no --address 192.168.0.111 --network 192.168.0.0 --netmask 255.255.0.0 --broadcast 192.168.255.255 --gateway 192.168.0.1  /tmp/nl-server-proto
+
+  3- A Debian Lenny proto with host architecture, host locale, host timezone, DHCP network configuration and specific user settings:
+ 
+    \$ lxp --suite lenny --dhcp yes --admin-user adm --admin-full-name Administrator --admin-password adm  /tmp/debian-server-proto
+
+
+AUTHOR
+  Written by Eduardo Lago Aguilar, eduardo.lago.aguilar@gmail.com
+
+EOF
+}
+
+# parse command line options
+#
+# NOTE:
+#   - c_ prefix indicates a command line option
+#   - without c_ prefix indicates a conf file option
+#   - short name indicates the effective option
+
+# Quotes around `"$@"' let each cmd-line parameter expand to a separate word. 
+# TEMP variable is necessary, as the `eval set --' would nuke the return value 
+# of getopt.
+set +e
+TEMP=$(getopt -n 'lxp' -o '' --longoptions \
+help,\
+suite:,\
+architecture:,\
+install-mirror:,\
+mirror-file:,\
+locale:,\
+timezone:,\
+first-boot-script:,\
+boot-menu-timeout:,\
+packages:,\
+hostname:,\
+dhcp:,\
+address:,\
+network:,\
+netmask:,\
+broadcast:,\
+gateway:,\
+search:,\
+nameservers:,\
+admin-user:,\
+admin-full-name:,\
+admin-password:,\
+root-password:,\
+remote-root: \
+-- "$@")
+if [ $? != 0 ] ; then 
+  usage >&2 ; 
+  exit 1 ; 
+fi
+set -e
+
+# quotes around `$TEMP' are essential
+eval set -- "$TEMP"
+
+# unset c_* options
+unset \
+  c_suite \
+  c_architecture \
+  c_install_mirror \
+  c_mirror_file \
+  c_locale \
+  c_timezone \
+  c_first_boot_script \
+  c_boot_menu_timeout \
+  c_packages \
+  c_hostname \
+  c_dhcp \
+  c_address \
+  c_network \
+  c_netmask \
+  c_broadcast \
+  c_gateway \
+  c_search \
+  c_nameservers \
+  c_admin_user \
+  c_admin_full_name \
+  c_admin_password \
+  c_root_password \
+  c_remote_root \
+  c_proto_root
+
+declare -A c_os 
+root_defaults_flag=1
+while true; do
+  # flags an option if appears in the command line, options can be specified 
+  # only once
+  (( c_os[$1] == 1 )) && err "$1 command line option was already specified" && usage >&2 && exit 1 ; 
+  c_os[$1]=1 ;
+  case $1 in
+  --help)
+      usage && shift && exit 0 ;;
+  --suite)
+      c_suite=${2:?$(err_non_empty $1)} ;
+      shift 2 ;;
+  --architecture)
+      c_architecture=${2:?$(err_non_empty $1)} ; 
+      shift 2 ;;
+  --install-mirror)
+      c_install_mirror=${2:?$(err_non_empty $1)} ;
+      shift 2 ;;
+  --mirror-file)
+      c_mirror_file=${2:?$(err_non_empty $1)} ;
+      shift 2 ;;
+  --locale)
+      c_locale=${2:?$(err_non_empty $1)} ;
+      shift 2 ;;
+  --timezone)
+      c_timezone=${2:?$(err_non_empty $1)} ;
+      shift 2 ;;
+  --first-boot-script)
+      c_first_boot_script=${2:?$(err_non_empty $1)} ;
+      shift 2 ;;
+  --boot-menu-timeout)
+      c_boot_menu_timeout=${2:?$(err_non_empty $1)} ;
+      shift 2 ;;
+  --packages)
+      c_packages=${2:?$(err_non_empty $1)} ; 
+      shift 2 ;;
+  --hostname)
+      c_hostname=${2:?$(err_non_empty $1)} ;
+      shift 2 ;;
+  --dhcp)
+      c_dhcp=${2:?$(err_non_empty $1)} ;
+      shift 2 ;;
+  --address)
+      c_address=${2:?$(err_non_empty $1)} ;
+      shift 2 ;;
+  --network)
+      c_network=${2:?$(err_non_empty $1)} ;
+      shift 2 ;;
+  --netmask)
+      c_netmask=${2:?$(err_non_empty $1)} ;
+      shift 2 ;;
+  --broadcast)
+      c_broadcast=${2:?$(err_non_empty $1)} ;
+      shift 2 ;;
+  --gateway)
+      c_gateway=${2:?$(err_non_empty $1)} ;
+      shift 2 ;;
+  --search)
+      c_search=${2:?$(err_non_empty $1)} ;
+      shift 2 ;;
+  --nameservers)
+      c_nameservers=${2:?$(err_non_empty $1)} ;
+      shift 2 ;;
+  --admin-user)
+      c_admin_user=${2:?$(err_non_empty $1)} ;
+      shift 2 ;;
+  --admin-full-name)
+      c_admin_full_name=${2:?$(err_non_empty $1)} ;
+      shift 2 ;;
+  --admin-password)
+      c_admin_password=${2:?$(err_non_empty $1)} ;
+      shift 2 ;;
+  --root-password)
+      c_root_password=${2:?$(err_non_empty $1)} ; 
+      shift 2 ; # In quoted mode an empty parameter will be generated if its optional argument is not found.
+      unset root_defaults_flag ;;
+  --remote-root)
+      c_remote_root=${2:?$(err_non_empty $1)} ;
+      shift 2 ;
+      unset root_defaults_flag ;;
+  --) 
+    shift ; 
+    break ;;
+  *) 
+    err "Error parsing arguments" && usage >&2 && exit 1 ;;
+  esac
+done
+# proto root is the remaining
+c_proto_root=$(trim_spcs "$@")
+if [ -n "$c_proto_root" ] ; then
+  c_proto_root=$(realpath "$c_proto_root") || ( err "PROTO_ROOT/proto_root command line/conf file option shall be an existing empty directory" >&2 && exit 1 )
+fi
+unset c_os
+
+proc_ev
+
+# unset conf file options before start importing from environment
+unset \
+  suite \
+  architecture \
+  install_mirror \
+  mirror_file \
+  locale \
+  timezone \
+  first_boot_script \
+  boot_menu_timeout \
+  packages \
+  hostname \
+  dhcp \
+  address \
+  network \
+  netmask \
+  broadcast \
+  gateway \
+  search \
+  nameservers \
+  admin_user \
+  admin_full_name \
+  admin_password \
+  root_password \
+  remote_root \
+  proto_root
+
+# import general env opts
+imp_conf "$ev"/lxp.conf
+
+# suite: command line may override the value imported from the environment, if 
+# the option is missing use the host value, finally verify if the value is 
+# supported.
+st=${c_suite:-$suite}
+st=${st:-$(lsb_release -cs)}
+st=${SUPPORTED_SUITES[$st]}
+st=${st:?$(err_non_sup suite)}
+
+# distro: depends on the suite
+dtr=${DISTRO_PER_SUITE[$st]}
+
+# once distro & suite, import other possible conf file opts from env 
+imp_conf "$ev"/$dtr/lxp.conf
+imp_conf "$ev"/$dtr/$st/lxp.conf
+
+# architecture: command line may override the value imported from the 
+# environment, if the option is missing use the host value, finally verify if 
+# the value is supported.    
+arch=${c_architecture:-$architecture} 
+arch=${arch:-$(dpkg-architecture -qDEB_HOST_ARCH)}
+arch=${SUPPORTED_ARCHS[$arch]}
+arch=${arch:?$(err_non_sup architecture)}
+
+# install_mirror: command line may override the value imported from the 
+# environment, if the option is missing use the default mirror per distro.    
+im=${c_install_mirror:-$install_mirror}
+im=${im:-${DEF_INSTALL_MIRROR[$dtr]}}
+
+# mirror_file: command line may override the value imported from the environment
+mf=${c_mirror_file:-$mirror_file}
+if [ -n "$mf" ] ; then
+  mf=$(realpath "$mf") && [ -r "$mf" ] && [ -f "$mf" ] || ( err_non_r mirror-file mirror_file >&2 && exit 1 )
+fi
+
+# locale: command line may override the value imported from the environment, if 
+# the option is missing use the host value, finally verify if the value is 
+# supported.
+#
+# additionally extracts other useful values from locale: plang, plang_ctry & 
+# pbaselang. Example:
+#
+# if locale == "en_US.UTF-8 UTF-8" 
+#   then 
+#     plang = "en_US.UTF-8"
+#     plang_ctry = "en_US"
+#     pbaselang = "en"
+lcl=${c_locale:-$locale}
+proc_lcl
+
+# locale: command line may override the value imported from the environment, if 
+# the option is missing use the host value, finally verify if the value is 
+# supported.
+tzon=${c_timezone:-$timezone}
+tzon=${tzon:-$(cat /etc/timezone)}
+proc_tzon
+
+# first_boot_script: command line may override the value imported from the 
+# environment
+fbscript=${c_first_boot_script:-$first_boot_script}
+if [ -n "$fbscript" ] ; then
+  fbscript=$(realpath "$fbscript") && [ -r "$fbscript" ] && [ -f "$fbscript" ] || ( err_non_r first-boot-script first_boot_script >&2 && exit 1 )
+fi
+
+# boot_menu_timeout: command line may override the value imported from the 
+# environment, if the option is missing use the default value
+timeout=${c_boot_menu_timeout:-$boot_menu_timeout}
+if [ -n "$timeout" ] ; then
+  [[ $timeout =~ ^[[:digit:]]+$ ]] || ( err_non_sup boot-menu-timeout boot_menu_timeout >&2 && exit 1 )
+else
+  timeout=$DEF_BOOT_MENU_TIMEOUT
+fi
+
+# packages: command line may override the value imported from the environment, 
+# if the option is missing use the default value
+pkgs=${c_packages:-$packages}
+pkgs=${pkgs:-${DEF_PACKAGES}}
+
+# hostname: command line may override the value imported from the environment, 
+# if the option is missing use the default value based on distro, suite and 
+# architecture
+hn=${c_hostname:-$hostname}
+hn=${hn:-${dtr}"-"${st}"-"${arch}}
+
+# dhcp, address, network, netmask, broadcast, gateway, search and nameservers: 
+# command line may override the values imported from the environment, finally 
+# verify the invalid networking combinations. dhcp defaults to 'yes' if no 
+# specified
+dyn=${c_dhcp:-$dhcp}
+if [ -n "$dyn" ] ; then 
+  dyn=${dyn,,} ;
+  [ "$dyn" != "yes" ] && [ "$dyn" != "no" ] && err_non_sup dhcp >&2 && exit 1 || true ;
+else
+  dyn="yes"
+fi
+ip=${c_address:-$address}
+nw=${c_network:-$network}
+msk=${c_netmask:-$netmask}
+bcst=${c_broadcast:-$broadcast}
+gw=${c_gateway:-$gateway}
+srch=${c_search:-$search}
+dns=${c_nameservers:-$nameservers}
+if [ $dyn == "yes" ] ; then
+  ( \
+     [ -n "$ip" ] \
+  || [ -n "$nw" ] \
+  || [ -n "$msk" ] \
+  || [ -n "$bcst" ] \
+  || [ -n "$gw" ] \
+  ) && err "--dhcp/dhcp=yes command line/conf file option excludes --address/address, --network/network, --netmask/netmask, --broadcast/broadcast and --gateway/gateway command line/conf file options" >&2 && exit 1 || true
+else
+  ( \
+     [ -z "$ip" ] \
+  || [ -z "$nw" ] \
+  || [ -z "$msk" ] \
+  ) && err "--dhcp/dhcp=no command line/conf file option shall be specified among --address/address, --network/network and --netmask/netmask command line/conf file options" >&2 && exit 1 || true ;
+  match_ip $ip || ( err_non_sup address >&2 && exit 1 ) ;
+  match_ip $nw || ( err_non_sup network >&2 && exit 1 ) ;
+  match_ip $msk || ( err_non_sup netmask >&2 && exit 1 ) ;
+fi
+[ -n "$bcst" ] && ! match_ip $bcst && err_non_sup broadcast >&2 && exit 1 || true
+[ -n "$gw" ] && ! match_ip $gw && err_non_sup gateway >&2 && exit 1 || true
+[ -n "$dns" ] && ! match_ip_lst $dns && err_non_sup nameservers >&2 && exit 1 || true
+
+# admin_user, admin_full_name & admin_password: command line may override the 
+# values imported from the environment, if the options are missing use the 
+# default value based on the distro
+admusr=${c_admin_user:-$admin_user}
+admusr=${admusr:-$dtr}
+admname=${c_admin_full_name:-$admin_full_name}
+admname=${admname:-${dtr^}}
+admpwd=${c_admin_password:-$admin_password}
+admpwd=${admpwd:-$dtr}
+
+# root_password / remote_root: command line may override the values imported 
+# from the environment, finally verify the invalid root combinations
+( [ -n "$root_password" ] || [ -n "$remote_root" ] ) && unset root_defaults_flag || true
+
+if ! (( root_defaults_flag == 1 )) ; then
+  
+  rootpwd=${c_root_password:-$root_password}      
+  [ -z "$rootpwd" ] && err "--root-password/root_password command line/conf file option is missing" >&2 && exit 1 || true 
+
+  remroot=${c_remote_root:-$remote_root}
+  [ -z "$remroot" ] && err "--remote-root/remote_root command line/conf file option is missing" >&2 && exit 1 || true 
+
+  if [ -n "$remroot" ] ; then 
+    remroot=${remroot,,} ;
+    [ "$remroot" != "yes" ] && [ "$remroot" != "no" ] && err_non_sup remote-root remote_root >&2 && exit 1 || true ;
+  fi  
+
+  [ $remroot == "yes" ] && [ $rootpwd = "-" ] && err "--remote-root/remote_root=yes command line/conf file option shall be used with non-empty --root-password/root_password different to the special argument '-'" >&2 && exit 1 || true
+fi
+
+# proto_root: command line may override the values imported from the 
+# environment, finally whether the directory exists or not
+if [ -n "$proto_root" ] ; then
+  proto_root=$(realpath "$proto_root") || ( err "PROTO_ROOT/proto_root command line/conf file option shall be an existing empty directory" >&2 && exit 1 )
+fi
+proot=${c_proto_root:-$proto_root}
+[ "$(find "$proot" -maxdepth 1 -type d -empty )" != "$proot" ] && err "PROTO_ROOT/proto_root command line/conf file option shall be an existing empty directory" >&2 && exit 1 || true
+
+# define working root
+wroot=${proot}
+
+inf "Detected environment '$ev'. All options were took from the environment conf files. Command line options override environment options" ;
+
+inf "suite = '$st'"
+inf "distro = '$dtr'"
+inf "architecture = '$arch'"
+inf "install_mirror = '$im'"
+inf "locale = '$lcl'"
+inf "lang = '$plang'"
+inf "langcountry = '$plang_ctry'"
+inf "baselang = '$pbaselang'"
+inf "timezone = '$tzon'"
+inf "boot_menu_timeout = '$timeout'"
+inf "packages = '$pkgs'"
+inf "hostname = '$hn'"
+inf "dhcp = '$dyn'"
+inf "address = '$ip'"
+inf "network = '$nw'"
+inf "netmask = '$msk'"
+inf "broadcast = '$bcst'"
+inf "gateway = '$gw'"
+inf "search = '$srch'"
+inf "nameservers = '$dns'"
+inf "admin_user = '$admusr'"
+inf "admin_full_name = '$admname'"
+inf "admin_password = '*****'"
+inf "root_password = '******'"
+inf "remote_root = '$remroot'"
+inf "proto_root = '$proot'"
+    
+# Unbind devices on ERROR
+trap _unbind_on_err INT TERM EXIT
+
+step "Bootstrap the system. Config locale and timezone"
+
+# Common packages to include on bootstrapping
+#
+# netbase: Provides the necessary infrastructure for basic TCP/IP based
+#   networking.
+#
+# apt-utils: APT utility programs such as apt-ftparchive, used to create Package
+#   and other index files; apt-sortpkgs, a Package/Source file normalizer; and
+#   apt-extracttemplates, used by debconf to prompt for configuration questions
+#   before installation.
+#
+# dialog: Displays several different types of user-friendly dialog boxes from
+#   shell scripts. Allows a developer of a script to interact with the user in a
+#   much friendlier manner
+inc_packages="netbase, apt-utils, dialog"
+
+# If --dhcp/dhcp command line/conf file option was specified then also include 
+# dhcp3-client package on the list 
+[ $dyn == "yes" ] && inc_packages="dhcp3-client, $inc_packages"
+
+# For debian DISTRO also include these packages
+#
+# locales: Provides support for localized environments. Installs character and
+#   transliteration maps, provides the POSIX locale definition and common
+#   scripts for language pack handling.
+#
+# ifupdown: High level tools to configure network interfaces. Provides the tools
+#   ifup and ifdown which may be used to configure and deconfigure network
+#   interfaces based on interface definitions in /etc/network/interfaces
+#
+# NOTE: On ubuntu distribution these pacakes are already included in the list.
+[ $dtr == "debian" ] && inc_packages="locales, ifupdown, $inc_packages"
+
+# On bootstrapping INSTALL_MIRROR, SUITE and COMPONENTS are combined to form
+# Debian based entries for apt and/or aptitude package managers. Example, if
+# INSTALL_MIRROR is 'http://ftp.debian.org/debian/', the SUITE is 'lenny' and
+# COMPONENTS is 'main,contrib' then the resulting Debian /etc/apt/source.list
+# entry will result in:
+#
+# deb http://ftp.debian.org/debian/ lenny main contrib
+#
+# Common repository sections/components to include on bootstrapping.
+COMPONENTS="main"
+
+# For ubuntu distribution also include univese where is loacated the dialog package
+[ $dtr == "ubuntu" ] && COMPONENTS="$COMPONENTS,universe"
+
+# debootstrap command does not create locales when install the package locales.
+# To fix this, prefix debootstrap invocation with LANG=C and LC_ALL=C variable
+# assignments to create C and POSIX locales:
+#
+#   $ LANG=C LC_ALL=C debootstrap ... (with locales included in package list)
+#
+# or prefix apt-get install if you are doing the job manually:
+#
+#   $ LANG=C LC_ALL=C apt-get install locales
+inf "Bootstrap a '$dtr' distribution with suite '$st' and architecture '$arch' at '$wroot' directory using mirror '$im'"
+sudo mkdir "$wroot"/boot
+LANG=C \
+LC_ALL=C \
+  sudo debootstrap \
+        --variant="minbase" \
+        --include="$inc_packages" \
+        --arch="$arch" \
+        --components="$COMPONENTS" \
+        "$st" \
+        "$wroot" \
+        "$im"
+
+# Create the file with the locale to be generated and with the same format
+# encountered in /usr/share/i18n/SUPPORTED. File depends of the distribution.
+declare -A DISTRO_LOCALE_GEN_PATH=(["debian"]="/etc/locale.gen" ["ubuntu"]="/var/lib/locales/supported.d/local")
+LOCALE_GEN_PATH=
+inf "Setup locale"
+chr << EOT
+cat > ${DISTRO_LOCALE_GEN_PATH[$dtr]} << EOF
+$lcl
+EOF
+EOT
+
+# Compiled  locale files take about 50MB of disk space.  Selected locales at
+# LOCALE_GEN_PATH are automatically generated by running the locale-gen program.
+# Then package locales is reconfigured.
+#
+# Once installed, to see which locale the system is actually using:
+#
+#   $ locale
+#
+# In the output of the above query, you will see entries for:
+#
+#   LANG, LC_ALL, LC_CTYPE, LC_NUMERIC, LC_TIME, etc...
+#
+# For a more detailed explanation on locales see
+# https://help.ubuntu.com/community/Locale
+chr << EOT
+locale-gen
+dpkg-reconfigure -fnoninteractive -pcritical locales
+EOT
+
+# Change the locale to be used by the bootstrapped system (or proto) by 
+# modifying the file /etc/default/locale. An example content for this file sets 
+# system locale to US English with UTF-8 ecoding:
+#
+#   LANG="en_US.UTF-8"
+chr << EOT
+cat > /etc/default/locale << EOF
+LANG="$plang"
+EOF
+EOT
+
+# Setup timezone
+inf "Setup timezone"
+chr << EOT
+cat > /etc/timezone << EOF
+$tzon
+EOF
+dpkg-reconfigure -fnoninteractive -pcritical tzdata
+EOT
+
+step "Hostname and network configuration"
+
+set_hostname
+set_networking
+
+step "Prepare first boot execution scripts"
+
+# First boot script can result useful to automate task that runs only the first
+# time the system starts. The script calls are placed in /etc/rc.local and once
+# executed, a file is placed under /var/lib/blss/ with the same relative name and
+# ended in .done.
+inf "Prepare firstboot script calls in '/etc/rc.local'"
+chr << EOT
+cat > /etc/rc.local << EOF
+#!/bin/sh -e
+
+EOF
+EOT
+# All distros; specific distro & all suites; specific distro & suite; user 
+cp_firstboot_script "$ev"/firstboot.sh /root/${DEF_EV}/firstboot.sh
+cp_firstboot_script "$ev"/$dtr/firstboot.sh /root/${DEF_EV}/$dtr/firstboot.sh
+cp_firstboot_script "$ev"/$dtr/$st/firstboot.sh /root/${DEF_EV}/$dtr/$st/firstboot.sh
+if [ -n "$fbscript" ]; then
+  cp_firstboot_script "$fbscript" /root/${DEF_EV}/user/firstboot.sh
+fi
+chr << EOT
+cat >> /etc/rc.local << EOF
+exit 0
+EOF
+EOT
+
+step "Config mirror files"
+
+inf "Append mirrors to '/etc/apt/sources.list.d'"
+
+# All distros; specific distro & all suites; specific distro & suite; user 
+cp_mirror_file "$ev"/mirrors.list
+cp_mirror_file "$ev"/$dtr/mirrors.list
+cp_mirror_file "$ev"/$dtr/$st/mirrors.list
+if [ -n "$mf" ]; then
+  cp_mirror_file "$mf"
+fi
+
+step "Setup fstab"
+
+inf "Setup fstab at '/etc/fstab'"
+chr << EOT
+cat > /etc/fstab << EOF
+proc /proc proc defaults 0 0
+/dev/sda1 / ext3 relatime 0 1
+EOF
+EOT
+
+step "Update packages indexes, install debconf and localepurge"
+
+bind_devs
+
+# Reconfigure apt so that it does not install additional packages
+# See http://wiki.debian.org/ReduceDebian
+chr << EOT
+cat > /etc/apt/apt.conf << EOF
+APT::Install-Recommends "0" ; APT::Install-Suggests "0" ;
+EOF
+EOT
+
+# Update package list
+inf "Update package list"
+chr_apt_get update
+
+# Install debconf-utils package
+inf "Install 'debconf-utils' package for set seeds"
+chr_apt_get install debconf-utils
+
+# Install localepurge debconf seeds to avoid user interaction on install,
+# indicating don't purge the locale related info
+inf "Install 'localepurge' debconf seeds to avoid user interaction on install. Then install 'localepurge' to auto remove unnecessary locale data"
+chr debconf-set-selections << EOT
+localepurge localepurge/remove_no note
+localepurge localepurge/verbose boolean false
+localepurge localepurge/nopurge multiselect $pbaselang, $plang
+localepurge localepurge/dontbothernew boolean false
+localepurge localepurge/quickndirtycalc boolean true
+localepurge localepurge/mandelete boolean true
+localepurge localepurge/showfreedspace  boolean true
+localepurge localepurge/none_selected boolean false
+EOT
+
+# For this we need to install localepurge. Automagically remove unnecessary
+# locale data. This is just a simple script to recover diskspace wasted for
+# unneeded locale files and localized man pages. It will automagically be
+# invoked upon completion of any apt installation run.
+#
+# After installing anything with apt-get install, localepurge will remove all
+# translation files and translated man pages in languages you cannot read.
+#
+# If you want to configure localepurge you need to edit /etc/locale.nopurge
+#
+# This can save you several megabytes of disk space, depending on the packages
+# you have installed.
+chr_apt_get install localepurge
+
+step "Install and config GRUB"
+
+inf "Install GRUB"
+chr_apt_get install grub
+chr << EOT
+mkdir -p /boot/grub
+cp /usr/lib/grub/*/* /boot/grub
+update-grub
+EOT
+
+# Set a timeout in seconds, before automatically booting the default entry
+inf "Set a timeout before automatically booting the default entry in '/boot/grub/menu.lst'"
+chr << EOT
+sed -ie "s/^timeout[ \t]+[0-9]\+/timeout $timeout/" /boot/grub/menu.lst
+EOT
+
+step "Install and setup the Linux Kernel"
+
+inf "Config the Linux Kernel at '/etc/kernel-img.conf'"
+chr << EOT
+cat > /etc/kernel-img.conf << EOF
+do_symlinks = yes
+relative_links = yes
+do_bootfloppy = no
+do_initrd = yes
+link_in_boot = no
+postinst_hook = /usr/sbin/update-grub
+postrm_hook = /usr/sbin/update-grub
+do_bootloader = no
+EOF
+EOT
+
+inf "Linux Kernel installation"
+# The package 'linux-image-<architecture>' will always depend on the latest
+# kernel image available for this architecture on Debian
+# 
+# The package 'linux-image-server' will always depend on the latest kernel
+# image available for Server Equipment on Ubuntu.
+#
+declare -A DISTRO_LNX_IMG_PKG=(["debian"]="linux-image-$arch" ["ubuntu"]="linux-image-server")
+chr_apt_get install ${DISTRO_LNX_IMG_PKG[$dtr]}
+chr << EOT
+sed -ie 's/([^)]*)/(hd0,0)/' /boot/grub/menu.lst
+EOT
+
+# When use linux-image-server the command depmod fails due to the path
+# /var/lib/modules/<kernel name for server version>/.. doesn't exists but
+# /var/lib/modules/<kernel name for generic version>/.. exists. Seems to be
+# that the command 'uname -r' doesn't prints the correct kernel info to
+# STDOUT. For now create a symblink.
+if [ $dtr == "ubuntu" ] ; then
+  chr << EOT
+ln -s /lib/modules/$(kver) /lib/modules/$(uname -r)
+EOT
+fi
+
+step "Identify the Linux Standard Base distribution-specific info."
+
+# The lsb-release command is a simple tool to help identify the Linux
+# distribution being used and it's compliance with the Linux Standard Base.
+#
+# While it is intended for use by LSB packages, this command may also
+# be useful for programmatically distinguishing between a pure Debian
+# installation and derived distributions.
+inf "Install 'lsb-release' package to identify de LSB info"
+chr_apt_get install lsb-release
+lsb_distro=$(chr lsb_release -is)
+lsb_distro=${lsb_distro,}
+[ $dtr != "$lsb_distro" ] && ( err "Distribution ID '$dtr' differs from LSB distribution '$lsb_distro'" >&2 && exit 1 ) || true
+lsb_suite=$(chr lsb_release -cs)
+lsb_suite=${lsb_suite,}
+[ $st != "$lsb_suite" ] && ( err "Suite '$st' differs from LSB suite '$lsb_suite'" >&2 && exit 1 ) || true
+
+inf "Identifying the LSB (Linux Standard Base) distribution-specific information"
+chr lsb_release -a
+chr_apt_get purge lsb-release
+
+step "Install useful packages"
+
+inf "Install useful packages"
+chr_apt_get install openssh-server resolvconf sudo
+
+install_user_pkgs
+
+step "Import various debconf seeds files"
+if [ -d "$ev"/.seeds ] && [ -r "$ev"/.seeds ]; then
+  find "$ev"/.seeds -type f -name \*.seeds -exec cat {} \; | chr debconf-set-selections
+  find "$ev"/.seeds -type f -name \*.seeds -ls
+fi
+
+inf "Purge 'debconf-utils' package"
+chr_apt_get purge debconf-utils
+
+step "Upgrade"
+
+# dist-upgrade in addition to performing the function of upgrade,
+# also intelligently handles changing dependencies with new versions
+# of packages; apt-get has a "smart" conflict resolution system, and
+# it will attempt to upgrade the most important packages at the
+# expense of less important ones if necessary. So, dist-upgrade
+# command may remove some packages.
+inf "Distribution upgrade"
+chr_apt_get dist-upgrade
+
+step "Disable IPv6"
+
+# See http://www.karkomaonline.com/index.php/2009/04/how-to-disable-ipv6-in-debian/
+inf "Disabling IPv6"
+chr << EOT
+cat >> /etc/modprobe.d/aliases << EOF
+alias net-pf-10 off # Disable ipv6
+alias ipv6 off # Disable ipv6
+EOF
+EOT
+
+# Delete IPv6 related files
+# See http://wiki.debian.org/ReduceDebian
+chr << EOT
+rm -rf /lib/modules/$(kver)/kernel/net/ipv6
+rm -f /lib/xtables/libip6t_HL.so
+rm -f /lib/xtables/libip6t_ah.so
+rm -f /lib/xtables/libip6t_ipv6header.so
+rm -f /lib/xtables/libip6t_hl.so
+rm -f /lib/xtables/libip6t_mh.so
+rm -f /lib/xtables/libip6t_rt.so
+rm -f /lib/xtables/libip6t_LOG.so
+rm -f /lib/xtables/libip6t_REJECT.so
+rm -f /lib/xtables/libip6t_frag.so
+rm -f /lib/xtables/libip6t_icmp6.so
+rm -f /lib/xtables/libip6t_dst.so
+rm -f /lib/xtables/libip6t_hbh.so
+rm -f /lib/xtables/libip6t_eui64.so
+EOT
+
+step "Disable modules floppy, cdrom, ide_cd_mod, snd-pcsp, pcspkr (beep), psmouse, usb-storage and firewire"
+
+# The redirection in 'modprobe -r \$mod 2>/dev/null' is due to a WARNING message
+# See http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=517954   
+mod_rm() {
+  cat << EOF
+for mod in $@ ; do
+  if modinfo \$mod &>/dev/null ; then   
+    echo "blacklist \$mod" > /etc/modprobe.d/\$mod.conf ;
+    modprobe -r \$mod 2>/dev/null ;
+    rm \$(modinfo -n \$mod) ;
+  fi
+done
+EOF
+}
+mod_rmdir() {
+  cat << EOF
+for mod in $(chr find /lib/modules/$(kver)/kernel/$1 -type f -path *.ko -exec basename {} .ko \; 2>/dev/null | awk -v ORS=" " '{NF=NF; print $0}') ; do 
+  echo "blacklist \$mod" > /etc/modprobe.d/\$mod.conf
+  modprobe -r \$mod 2>/dev/null
+  rm \$(modinfo -n \$mod)
+done
+EOF
+}
+
+
+# See http://wiki.debian.org/KernelModuleBlacklisting
+#
+# NOTE: Some builtin modules like cdrom cannot be removed via modprobe -r, but
+# they can be blacklisted
+#
+# TODO: check these list 
+# /lib/modules/2.6.35-29-generic/kernel/drivers/firmware
+# /lib/modules/2.6.35-29-generic/kernel/drivers/firmware/net
+# 817K	/lib/modules/2.6.35-29-generic/kernel/drivers/hid
+# 2,8M	/lib/modules/2.6.35-29-generic/kernel/drivers/hwmon
+# /lib/modules/2.6.35-29-generic/kernel/drivers/idle
+# /lib/modules/2.6.35-29-generic/kernel/drivers/infiniband
+# 188K	/lib/modules/2.6.35-29-generic/kernel/drivers/pci
+# 228K	/lib/modules/2.6.35-29-generic/kernel/drivers/pcmcia
+# 729K	/lib/modules/2.6.35-29-generic/kernel/drivers/platform
+# 193K	/lib/modules/2.6.35-29-generic/kernel/drivers/power
+# 32K	/lib/modules/2.6.35-29-generic/kernel/drivers/pps
+# 7,0M	/lib/modules/2.6.35-29-generic/kernel/drivers/scsi
+# 96K	/lib/modules/2.6.35-29-generic/kernel/drivers/spi
+# 84K	/lib/modules/2.6.35-29-generic/kernel/drivers/ssb
+# 9,5M	/lib/modules/2.6.35-29-generic/kernel/drivers/staging
+# 32K	/lib/modules/2.6.35-29-generic/kernel/drivers/vhost
+#rm -rf /lib/modules/\$(kver)/kernel/drivers/serial
+
+inf "Purging modules"
+
+purge_mods() {
+  # floppy, cdrom, ide_cd_mod, snd-pcsp, psmouse, usb-storage
+  chr << EOT
+$(mod_rm \
+  floppy \
+  ide-floppy \
+  ide-tape \
+  cdrom \
+  ide_cd_mod \
+  snd-pcsp \
+  pcspkr \
+  psmouse \
+  usb-storage)
+EOT
+
+  # firewire
+  chr << EOT
+$(mod_rm \
+  ieee1394 \
+  pcilynx \
+  ohci1394 \
+  video1394 \
+  raw1394 \
+  sbp2 \
+  dv1394 \
+  eth1394 \
+  firewire-ohci \
+  firewire-net \
+  firewire-core \
+  firewire-sbp2)
+rm -f /lib/modules/$(kver)/modules.ieee1394map
+EOT
+
+  # atm
+  chr << EOT
+$(mod_rm \
+  zatm \
+  uPD98402 \
+  ambassador \
+  horizon \
+  iphase \
+  suni \
+  fore_200e \
+  eni \
+  idt77252 \
+  solos-pci \
+  atmtcp \
+  firestream \
+  lanai \
+  he)
+EOT
+
+  # auxdisplay
+  chr << EOT
+$(mod_rm \
+  ks0108 \
+  cfag12864b \
+  cfag12864bfb)
+EOT
+
+  # xen
+  chr << EOT
+$(mod_rm \
+  xen-blkfront \
+  xen-netfront \
+  netxen_nic \
+  xen-kbdfront \
+  xen-fbfront \
+  xenfs \
+  evtchn)
+EOT
+
+  # bluetooth
+  chr << EOT
+$(mod_rm \
+  bnep \
+  cmtp \
+  hidp \
+  rfcomm \
+  sco \
+  l2cap \
+  bluetooth \
+  toshiba_bluetooth \
+  bt3c_cs \
+  btmrvl_sdio \
+  hci_vhci \
+  bluecard_cs \
+  bcm203x \
+  btsdio \
+  dtl1_cs \
+  bfusb \
+  bpa10x \
+  btusb \
+  btmrvl \
+  btuart_cs \
+  ath3k \
+  hci_uart)
+EOT
+
+  # WM Family
+  # WM831x DC-DC Setup Converter, http://www.wolfsonmicro.com/documents/uploads/misc/en/WAN0228.pdf
+  # WM8350 Stereo CODEC with Integrated Power Management, http://www.wolfsonmicro.com/products/power_management/WM8350/
+  # WM8400 Stereo CODEC with Integrated Power Management, http://www.wolfsonmicro.com/products/power_management/WM8400/
+  # WM8739) # Stereo ADC, http://www.wolfsonmicro.com/products/adcs/WM8739/
+  # WM8775) # Stereo ADC with 4 input selector, http://www.wolfsonmicro.com/products/adcs/WM8775/
+  # WM8994 Multi-Channel CODEC with 3 digital audio interfaces, http://www.wolfsonmicro.com/products/audio_hubs/WM8994/
+  # WM97xx Touchscreen, etc, http://www.wolfsonmicro.com/media_centre/item/wolfson_unleashes_dual_codec/
+  chr << EOT
+$(mod_rm \
+  leds-wm831x-status \
+  leds-wm8350 \
+  wm831x_backup \
+  wm831x_bl \
+  wm831x-dcdc \
+  wm831x-gpio \
+  wm831x-hwmon \
+  wm831x-isink \
+  wm831x-ldo \
+  wm831x-on \
+  wm831x_power \
+  wm831x_wdt \
+  wm8350-gpiolib \
+  wm8350-hwmon \
+  wm8350_power \
+  wm8350-regulator \
+  wm8350_wdt \
+  wm8400-core \
+  wm8400-regulator \
+  wm8739 \
+  wm8775 \
+  wm8994-gpio \
+  wm8994-regulator \
+  wm97xx-ts)
+EOT
+
+  # leds
+  chr << EOT
+$(mod_rm \
+  leds-alix2 \
+  leds-mc13783 \
+  leds-net5501 \
+  ledtrig-backlight \
+  leds-88pm860x \
+  ledtrig-heartbeat \
+  leds-bd2802 \
+  leds-ss4200 \
+  ledtrig-default-on \
+  leds-lp3944 \
+  leds-dac124s085 \
+  ledtrig-gpio \
+  leds-da903x \
+  led-class \
+  leds-gpio \
+  dell-led \
+  leds-pca9532 \
+  leds-pca955x \
+  leds-lt3593 \
+  ledtrig-timer \
+  leds-regulator \
+  leds-adp5520)
+EOT
+
+  # memstick
+  chr << EOT
+$(mod_rm \
+  memstick \
+  mspro_block \
+  jmb38x_ms \
+  tifm_ms)
+EOT
+
+  # mfd: Multi-Function Device
+  # # Silicon Motion SM501
+  # TODO: Verify these modules
+  chr << EOT
+$(mod_rm \
+  sm501 \
+  pcf50633-adc \
+  htc-pasic3 \
+  rdc321x-southbridge \
+  janz-cmodio \
+  ab3100-otp \
+  ucb1400_core \
+  lpc_sch \
+  mc13783-core \
+  timberdale \
+  pcf50633-gpio \
+  tps65010 \
+  pcf50633 \
+  tps6507x)
+EOT
+
+  # mmc: MultiMediaCard subsystem, http://www.kernel.org/doc/Documentation/mmc/
+  chr << EOT
+$(mod_rm \
+  sdio_uart \
+  mmc_block \
+  via-sdmmc \
+  sdhci-pltfm \
+  mmc_spi \
+  tifm_sd \
+  sdhci \
+  cb710-mmc \
+  sdhci-pci \
+  wbsd \
+  sdricoh_cs)
+EOT
+
+  # regulator: Regulator, http://www.kernel.org/doc/htmldocs/regulator.html
+  chr << EOT
+$(mod_rm \
+  mc13783-regulator \
+  bq24022 \
+  tps65023-regulator \
+  virtual \
+  tps6507x-regulator \
+  max1586 \
+  max8649 \
+  max8660 \
+  max8925-regulator \
+  lp3971 \
+  da903x \
+  ab3100 \
+  pcf50633-regulator \
+  userspace-consumer)
+EOT
+
+  # uwb: Linux Ultra-Wide-Band stack, as well as drivers for Wireless USB Host Controller drivers, http://www.linuxuwb.org/thewiki/Linux-UWB+WUSB+WiNET
+  chr << EOT
+$(mod_rm \
+  wlp \
+  i1480-dfu-usb \
+  i1480u-wlp \
+  i1480-est \
+  whc-rc \
+  hwa-rc \
+  umc \
+  uwb \
+  whci)
+EOT
+
+  # more drastically purge
+  chr << EOT
+$(mod_rmdir drivers/media)
+$(mod_rmdir drivers/cdrom)
+$(mod_rmdir drivers/input/gameport)
+$(mod_rmdir drivers/input/joystick)
+$(mod_rmdir drivers/input/mouse)
+$(mod_rmdir drivers/input/touchscreen)
+$(mod_rmdir drivers/parport)
+$(mod_rmdir drivers/telephony)
+$(mod_rmdir sound)
+$(mod_rmdir drivers/isdn)
+$(mod_rmdir drivers/usb)
+$(mod_rmdir drivers/net/bluetooth)
+$(mod_rmdir net/bluetooth)
+$(mod_rmdir drivers/net/ieee80211)
+$(mod_rmdir net/ieee80211)
+$(mod_rmdir drivers/net/ipx)
+$(mod_rmdir net/ipx)
+$(mod_rmdir drivers/net/mac80211)
+$(mod_rmdir net/mac80211)
+$(mod_rmdir drivers/net/wireless)
+$(mod_rmdir net/wireless)
+$(mod_rmdir drivers/net/x25)
+$(mod_rmdir net/x25)
+$(mod_rmdir drivers/net/usb)
+$(mod_rmdir drivers/net/can/usb)
+$(mod_rmdir drivers/ieee1394)
+$(mod_rmdir drivers/firewire)
+EOT
+
+  # regenerarte modules.dep
+  chr << EOT
+depmod -ae
+update-initramfs -u
+EOT
+
+  # cleanup empty modules directories
+  chr << EOT
+find /lib/modules/ -type d -empty -delete
+EOT
+}
+
+purge_mods
+
+step "Replace getty with ngetty"
+
+# ngetty is much more lightweight than getty. See
+# http://riemann.fmi.uni-sofia.bg/ngetty/
+chr_apt_get install ngetty
+case "$dtr" in
+  debian)
+    chr << EOT
+sed -ie 's/1:2345:respawn:\/sbin\/getty 38400 tty1/# &/' /etc/inittab
+sed -ie 's/2:23:respawn:\/sbin\/getty 38400 tty2/# &/' /etc/inittab
+sed -ie 's/3:23:respawn:\/sbin\/getty 38400 tty3/# &/' /etc/inittab
+sed -ie 's/4:23:respawn:\/sbin\/getty 38400 tty4/# &/' /etc/inittab
+sed -ie 's/5:23:respawn:\/sbin\/getty 38400 tty5/# &/' /etc/inittab
+sed -ie 's/6:23:respawn:\/sbin\/getty 38400 tty6/# &\n\n# Run ngetty in standard run-levels\nng:2345:respawn:\/sbin\/ngetty 1 2 3 4 5 6/' /etc/inittab
+EOT
+   ;;
+  ubuntu)
+    # TODO: pending to test in ubuntu
+#    chr << EOT
+#sed -ie 's/exec \/sbin\/getty -8 38400 tty1/# &\n\n# Run ngetty in standard run-levels\nexec \/sbin\/ngetty 1 2 3 4 5 6/' /etc/init/#tty1.conf
+#sed -ie 's/start on runlevel \[23\]/# &/' /etc/init/tty2.conf
+#sed -ie 's/stop on runlevel \[!23\]/# &/' /etc/init/tty2.conf
+#sed -ie 's/respawn/# &/' /etc/init/tty2.conf
+#sed -ie 's/exec \/sbin\/getty -8 38400 tty2/# &/' /etc/init/tty2.conf
+#sed -ie 's/start on runlevel \[23\]/# &/' /etc/init/tty3.conf
+#sed -ie 's/stop on runlevel \[!23\]/# &/' /etc/init/tty3.conf
+#sed -ie 's/respawn/# &/' /etc/init/tty3.conf
+#sed -ie 's/exec \/sbin\/getty -8 38400 tty3/# &/' /etc/init/tty3.conf
+#sed -ie 's/start on runlevel \[23\]/# &/' /etc/init/tty4.conf
+#sed -ie 's/stop on runlevel \[!23\]/# &/' /etc/init/tty4.conf
+#sed -ie 's/respawn/# &/' /etc/init/tty4.conf
+#sed -ie 's/exec \/sbin\/getty -8 38400 tty4/# &/' /etc/init/tty4.conf
+#sed -ie 's/start on runlevel \[23\]/# &/' /etc/init/tty5.conf
+#sed -ie 's/stop on runlevel \[!23\]/# &/' /etc/init/tty5.conf
+#sed -ie 's/respawn/# &/' /etc/init/tty5.conf
+#sed -ie 's/exec \/sbin\/getty -8 38400 tty5/# &/' /etc/init/tty5.conf
+#sed -ie 's/start on runlevel \[23\]/# &/' /etc/init/tty6.conf
+#sed -ie 's/stop on runlevel \[!23\]/# &/' /etc/init/tty6.conf
+#sed -ie 's/respawn/# &/' /etc/init/tty6.conf
+#sed -ie 's/exec \/sbin\/getty -8 38400 tty6/# &/' /etc/init/tty6.conf
+#EOT
+   ;;
+esac
+
+step "Remove unnecessary packages and cleanup cache"
+
+# Purge unnecessary packages in a server environment
+inf "Purge unnecessary packages"
+chr_apt_get purge man-db
+
+# Remove “orphaned” packages
+inf "Remove “orphaned” packages, 'deborphan' and 'localepurge' later"
+chr_apt_get install deborphan
+chr_apt_get purge $(chr deborphan)
+chr_apt_get purge deborphan localepurge
+
+# Clears out the local repository of retrieved package files
+inf "Clears out the local repository of retrieved package files at '/var/cache/apt/archives/' and '/var/cache/apt/archives/partial/'"
+chr_apt_get autoremove
+chr_apt_get clean
+chr_apt_get autoclean
+
+unbind_devs
+
+# No longer need to unbind on error
+trap - INT TERM EXIT
+
+# Delete Apt's memory mapped package cache files
+inf "Delete Apt's memory mapped package cache files"
+chr << EOT
+rm /var/cache/apt/pkgcache.bin
+rm /var/cache/apt/srcpkgcache.bin
+EOT
+
+step "Config admin acount"
+
+# Setting admin (wheel for other flavors) group
+inf "Setting 'admin' group"
+chr addgroup --system admin
+
+# Append 'admin' group to sudoers at '/etc/sudoers'
+chr << EOT
+cat >> /etc/sudoers << EOF
+%admin ALL=(ALL) ALL
+EOF
+EOT
+
+# Setting up user, adding her/him to admin group and setting the password
+#
+# The command 'chpasswd' can change many account passwords in one hit, it
+# performs update in batch mode
+#
+# --disabled-password : Like --disabled-login, but logins are still possible (for
+# example using SSH RSA keys) but not using password authentication
+# --gecos : Set the gecos field for the new entry generated. adduser  will not ask
+# for finger information if this option is given
+# Also fix permissions on user home folder
+inf "Creating the user, adding it to admin group and setting the password"
+chr << EOT
+adduser --disabled-password --ingroup admin --gecos $admname $admusr
+chown $admusr:admin /home/$admusr
+EOT
+chr su -c chpasswd << EOT
+$admusr:$admpwd
+EOT
+
+# Setup permissions and group so only members of admin group (wheel for others)
+# can run 'su'.
+#
+# See http://sathyasays.com/2008/10/10/how-to-solution-for-sudo-must-be-setuid-root-problem/
+# and http://www.howtogeek.com/howto/linux/security-tip-disable-root-ssh-login-on-linux/
+chr << EOT
+chgrp admin \$(which su)
+chmod 4111 \$(which su)
+chgrp admin \$(which sudo)
+chmod 4111 \$(which sudo)
+EOT
+
+step "Config root account"
+
+# Remote root login gets enabled once openssh-server is installed. Direct login 
+# is also enabled, and root password is empty at this point.
+if (( root_defaults_flag == 1 )) ; then
+  # Defaults to no remote login and no direct login
+  disable_root_remote
+  disable_root_direct
+else
+  # No defaults
+  if [ $remroot == "yes" ] ; then
+    # Remote login implies password prompt
+    enable_root_passwd
+  else
+    # direct login disables remote login a check for password prompt
+    disable_root_remote
+    if [ "$rootpwd" == "-" ]; then
+      warn "Root password is missing, leaves root without password"
+    else
+      enable_root_passwd
+    fi
+  fi
+fi
+
+step "Final cleanup"
+
+# See http://en.gentoo-wiki.com/wiki/Freeing_Up_Disk_Space
+# See http://wiki.debian.org/ReduceDebian
+
+# Clean remaining locale and timezone data files and directories
+chr << EOT
+find /usr/share/locale/ -type d -empty -delete
+find /usr/share/zoneinfo/ -type f \! -path "/usr/share/zoneinfo*$tzon" -delete
+find /usr/share/zoneinfo/ -type d -empty -delete 
+EOT
+
+# Remove unneccesary documentation and man files at /usr/share/doc
+inf "Removing docs and mans"
+chr << EOT
+rm -rf /usr/share/doc/*
+rm -rf /usr/share/man/*
+EOT
+
+# Remove /boot/initrd.img-<kernel-release>.bak
+chr << EOT
+rm -f /boot/initrd.img-$(kver).bak
+EOT
+
+# Cleanup /tmp and /var/tmp
+inf "Cleanup '/tmp' and '/var/tmp' directories"
+chr << EOT
+rm -rf /tmp/*
+rm -rf /var/tmp/*
+EOT
+
+# Cleanup all log files but '/var/log/dmesg', then clear the ring buffer content to
+# start a fresh one
+inf "Cleanup all log files but '/var/log/dmesg', then clear the ring buffer content to start a fresh one"
+chr << EOT
+find /var/log -type f \! -path /var/log/dmesg -delete
+dmesg -c > /dev/null
+EOT
+inf "Proto completed successfully" && exit 0
