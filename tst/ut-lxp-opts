@@ -44,7 +44,7 @@ TST="$BLSS_HOME"/tst
 . "$TST"/tst-commons 
 
 # Total amount of tests to perfom
-plan_tests 119
+plan_tests 118
 
 # Test Case: Test for environment
 
@@ -211,31 +211,6 @@ $BIN/lxp --first-boot-script "$fbs" 2>&1 | {
   lst_ln_is ">>> ERROR: Command line/conf file option --first-boot-script/first_boot_script requires an existing-readable file argument. See --help command line option for help >>>"
 }
 rmdir "$fbs" 
-
-# --boot-menu-timeout
-$BIN/lxp --boot-menu-timeout 5 --boot-menu-timeout 3 &>/dev/null
-not_ok $? "Verify if a repeated command line option --boot-menu-timeout fails"
-$BIN/lxp --boot-menu-timeout 5 --boot-menu-timeout 3 2>&1 | {
-  ln_is ">>> ERROR: --boot-menu-timeout command line option was already specified >>>"
-}
-
-$BIN/lxp --boot-menu-timeout &>/dev/null
-not_ok $? "Verify if command line option --boot-menu-timeout without argument fails"
-$BIN/lxp --boot-menu-timeout 2>&1 | {
-  ln_like "--boot-menu-timeout' requires an argument"
-}
-
-$BIN/lxp --boot-menu-timeout "" &>/dev/null
-not_ok $? "Verify if command line option --boot-menu-timeout with an empty argument fails"
-$BIN/lxp --boot-menu-timeout "" 2>&1 | {
-  ln_like ">>> ERROR: Command line option '--boot-menu-timeout' requires an non-empty argument >>>"
-}
-
-$BIN/lxp --boot-menu-timeout "NaN" &>/dev/null
-not_ok $? "Verify if command line option --boot-menu-timeout with an unsupported argument fails"
-$BIN/lxp --boot-menu-timeout "NaN" 2>&1 | {
-  lst_ln_like ">>> ERROR: Command line/conf file option --boot-menu-timeout/boot_menu_timeout requires a supported argument. See --help command line option for help >>>"
-}
 
 # --packages
 $BIN/lxp --packages "apache2" --packages "mc" &>/dev/null
@@ -458,6 +433,26 @@ not_ok $? "Verify if command line option --nameservers with an invalid argument 
 $BIN/lxp --nameservers 192.168.0.2,192.168.0.256 --dhcp no --address 192.168.1.1 --network 192.168.0.0 --netmask 255.255.0.0 2>&1 | {
  lst_ln_is ">>> ERROR: Command line/conf file option --nameservers/nameservers requires a supported argument. See --help command line option for help >>>"
 }
+
+# --ntpservers
+$BIN/lxp --ntpservers "ntp.home.dev ntp2.home.dev" --ntpservers "ntp3.home.dev ntp4.home.dev" &>/dev/null
+not_ok $? "Verify if a repeated command line option --ntpservers fails"
+$BIN/lxp --ntpservers "ntp.home.dev ntp2.home.dev" --ntpservers "ntp3.home.dev ntp4.home.dev" 2>&1 | {
+  ln_is ">>> ERROR: --ntpservers command line option was already specified >>>"
+}
+
+$BIN/lxp --ntpservers &>/dev/null   
+not_ok $? "Verify if command line option '--ntpservers' without argument fails"
+$BIN/lxp --ntpservers 2>&1 | {
+ ln_like "--ntpservers' requires an argument"  
+}
+
+$BIN/lxp --ntpservers "" &>/dev/null   
+not_ok $? "Verify if command line option '--ntpservers' with an empty argument fails"
+$BIN/lxp --ntpservers "" 2>&1 | {
+ ln_like ">>> ERROR: Command line option '--ntpservers' requires an non-empty argument >>>"  
+}
+
 
 # --various networking cmd ln opts combinations
 $BIN/lxp --dhcp yes --address 192.168.1.1 &>/dev/null

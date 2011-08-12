@@ -29,24 +29,7 @@ ctx() {
   env -u LC_ALL LANG="nl_NL.UTF-8" LANGUAGE="nl_NL:nl" TZ="Europe/Amsterdam" sudo chroot /tmp/cloneitroot "$@"
 }
 
-# Test Case: Test for hostname and networking config
-ctx cat /etc/hostname | {
-  ln_is "myclone" "Verify if '/etc/hostname' is correct"
-}
-ctx cat /etc/hosts | {
-  ln_is "127.0.0.1 localhost.localdomain localhost" "Verify if localhost is 127.0.0.1 at /etc/hosts"
-  ln_is "127.0.1.1 myclone myclone.home.dev" "Verify if myclone and myclone.home.dev is 127.0.1.1 at /etc/hosts"
-  ln_is_empty  
-  ln_is "# The following lines are desirable for IPv6 capable hosts" "Verify if IPv6 capable hosts is commented"
-  ln_is "## ::1 myclone localhost6.localdomain6 localhost6"
-  ln_is "## ::1 localhost ip6-localhost ip6-loopback"
-  ln_is "## fe00::0 ip6-localnet"
-  ln_is "## ff00::0 ip6-mcastprefix"
-  ln_is "## ff02::1 ip6-allnodes"
-  ln_is "## ff02::2 ip6-allrouters"
-  ln_is "## ff02::3 ip6-allhosts"
-  no_ln	
-}
+# Test Case: Test for networking config
 ctx cat /etc/network/interfaces | {
   ln_is "# The loopback network interface" "Verify if the loopback network interface is correct at /etc/network/interfaces"
   ln_is "auto lo" "Verify if lo automatically wakes up"

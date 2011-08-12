@@ -30,9 +30,12 @@
 # Thanks to Eugene for spaces and quoting handling in bash completion at http://stackoverflow.com/questions/1146098/properly-handling-spaces-and-quotes-in-bash-completion
 
 # Suppported 
-declare -A SUPPORTED_SUITES=(["squezed"]="squezed" ["lenny"]="lenny" ["maverick"]="maverick" ["lucid"]="lucid" )
-declare -A DISTRO_PER_SUITE=(["lenny"]="debian" ["squezed"]="debian" ["lucid"]="ubuntu" ["maverick"]="ubuntu")
+declare -A SUPPORTED_SUITES=(["squeeze"]="squeeze" ["lenny"]="lenny" ["natty"]="natty" ["maverick"]="maverick" ["lucid"]="lucid")
+declare -A DISTRO_PER_SUITE=(["lenny"]="debian" ["squeeze"]="debian" ["lucid"]="ubuntu" ["maverick"]="ubuntu"  ["natty"]="ubuntu")
 declare -A SUPPORTED_ARCHS=(["amd64"]="amd64" ["i386"]="i386")
+declare -A SUPPORTED_FILESYSTEMS=(["ext3"]="ext3" ["ext4"]="ext4" ["btrfs"]="btrfs" ["jfs"]="jfs" ["xfs"]="xfs" ["reiserfs"]="reiserfs")
+declare -A SUPPORTED_HYPERVISORS=(["esxi"]="esxi" ["kvm"]="kvm" ["qemu"]="qemu" ["vbox"]="vbox" ["vmserver"]="vmserver" ["vmw6"]="vmw6" ["xen"]="xen")
+SUPPORTED_CPU=$(echo {1..32})
 
 # Defaults
 declare -A DEF_INSTALL_MIRROR=(["debian"]="http://ftp.debian.org/debian" ["ubuntu"]="http://archive.ubuntu.com/ubuntu")
@@ -56,7 +59,7 @@ _lxp() {
   COMPREPLY=()
   cur="${COMP_WORDS[COMP_CWORD]}"
   prev="${COMP_WORDS[COMP_CWORD-1]}"
-  opts="--help --suite --architecture --install-mirror --mirror-file --locale --timezone --first-boot-script --boot-menu-timeout --packages --hostname --dhcp --address --network --netmask --broadcast --gateway --search --nameservers --admin-user --admin-full-name --admin-password --remote-root --root-password"
+  opts="--help --suite --architecture --install-mirror --mirror-file --locale --timezone --first-boot-script --packages --hostname --dhcp --address --network --netmask --broadcast --gateway --search --nameservers --ntpservers --admin-user --admin-full-name --admin-password --remote-root --root-password"
 
   # Complete the arguments of long/short options
   case "${prev}" in
@@ -111,7 +114,7 @@ _lxp() {
     --dhcp|--remote-root)
         COMPREPLY=( $(compgen -W "yes no" -- ${cur}) ) ;
         return 0 ;;
---install-mirror|--boot-menu-timeout|--hostname|--address|--network|--netmask|--broadcast|--gateway|--search|--nameservers|--admin-user|--admin-full-name|--admin-password|--root-password)
+--install-mirror|--hostname|--address|--network|--netmask|--broadcast|--gateway|--search|--nameservers|--ntpservers|--admin-user|--admin-full-name|--admin-password|--root-password)
         COMPREPLY=( $(compgen -W "" -- ${cur}) ) ;
         return 0 ;;
      *)
@@ -152,3 +155,37 @@ _lxc() {
   return 0
 }
 complete -F _lxc lxc
+
+_lxd() {
+  local cur prev opts
+  COMPREPLY=()
+  cur="${COMP_WORDS[COMP_CWORD]}"
+  prev="${COMP_WORDS[COMP_CWORD-1]}"
+  opts="--help --clone-root --hypervisor --cpu --memory --size --root-filesystem"
+
+  # Complete the arguments of long/short options
+  case "${prev}" in
+    --clone-root)
+        _filedir ;
+        return 0 ;;
+    --hypervisor)
+        COMPREPLY=( $(compgen -W "${SUPPORTED_HYPERVISORS[*]}" -- ${cur}) ) ;
+        return 0 ;;
+    --cpu)
+        COMPREPLY=( $(compgen -W "$SUPPORTED_CPU" -- ${cur}) ) ;
+        return 0 ;;
+    --root-filesystem)
+        COMPREPLY=( $(compgen -W "${SUPPORTED_FILESYSTEMS[*]}" -- ${cur}) ) ;
+        return 0 ;;
+    --memory|--size)
+        COMPREPLY=( $(compgen -W "" -- ${cur}) ) ;
+        return 0 ;;
+     *)
+    ;;
+  esac
+
+  # Complete the long/short options
+  COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
+  return 0
+}
+complete -F _lxd lxd

@@ -1,0 +1,171 @@
+#!/bin/bash
+
+dtx() {
+  env -u LC_ALL LANG="nl_NL.UTF-8" LANGUAGE="nl_NL:nl" TZ="Europe/Amsterdam" sudo chroot /mnt "$@"
+}
+kver() {
+  dtx find /boot -maxdepth 1 -type f | grep -m 1 /boot/vmlinuz | sort -r | sed 's/\/boot\/vmlinuz-//'
+}
+
+_release_devs(){
+  sudo umount /mnt/boot
+  sudo umount /mnt
+  sudo rm /dev/mvda
+  sudo rm /dev/mvda1
+  sudo rm /dev/mvda2
+  sudo kpartx -v -d /dev/mapper/vda
+  sudo dmsetup remove vda
+  sudo kpartx -d $ld
+  sudo losetup -d $ld
+}
+
+# trap cmd to unbind mounted devices on error
+_release_devs_on_err(){
+	local rc=${1:-''}
+	if [[ -z "$rc" ]] ; then
+		rc=$?
+	fi
+  _release_devs
+	local alt_rc=$?
+	(( alt_rc != 0 )) && rc=$alt_rc
+	trap - INT TERM EXIT
+	exit $rc
+}
+
+hx2dc() {
+  bc << EOT
+ibase=16; $(echo $1 | tr '[:lower:]' '[:upper:]')
+EOT
+}
+
+mount_img() {
+  rootfs=${rootfs:-"ext3"}
+  ld=$(sudo losetup -f --show /tmp/deproot/disk.img)
+  sudo dmsetup create vda << EOT
+0 $(( 1024 * 2048 )) linear ${ld} 0
+EOT
+  sudo kpartx -v -a /dev/mapper/vda
+
+  eval $(stat -c 'major=%t ; minor=%T' $(realpath /dev/mapper/vda))
+  sudo mknod /dev/mvda b $(hx2dc $major) $(hx2dc $minor)
+
+  eval $(stat -c 'major=%t ; minor=%T' $(realpath /dev/mapper/vda1))
+  sudo mknod /dev/mvda1 b $(hx2dc $major) $(hx2dc $minor) 
+
+  eval $(stat -c 'major=%t ; minor=%T' $(realpath /dev/mapper/vda2))
+  sudo mknod /dev/mvda2 b $(hx2dc $major) $(hx2dc $minor) 
+
+  if [ $(lsb_release -is) = "Debian" ] && [ $rootfs = "ext4" ] ; then
+    # -E test_fs : 
+    #   Set a flag in the filesystem superblock indicating that it may be mounted 
+    # using experimental kernel code, such as the ext4dev filesystem
+    #  
+    # See http://forums.debian.net/viewtopic.php?t=33401
+    sudo mount -t ext4dev /dev/mvda2 /mnt ;
+  else
+    sudo mount /dev/mvda2 /mnt ;
+  fi
+
+  eval $(sudo blkid -o udev /dev/mvda1)
+  VDA1_ID_FS_UUID=${ID_FS_UUID}
+
+  # NOTE: blikd shall be executed after tune2fs becaused the UUID is changed! 
+  eval $(sudo blkid -o udev /dev/mvda2)
+  VDA2_ID_FS_UUID=${ID_FS_UUID}
+  
+  sudo mkdir -p /mnt/boot
+  sudo mount /dev/mvda1 /mnt/boot
+}
+
+tst_pkg_unpacked() {
+  dtx dpkg-query -W -f='${Status}' ${1:?} | awk '{print $NF}' | {
+    ln_is "unpacked" "Verify if package "${1:?}" is unpacked"
+  }
+}
+
+# Test Case: Verify qemu image correctly configured
+qemu-img info /tmp/deproot/disk.img | {
+  ln_is "image: /tmp/deproot/disk.img"
+  ln_is "file format: raw"  "Verify if the disk image format is correct"
+  ln_is "virtual size: 1.0G (1073741824 bytes)" "Verify if the disk image size is correct"
+  ln_like "disk size"
+}
+rootfs=${rootfs:-"ext3"}
+sudo parted --script /tmp/deproot/disk.img print | awk '{NF=NF; print $0}' | {
+  ln_is "Model: (file)" "Verify model"
+  ln_is "Disk /var/tmp/deproot/disk.img: 1074MB" "Verify location and size"
+  ln_is "Sector size (logical/physical): 512B/512B" "Verify sector size"
+  ln_is "Partition Table: msdos" "Verify partition table"
+  ln_is_empty  
+  ln_is "Number Start End Size Type File system Flags" "Verify table header"
+  ln_is "1 1049kB 64.0MB 63.0MB primary ext3 boot" "Verify /boot partition"
+  ln_is "2 64.0MB 1074MB 1010MB primary ${rootfs}" "Verify / partition"
+  ln_is_empty  
+  no_ln "Verify no more partitions"
+}
+
+# Test Case: Verify if file system hierachy was copied 
+verify_fsh() {
+  [ -d /mnt/bin ] ; ok $? "Verify if directory exists"
+  [ -d /mnt/boot ] ; ok $? "Verify if directory exists"
+  [ -d /mnt/dev ] ; ok $? "Verify if directory exists"
+  [ -d /mnt/etc ] ; ok $? "Verify if directory exists"
+  [ -d /mnt/home ] ; ok $? "Verify if directory exists"
+  [ -h /mnt/initrd.img ] ; ok $? "Verify if link exists"
+  [ -d /mnt/lib ] ; ok $? "Verify if directory exists"
+  [ -d /mnt/lost+found ] ; ok $? "Verify if directory exists"
+  [ -d /mnt/media ] ; ok $? "Verify if directory exists"
+  [ -d /mnt/mnt ] ; ok $? "Verify if directory exists"
+  [ -d /mnt/opt ] ; ok $? "Verify if directory exists"
+  [ -d /mnt/proc ] ; ok $? "Verify if directory exists"
+  [ -d /mnt/root ] ; ok $? "Verify if directory exists"
+  [ -d /mnt/sbin ] ; ok $? "Verify if directory exists"
+  [ -d /mnt/selinux ] ; ok $? "Verify if directory exists"
+  [ -d /mnt/srv ] ; ok $? "Verify if directory exists"
+  [ -d /mnt/sys ] ; ok $? "Verify if directory exists"
+  [ -d /mnt/tmp ] ; ok $? "Verify if directory exists"
+  [ -d /mnt/usr ] ; ok $? "Verify if directory exists"
+  [ -d /mnt/var ] ; ok $? "Verify if directory exists"
+  [ -h /mnt/vmlinuz ] ; ok $? "Verify if link exists"
+}
+
+# Test Case: Verify GRUB2 settings
+verify_grub2() {
+  dtx cat /boot/grub/device.map | {
+    ln_is "(hd0) /dev/mvda" "Verify if device map is correct"
+    no_ln
+  }
+
+  dtx cat /boot/grub/load.cfg | {
+    ln_is "search.fs_uuid ${VDA1_ID_FS_UUID} root" "Verify if load.cfg is correct" 
+    ln_is "set prefix=(\$root)/grub"
+    no_ln 
+  }  
+
+  dtx cat /boot/grub/grub.cfg | {
+    ln_is "insmod part_msdos" "Verify if grub.cfg is correct"
+    ln_is "insmod ext2"
+    [ -n "${grub_mod}" ] && ln_is "insmod ${grub_mod}"
+    ln_is "set root='(hd0,msdos1)'"
+    ln_is "search --no-floppy --fs-uuid --set=root ${VDA1_ID_FS_UUID}"
+    ln_is "linux /vmlinuz-"$(kver)" root=UUID=${VDA2_ID_FS_UUID} ro quiet"
+    ln_is "initrd /initrd.img-"$(kver)
+    ln_is "boot"
+    no_ln 
+  }  
+}
+
+verify_fstab() {
+  rootfs=${rootfs:-"ext3"}
+  dtx cat /etc/fstab | grep -v '^#' | awk '{NF=NF; print $0}' | {
+    ln_is "proc /proc proc defaults 0 0" "Verify fstab /proc" "Verify fstab proc"
+    ln_is "UUID=${VDA1_ID_FS_UUID} /boot ext3 noatime,nodev 0 1" "Verify fstab /boot"
+    ln_is "UUID=${VDA2_ID_FS_UUID} / ${rootfs} defaults 0 2" "Verify fstab /"
+    no_ln
+  }
+}
+
+# Test Case: Test for readahead-fedora and rsyslog
+verify_common_pkgs() {
+  tst_pkg_unpacked rsyslog
+}

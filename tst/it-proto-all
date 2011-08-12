@@ -72,13 +72,22 @@ ptx find /usr/share/zoneinfo/ -type d -empty |  {
 
 # Test Case: Tests for firstboot scripts
 ptx cat /etc/rc.local | {
-  ln_is "#!/bin/sh -e" "Verify the correctness of /etc/rc.local"
+  ln_is "#!/bin/sh" "Verify the correctness of /etc/rc.local"
   ln_is_empty
   ln_is "if [ ! -e /var/lib/blss\"/root/.blss/firstboot.sh\".done ]; then"
   ln_is "\"/root/.blss/firstboot.sh\""
   ln_is "touch /var/lib/blss\"/root/.blss/firstboot.sh\".done"
   ln_is "fi"
-  ln_is "exit 0"
+  ln_is "DEBIAN_FRONTEND=noninteractive dpkg --configure -a" 
+  ln_is "chkconfig umountnfs.sh off"
+  ln_is "chkconfig mountnfs-bootclean.sh off"
+  ln_is "chkconfig mountnfs.sh off"
+  ln_is "chkconfig console-screen.sh off"
+  ln_is "chkconfig console-screen.kbd.sh off"
+  ln_is "chkconfig rc.local off"
+  ln_is "/usr/sbin/update-bootsystem-insserv"
+  ln_is "rm /etc/ssh/ssh_host*key*"
+  ln_is "dpkg-reconfigure -fnoninteractive -pcritical openssh-server"
 }
 ptx [ -x /root/.blss/firstboot.sh ] ; ok $? "Verify if firstboot.sh is executable"
 ptx [ -d /var/lib/blss ] ; ok $? "Verify the existence of directory /var/lib/blss" 
@@ -86,13 +95,6 @@ ptx [ -d /var/lib/blss ] ; ok $? "Verify the existence of directory /var/lib/bls
 # Test Case: Tests for mirror files
 ptx find /etc/apt/sources.list.d/ -type f -name *.list | {
   one_or_more_ln "Verify at least on mirror file in /etc/apt/sources.list.d"
-}
-
-# Test Case: Tests for fstab
-ptx cat /etc/fstab | {
-  ln_is "proc /proc proc defaults 0 0" "Verify /proc at /etc/fstab"
-  ln_is "/dev/sda1 / ext3 relatime 0 1" "Verify / at /etc/fstab"
-  no_ln "Verify no more entries at /etc/fstab"
 }
 
 # Test Case: Tests for APT configuration
@@ -128,7 +130,6 @@ tst_pkg_purged() {
   }
 }
 tst_pkg_purged debconf-utils
-tst_pkg_purged localepurge
 tst_pkg_purged lsb-release
 tst_pkg_purged deborphan
 ptx dpkg-query -W -f='${Status}' man-db 2>&1 | {
@@ -150,38 +151,35 @@ sudo umount /tmp/protoitroot/dev > /dev/null
 sudo mount --bind /dev /tmp/protoitroot/dev > /dev/null 
 sudo mount -t proc proc /tmp/protoitroot/proc > /dev/null
 sudo mount --bind /dev/pts /tmp/protoitroot/dev/pts > /dev/null
-ptx apt-get update &> /dev/null
+ptx apt-get -o 'Acquire::Check-Valid-Until=false' update &> /dev/null
 ok $? "Verify update"
 ptx apt-get dist-upgrade | {
-  ln_is "Pakketlijsten worden ingelezen..." "Verify no upgrade available"
-  ln_is "Boom van vereisten wordt opgebouwd..."
-  ln_is "De status informatie wordt gelezen..."
-  ln_is "0 pakketten opgewaardeerd, 0 pakketten nieuw geïnstalleerd, 0 te verwijderen en 0 niet opgewaardeerd."
+  ln_like "Pakketlijsten worden ingelezen" "Verify no upgrade available"
+  ln_like "Boom van vereisten wordt opgebouwd"
+  ln_like "De status informatie wordt gelezen"
+  ln_like "0 pakketten opgewaardeerd, 0 pakketten nieuw geïnstalleerd, 0 te verwijderen en 0 niet opgewaardeerd."
   no_ln
 }
 sudo umount /tmp/protoitroot/dev/pts > /dev/null
 sudo umount /tmp/protoitroot/proc > /dev/null
 sudo umount /tmp/protoitroot/dev > /dev/null
 
-# Test Case: Tests for GRUB
 tst_pkg_installed() {
   ptx dpkg-query -W -f='${Status}' ${1:?} | awk '{print $NF}' | {
-    ln_is "installed" "Verify if package ${1:?} is installed"
+    ln_is "installed" "Verify if package "${1:?}" is installed"
   }
 }
-tst_pkg_installed grub
-tst_pkg_installed grub-common
+
+
 
 # Test Case: Tests for Kernel
 ptx cat /etc/kernel-img.conf | {
-  ln_is "do_symlinks = yes" "Verify the correctness of /etc/kernel-img.conf"
-  ln_is "relative_links = yes"
-  ln_is "do_bootfloppy = no"
-  ln_is "do_initrd = yes"
-  ln_is "link_in_boot = no"
-  ln_is "postinst_hook = /usr/sbin/update-grub"
-  ln_is "postrm_hook = /usr/sbin/update-grub"
-  ln_is "do_bootloader = no"
+  ln_is "do_symlinks = Yes" "Verify the correctness of /etc/kernel-img.conf"
+  ln_is "relative_links = Yes"
+  ln_is "do_bootloader = No"
+  ln_is "do_bootfloppy = No"
+  ln_is "do_initrd = Yes"
+  ln_is "link_in_boot = No"
   no_ln 
 }
 UN=$(kver) ; MJ=${UN/.*/}
@@ -421,9 +419,25 @@ tst_moddir_purged drivers/ieee1394
 tst_moddir_purged drivers/firewire
 
 # Test Case: Tests for checking packages installed
-tst_pkg_installed openssh-server
-tst_pkg_installed resolvconf
+tst_pkg_installed gpgv
+tst_pkg_installed gnupg 
 tst_pkg_installed sudo
+tst_pkg_installed openssh-server
+tst_pkg_installed ngetty
+tst_pkg_installed resolvconf
+tst_pkg_installed localepurge
+
+#Test Case: Test for checking NTP configuration
+tst_pkg_installed ntpdate
+eval $(ptx cat /etc/default/ntpdate | grep ^NTPSERVERS)
+[ $NTPSERVERS = "ntp.home.dev" ] 
+ok $? "Verify if NTP servers entries are correct"
+
+# Test Case: Test for dash
+tst_pkg_installed dash
+ptx stat -c '%N' /bin/sh | tr "'‘’\`" " " | awk '{NF=NF; print $0}' | {
+  ln_is "/bin/sh -> dash" "Verify if dash is the default shell"
+}
 
 # Test Case: Tests for debconf seeds
 ptx apt-get -y --force-yes install debconf-utils &>/dev/null
@@ -448,24 +462,13 @@ ptx debconf-get-selections | grep sun-java6 | sort | awk '{NF=NF; print $0}' | {
   ln_is "sun-java6-jre sun-java6-jre/stopthread boolean true"
 }
 
-# Test Case: Test for hostname and networking config
-ptx cat /etc/hostname | {
-  ln_is "myserver" "Verify if '/etc/hostname' is correct"
+# Test Case: Tests for insserv
+tst_pkg_installed insserv
+ptx debconf-get-selections | grep insserv/enable | awk '{NF=NF; print $0}' | {
+  ln_is "insserv insserv/enable boolean true" "Verify if dependency-based boot (insserv) order is activated"
 }
-ptx cat /etc/hosts | {
-  ln_is "127.0.0.1 localhost.localdomain localhost" "Verify if localhost is 127.0.0.1 at /etc/hosts"
-  ln_is "127.0.1.1 myserver myserver.home.dev" "Verify if myserver and myserver.home.dev is 127.0.1.1 at /etc/hosts"
-  ln_is_empty  
-  ln_is "# The following lines are desirable for IPv6 capable hosts" "Verify if IPv6 capable hosts is commented"
-  ln_is "## ::1 myserver localhost6.localdomain6 localhost6"
-  ln_is "## ::1 localhost ip6-localhost ip6-loopback"
-  ln_is "## fe00::0 ip6-localnet"
-  ln_is "## ff00::0 ip6-mcastprefix"
-  ln_is "## ff02::1 ip6-allnodes"
-  ln_is "## ff02::2 ip6-allrouters"
-  ln_is "## ff02::3 ip6-allhosts"
-  no_ln	
-}
+
+# Test Case: Test for networking config
 ptx cat /etc/network/interfaces | {
   ln_is "# The loopback network interface" "Verify if the loopback network interface is correct at /etc/network/interfaces"
   ln_is "auto lo" "Verify if lo automatically wakes up"

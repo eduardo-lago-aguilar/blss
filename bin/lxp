@@ -105,16 +105,13 @@ GENERAL OPTIONS
 
   --timezone TIMEZONE
     Supported time zone. Defaults to host timezone located at '/etc/timezone'. For any Linux distribution '/etc/localtime' is a symlink to the correct timezone file or is the effective timezone file. The file '/etc/timezone' is used by 'dpkg-reconfigure tzdata' command to generate (or symlink) the effective timezone file at '/etc/localtime'. Timezone files are located at '/usr/share/zoneinfo/'. Examples TIMEZONE values are: 'America/New_York', 'Europe/Amsterdam' and 'America/Havana'. See 'tzselect' and 'dpkg-reconfigure tzdata' commands.
-
+ubuntu-keyring
   --first-boot-script FIRST_BOOT_SCRIPT
     An extra script file to be executed on first boot. The path is in the host filesystem. This command also check the existence of additional first boot script files at '\~/${DEF_EV}/firstboot.sh', '\~/${DEF_EV}/DISTRO/firstboot.sh', and '\~/${DEF_EV}/DISTRO/SUITE/firstboot.sh' for including on first boot execution process. Examples of such files are:
 
     # \~/${DEF_EV}/firstboot.sh
     apt-get update
     apt-get --force-yes -y install mc
-
-  --boot-menu-timeout BOOT_MENU_TIMEOUT
-    Timeout in seconds before automatically booting the default entry. Defaults to ${DEF_BOOT_MENU_TIMEOUT}.
 
   --packages PACKAGES
     Space separated list of packages to install after bootstrapping. Defaults to '${DEF_PACKAGES}'. Example package list is: 'nginx  apache2 mysql couchdb'.
@@ -188,6 +185,9 @@ NETWORKING OPTIONS
 
   --nameservers NAMESERVERS
     Optional comma separated list of DNS server IP addresses. If specified then either --dhcp option or the group of options --address, --network and --netmask shall be present too. Defaults to no nameservers.
+
+  --ntpservers NTPSERVERS
+    Optional space separated list of NTP server IP addresses or host names. Defaults to no ntpservers.
 
 ADMIN USER OPTIONS
   --admin-user ADMIN_USER
@@ -282,7 +282,6 @@ mirror-file:,\
 locale:,\
 timezone:,\
 first-boot-script:,\
-boot-menu-timeout:,\
 packages:,\
 hostname:,\
 dhcp:,\
@@ -293,6 +292,7 @@ broadcast:,\
 gateway:,\
 search:,\
 nameservers:,\
+ntpservers:,\
 admin-user:,\
 admin-full-name:,\
 admin-password:,\
@@ -317,7 +317,6 @@ unset \
   c_locale \
   c_timezone \
   c_first_boot_script \
-  c_boot_menu_timeout \
   c_packages \
   c_hostname \
   c_dhcp \
@@ -328,6 +327,7 @@ unset \
   c_gateway \
   c_search \
   c_nameservers \
+  c_ntpservers \
   c_admin_user \
   c_admin_full_name \
   c_admin_password \
@@ -366,9 +366,6 @@ while true; do
   --first-boot-script)
       c_first_boot_script=${2:?$(err_non_empty $1)} ;
       shift 2 ;;
-  --boot-menu-timeout)
-      c_boot_menu_timeout=${2:?$(err_non_empty $1)} ;
-      shift 2 ;;
   --packages)
       c_packages=${2:?$(err_non_empty $1)} ; 
       shift 2 ;;
@@ -398,6 +395,9 @@ while true; do
       shift 2 ;;
   --nameservers)
       c_nameservers=${2:?$(err_non_empty $1)} ;
+      shift 2 ;;
+  --ntpservers)
+      c_ntpservers=${2:?$(err_non_empty $1)} ;
       shift 2 ;;
   --admin-user)
       c_admin_user=${2:?$(err_non_empty $1)} ;
@@ -441,7 +441,6 @@ unset \
   locale \
   timezone \
   first_boot_script \
-  boot_menu_timeout \
   packages \
   hostname \
   dhcp \
@@ -452,6 +451,7 @@ unset \
   gateway \
   search \
   nameservers \
+  ntpservers \
   admin_user \
   admin_full_name \
   admin_password \
@@ -525,15 +525,6 @@ if [ -n "$fbscript" ] ; then
   fbscript=$(realpath "$fbscript") && [ -r "$fbscript" ] && [ -f "$fbscript" ] || ( err_non_r first-boot-script first_boot_script >&2 && exit 1 )
 fi
 
-# boot_menu_timeout: command line may override the value imported from the 
-# environment, if the option is missing use the default value
-timeout=${c_boot_menu_timeout:-$boot_menu_timeout}
-if [ -n "$timeout" ] ; then
-  [[ $timeout =~ ^[[:digit:]]+$ ]] || ( err_non_sup boot-menu-timeout boot_menu_timeout >&2 && exit 1 )
-else
-  timeout=$DEF_BOOT_MENU_TIMEOUT
-fi
-
 # packages: command line may override the value imported from the environment, 
 # if the option is missing use the default value
 pkgs=${c_packages:-$packages}
@@ -545,10 +536,10 @@ pkgs=${pkgs:-${DEF_PACKAGES}}
 hn=${c_hostname:-$hostname}
 hn=${hn:-${dtr}"-"${st}"-"${arch}}
 
-# dhcp, address, network, netmask, broadcast, gateway, search and nameservers: 
-# command line may override the values imported from the environment, finally 
-# verify the invalid networking combinations. dhcp defaults to 'yes' if no 
-# specified
+# dhcp, address, network, netmask, broadcast, gateway, search, nameservers and 
+# ntpservers cmd line may override the values imported from the environment, 
+# finally verify the invalid networking combinations. dhcp defaults to 'yes' if 
+# no specified
 dyn=${c_dhcp:-$dhcp}
 if [ -n "$dyn" ] ; then 
   dyn=${dyn,,} ;
@@ -563,6 +554,7 @@ bcst=${c_broadcast:-$broadcast}
 gw=${c_gateway:-$gateway}
 srch=${c_search:-$search}
 dns=${c_nameservers:-$nameservers}
+ntp=${c_ntpservers:-$ntpservers}
 if [ $dyn == "yes" ] ; then
   ( \
      [ -n "$ip" ] \
@@ -637,7 +629,6 @@ inf "lang = '$plang'"
 inf "langcountry = '$plang_ctry'"
 inf "baselang = '$pbaselang'"
 inf "timezone = '$tzon'"
-inf "boot_menu_timeout = '$timeout'"
 inf "packages = '$pkgs'"
 inf "hostname = '$hn'"
 inf "dhcp = '$dyn'"
@@ -658,12 +649,9 @@ inf "proto_root = '$proot'"
 # Unbind devices on ERROR
 trap _unbind_on_err INT TERM EXIT
 
-step "Bootstrap the system. Config locale and timezone"
+step "Bootstrap the system"
 
 # Common packages to include on bootstrapping
-#
-# netbase: Provides the necessary infrastructure for basic TCP/IP based
-#   networking.
 #
 # apt-utils: APT utility programs such as apt-ftparchive, used to create Package
 #   and other index files; apt-sortpkgs, a Package/Source file normalizer; and
@@ -673,24 +661,14 @@ step "Bootstrap the system. Config locale and timezone"
 # dialog: Displays several different types of user-friendly dialog boxes from
 #   shell scripts. Allows a developer of a script to interact with the user in a
 #   much friendlier manner
-inc_packages="netbase, apt-utils, dialog"
+inc_packages="apt-utils, dialog"
 
-# If --dhcp/dhcp command line/conf file option was specified then also include 
-# dhcp3-client package on the list 
-[ $dyn == "yes" ] && inc_packages="dhcp3-client, $inc_packages"
-
-# For debian DISTRO also include these packages
+# For lucid suite also include:
 #
-# locales: Provides support for localized environments. Installs character and
-#   transliteration maps, provides the POSIX locale definition and common
-#   scripts for language pack handling.
-#
-# ifupdown: High level tools to configure network interfaces. Provides the tools
-#   ifup and ifdown which may be used to configure and deconfigure network
-#   interfaces based on interface definitions in /etc/network/interfaces
-#
-# NOTE: On ubuntu distribution these pacakes are already included in the list.
-[ $dtr == "debian" ] && inc_packages="locales, ifupdown, $inc_packages"
+# libncursesw5 : shared libraries for terminal handling (wide character support)
+# This package contains the shared libraries necessary to run programs
+# compiled with ncursesw, which includes support for wide characters.
+[ $st == "lucid" ] && inc_packages="$inc_packages, libncursesw5"
 
 # On bootstrapping INSTALL_MIRROR, SUITE and COMPONENTS are combined to form
 # Debian based entries for apt and/or aptitude package managers. Example, if
@@ -701,10 +679,10 @@ inc_packages="netbase, apt-utils, dialog"
 # deb http://ftp.debian.org/debian/ lenny main contrib
 #
 # Common repository sections/components to include on bootstrapping.
-COMPONENTS="main"
+components="main"
 
 # For ubuntu distribution also include univese where is loacated the dialog package
-[ $dtr == "ubuntu" ] && COMPONENTS="$COMPONENTS,universe"
+[ $dtr == "ubuntu" ] && components="$components,universe"
 
 # debootstrap command does not create locales when install the package locales.
 # To fix this, prefix debootstrap invocation with LANG=C and LC_ALL=C variable
@@ -716,31 +694,17 @@ COMPONENTS="main"
 #
 #   $ LANG=C LC_ALL=C apt-get install locales
 inf "Bootstrap a '$dtr' distribution with suite '$st' and architecture '$arch' at '$wroot' directory using mirror '$im'"
-sudo mkdir "$wroot"/boot
-LANG=C \
-LC_ALL=C \
-  sudo debootstrap \
-        --variant="minbase" \
-        --include="$inc_packages" \
-        --arch="$arch" \
-        --components="$COMPONENTS" \
-        "$st" \
-        "$wroot" \
-        "$im"
+sudo mkdir $wroot/boot
+LANG=C LC_ALL=C \
+  sudo debootstrap --variant="minbase" --include="$inc_packages" --arch="$arch" --components="$components" "$st" "$wroot" "$im"
+
+step "Config locale"
 
 # Create the file with the locale to be generated and with the same format
 # encountered in /usr/share/i18n/SUPPORTED. File depends of the distribution.
-declare -A DISTRO_LOCALE_GEN_PATH=(["debian"]="/etc/locale.gen" ["ubuntu"]="/var/lib/locales/supported.d/local")
-LOCALE_GEN_PATH=
-inf "Setup locale"
-chr << EOT
-cat > ${DISTRO_LOCALE_GEN_PATH[$dtr]} << EOF
-$lcl
-EOF
-EOT
-
+#
 # Compiled  locale files take about 50MB of disk space.  Selected locales at
-# LOCALE_GEN_PATH are automatically generated by running the locale-gen program.
+# ${DISTRO_LOCALE_GEN_PATH[$dtr]} are automatically generated by running the locale-gen program.
 # Then package locales is reconfigured.
 #
 # Once installed, to see which locale the system is actually using:
@@ -753,24 +717,50 @@ EOT
 #
 # For a more detailed explanation on locales see
 # https://help.ubuntu.com/community/Locale
-chr << EOT
-locale-gen
-dpkg-reconfigure -fnoninteractive -pcritical locales
-EOT
-
+#
 # Change the locale to be used by the bootstrapped system (or proto) by 
 # modifying the file /etc/default/locale. An example content for this file sets 
 # system locale to US English with UTF-8 ecoding:
 #
 #   LANG="en_US.UTF-8"
-chr << EOT
+#
+# First reconfigure apt so that it does not install additional packages
+# See http://wiki.debian.org/ReduceDebian
+LANG=C LC_ALL=C sudo chroot $wroot << EOT
+cat > /etc/apt/apt.conf << EOF
+APT::Install-Recommends "0" ; APT::Install-Suggests "0" ;
+EOF
+EOT
+
+# For debian DISTRO install locales
+#
+# locales: Provides support for localized environments. Installs character and
+#   transliteration maps, provides the POSIX locale definition and common
+#   scripts for language pack handling.
+#
+# NOTE: On ubuntu distribution locales is already included in the list.
+if [ $dtr == "debian" ] ; then 
+bind_dev_pts 
+  LANG=C LC_ALL=C sudo chroot $wroot << EOT
+export DEBIAN_FRONTEND=noninteractive 
+LANG=C LC_ALL=C apt-get --yes --force-yes --no-install-recommends install locales
+EOT
+unbind_dev_pts 
+fi
+
+LANG=C LC_ALL=C sudo chroot $wroot << EOT
+cat > ${DISTRO_LOCALE_GEN_PATH[$dtr]} << EOF
+$lcl
+EOF
+locale-gen
+dpkg-reconfigure -fnoninteractive -pcritical locales
 cat > /etc/default/locale << EOF
 LANG="$plang"
 EOF
 EOT
 
-# Setup timezone
-inf "Setup timezone"
+step "Setup timezone"
+
 chr << EOT
 cat > /etc/timezone << EOF
 $tzon
@@ -778,36 +768,39 @@ EOF
 dpkg-reconfigure -fnoninteractive -pcritical tzdata
 EOT
 
-step "Hostname and network configuration"
+step "Download packages"
 
-set_hostname
-set_networking
+# Download packages on main and universe (only for ubuntu) first to avoid 
+# repeatedly mount and umount devices
 
-step "Prepare first boot execution scripts"
+# packages to be purged later
+purge_pkgs="lsb-release debconf-utils deborphan"
 
-# First boot script can result useful to automate task that runs only the first
-# time the system starts. The script calls are placed in /etc/rc.local and once
-# executed, a file is placed under /var/lib/blss/ with the same relative name and
-# ended in .done.
-inf "Prepare firstboot script calls in '/etc/rc.local'"
-chr << EOT
-cat > /etc/rc.local << EOF
-#!/bin/sh -e
+# extra packages whose installation order matters
+#
+# rsyslog: enhanced multi-threaded syslogd
+extra_pkgs="gpgv gnupg localepurge "
 
-EOF
-EOT
-# All distros; specific distro & all suites; specific distro & suite; user 
-cp_firstboot_script "$ev"/firstboot.sh /root/${DEF_EV}/firstboot.sh
-cp_firstboot_script "$ev"/$dtr/firstboot.sh /root/${DEF_EV}/$dtr/firstboot.sh
-cp_firstboot_script "$ev"/$dtr/$st/firstboot.sh /root/${DEF_EV}/$dtr/$st/firstboot.sh
-if [ -n "$fbscript" ]; then
-  cp_firstboot_script "$fbscript" /root/${DEF_EV}/user/firstboot.sh
-fi
-chr << EOT
-cat >> /etc/rc.local << EOF
-exit 0
-EOF
-EOT
+# Packages to install in batch
+#
+# netbase: Provides the necessary infrastructure for basic TCP/IP based
+#   networking.
+useful_pkgs="netbase sudo openssh-server ngetty resolvconf chkconfig"
+
+# If --dhcp/dhcp command line/conf file option was specified then also include 
+# dhcp3-client package on the list 
+[ $dyn == "yes" ] && useful_pkgs="dhcp3-client ${useful_pkgs}" || true
+
+# ifupdown: High level tools to configure network interfaces. Provides the tools
+#   ifup and ifdown which may be used to configure and deconfigure network
+#   interfaces based on interface definitions in /etc/network/interfaces
+#
+[ $dtr == "debian" ] && useful_pkgs="ifupdown adduser ${useful_pkgs}" || true
+
+# NTP related packages
+[ -n $ntp ] && useful_pkgs="ntpdate ${useful_pkgs}" || true
+ 
+apt_get_download $purge_pkgs $extra_pkgs ${EXTRA_PKGS_DISTROS[$dtr]} ${EXTRA_PKGS_SUITES[$st]} $useful_pkgs    
 
 step "Config mirror files"
 
@@ -821,50 +814,49 @@ if [ -n "$mf" ]; then
   cp_mirror_file "$mf"
 fi
 
-step "Setup fstab"
+step "Update package list"
 
-inf "Setup fstab at '/etc/fstab'"
+# ubuntu-keyring: GnuPG keys of the Ubuntu archive
+apt_get_install gpgv gnupg $([ $dtr == "ubuntu" ] && echo "ubuntu-keyring" || true)
+
+# Update package list and download packages first to save resources when 
+# mounting and umounting devices
+apt_get_update
+
+# Download kernel
+apt_get_download ${DISTRO_LNX_IMG_PKG[$dtr, $arch]}
+
+# user packages
+apt_get_download $pkgs
+
+step "Prepare first boot execution scripts"
+
+# First boot script can result useful to automate task that runs only the first
+# time the system starts. The script calls are placed in /etc/rc.local and once
+# executed, a file is placed under /var/lib/blss/ with the same relative name and
+# ended in .done.
+inf "Prepare firstboot script calls in '/etc/rc.local'"
 chr << EOT
-cat > /etc/fstab << EOF
-proc /proc proc defaults 0 0
-/dev/sda1 / ext3 relatime 0 1
+cat > /etc/rc.local << EOF
+#!/bin/sh
+
 EOF
 EOT
+# All distros; specific distro & all suites; specific distro & suite; user 
+cp_firstboot_script "$ev"/firstboot.sh /root/${DEF_EV}/firstboot.sh
+cp_firstboot_script "$ev"/$dtr/firstboot.sh /root/${DEF_EV}/$dtr/firstboot.sh
+cp_firstboot_script "$ev"/$dtr/$st/firstboot.sh /root/${DEF_EV}/$dtr/$st/firstboot.sh
+if [ -n "$fbscript" ]; then
+  cp_firstboot_script "$fbscript" /root/${DEF_EV}/user/firstboot.sh
+fi
 
-step "Update packages indexes, install debconf and localepurge"
+step "Install debconf and localepurge"
 
-bind_devs
-
-# Reconfigure apt so that it does not install additional packages
-# See http://wiki.debian.org/ReduceDebian
-chr << EOT
-cat > /etc/apt/apt.conf << EOF
-APT::Install-Recommends "0" ; APT::Install-Suggests "0" ;
-EOF
-EOT
-
-# Update package list
-inf "Update package list"
-chr_apt_get update
-
-# Install debconf-utils package
-inf "Install 'debconf-utils' package for set seeds"
-chr_apt_get install debconf-utils
-
+# Install debconf-utils package for setting seeds
+#
 # Install localepurge debconf seeds to avoid user interaction on install,
 # indicating don't purge the locale related info
-inf "Install 'localepurge' debconf seeds to avoid user interaction on install. Then install 'localepurge' to auto remove unnecessary locale data"
-chr debconf-set-selections << EOT
-localepurge localepurge/remove_no note
-localepurge localepurge/verbose boolean false
-localepurge localepurge/nopurge multiselect $pbaselang, $plang
-localepurge localepurge/dontbothernew boolean false
-localepurge localepurge/quickndirtycalc boolean true
-localepurge localepurge/mandelete boolean true
-localepurge localepurge/showfreedspace  boolean true
-localepurge localepurge/none_selected boolean false
-EOT
-
+#
 # For this we need to install localepurge. Automagically remove unnecessary
 # locale data. This is just a simple script to recover diskspace wasted for
 # unneeded locale files and localized man pages. It will automagically be
@@ -877,37 +869,34 @@ EOT
 #
 # This can save you several megabytes of disk space, depending on the packages
 # you have installed.
-chr_apt_get install localepurge
-
-step "Install and config GRUB"
-
-inf "Install GRUB"
-chr_apt_get install grub
-chr << EOT
-mkdir -p /boot/grub
-cp /usr/lib/grub/*/* /boot/grub
-update-grub
+apt_get_install debconf-utils
+chr debconf-set-selections << EOT
+localepurge localepurge/remove_no note
+localepurge localepurge/verbose boolean false
+localepurge localepurge/nopurge multiselect $pbaselang, $plang
+localepurge localepurge/dontbothernew boolean false
+localepurge localepurge/quickndirtycalc boolean true
+localepurge localepurge/mandelete boolean true
+localepurge localepurge/showfreedspace  boolean true
+localepurge localepurge/none_selected boolean false
 EOT
-
-# Set a timeout in seconds, before automatically booting the default entry
-inf "Set a timeout before automatically booting the default entry in '/boot/grub/menu.lst'"
-chr << EOT
-sed -ie "s/^timeout[ \t]+[0-9]\+/timeout $timeout/" /boot/grub/menu.lst
-EOT
+apt_get_install localepurge
 
 step "Install and setup the Linux Kernel"
 
+# TODO: Seems to be no longer needed! 
+# see http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=554175
 inf "Config the Linux Kernel at '/etc/kernel-img.conf'"
 chr << EOT
+cat > /etc/mtab << EOF
+EOF
 cat > /etc/kernel-img.conf << EOF
-do_symlinks = yes
-relative_links = yes
-do_bootfloppy = no
-do_initrd = yes
-link_in_boot = no
-postinst_hook = /usr/sbin/update-grub
-postrm_hook = /usr/sbin/update-grub
-do_bootloader = no
+do_symlinks = Yes
+relative_links = Yes
+do_bootloader = No
+do_bootfloppy = No
+do_initrd = Yes
+link_in_boot = No
 EOF
 EOT
 
@@ -918,22 +907,18 @@ inf "Linux Kernel installation"
 # The package 'linux-image-server' will always depend on the latest kernel
 # image available for Server Equipment on Ubuntu.
 #
-declare -A DISTRO_LNX_IMG_PKG=(["debian"]="linux-image-$arch" ["ubuntu"]="linux-image-server")
-chr_apt_get install ${DISTRO_LNX_IMG_PKG[$dtr]}
-chr << EOT
-sed -ie 's/([^)]*)/(hd0,0)/' /boot/grub/menu.lst
-EOT
+apt_get_install ${DISTRO_LNX_IMG_PKG[$dtr, $arch]}
 
 # When use linux-image-server the command depmod fails due to the path
 # /var/lib/modules/<kernel name for server version>/.. doesn't exists but
 # /var/lib/modules/<kernel name for generic version>/.. exists. Seems to be
 # that the command 'uname -r' doesn't prints the correct kernel info to
 # STDOUT. For now create a symblink.
-if [ $dtr == "ubuntu" ] ; then
-  chr << EOT
-ln -s /lib/modules/$(kver) /lib/modules/$(uname -r)
+chr << EOT
+[ ! -d /lib/modules/$(uname -r) ] && {
+  ln -s /lib/modules/$(kver) /lib/modules/$(uname -r)
+} || true
 EOT
-fi
 
 step "Identify the Linux Standard Base distribution-specific info."
 
@@ -944,7 +929,7 @@ step "Identify the Linux Standard Base distribution-specific info."
 # be useful for programmatically distinguishing between a pure Debian
 # installation and derived distributions.
 inf "Install 'lsb-release' package to identify de LSB info"
-chr_apt_get install lsb-release
+apt_get_install lsb-release
 lsb_distro=$(chr lsb_release -is)
 lsb_distro=${lsb_distro,}
 [ $dtr != "$lsb_distro" ] && ( err "Distribution ID '$dtr' differs from LSB distribution '$lsb_distro'" >&2 && exit 1 ) || true
@@ -954,14 +939,67 @@ lsb_suite=${lsb_suite,}
 
 inf "Identifying the LSB (Linux Standard Base) distribution-specific information"
 chr lsb_release -a
-chr_apt_get purge lsb-release
+apt_get_purge lsb-release
 
 step "Install useful packages"
+apt_get_install $useful_pkgs
 
-inf "Install useful packages"
-chr_apt_get install openssh-server resolvconf sudo
+# Pending actions for first boot
+chr << EOT
+cat >> /etc/rc.local << EOF
+DEBIAN_FRONTEND=noninteractive dpkg --configure -a 
+chkconfig umountnfs.sh off
+chkconfig mountnfs-bootclean.sh off
+chkconfig mountnfs.sh off
+chkconfig console-screen.sh off
+chkconfig console-screen.kbd.sh off
+chkconfig rc.local off
+/usr/sbin/update-bootsystem-insserv
+rm /etc/ssh/ssh_host*key*
+dpkg-reconfigure -fnoninteractive -pcritical openssh-server
+EOF
+EOT
+
+## Enable dash as the default system shell (/bin/sh)  
+# See http://wiki.debian.org/BootProcessSpeedup
+# http://en.wikipedia.org/wiki/Debian_Almquist_shell
+# http://wiki.debian.org/DashAsBinSh
+# https://wiki.ubuntu.com/DashAsBinSh
+for pkg in ${EXTRA_PKGS_SUITES[$st]} ; do
+  [[ $pkg =~ ^dash$ ]] && {
+    step "Use dash as the default system shell"
+    chr debconf-set-selections << EOT
+# Use dash as the default system shell (/bin/sh)?
+dash	dash/sh	boolean	true
+EOT
+apt_get_install dash
+  }
+done 
+
+##step "Configuring kexec for warm reboots"
+# See http://wiki.debian.org/BootProcessSpeedup
+##chr debconf-set-selections << EOT
+# Should kexec-tools handle reboots?
+##kexec-tools	kexec-tools/load_kexec	boolean	true
+##EOT
+#apt_get_install kexec-tools
+
+step "Install deborphan"
+apt_get_install deborphan
 
 install_user_pkgs
+
+step "Configuring dependency-based boot ordering"
+# See http://wiki.debian.org/BootProcessSpeedup
+
+chr debconf-set-selections << EOT
+insserv	insserv/enable	boolean	true
+EOT
+for pkg in ${EXTRA_PKGS_SUITES[$st]} ; do
+  [[ $pkg =~ ^insserv$ ]] && {
+    apt_get_install insserv
+  }
+done
 
 step "Import various debconf seeds files"
 if [ -d "$ev"/.seeds ] && [ -r "$ev"/.seeds ]; then
@@ -970,7 +1008,7 @@ if [ -d "$ev"/.seeds ] && [ -r "$ev"/.seeds ]; then
 fi
 
 inf "Purge 'debconf-utils' package"
-chr_apt_get purge debconf-utils
+apt_get_purge debconf-utils
 
 step "Upgrade"
 
@@ -981,7 +1019,7 @@ step "Upgrade"
 # expense of less important ones if necessary. So, dist-upgrade
 # command may remove some packages.
 inf "Distribution upgrade"
-chr_apt_get dist-upgrade
+apt_get_dist_upgrade
 
 step "Disable IPv6"
 
@@ -1014,348 +1052,17 @@ rm -f /lib/xtables/libip6t_eui64.so
 EOT
 
 step "Disable modules floppy, cdrom, ide_cd_mod, snd-pcsp, pcspkr (beep), psmouse, usb-storage and firewire"
-
-# The redirection in 'modprobe -r \$mod 2>/dev/null' is due to a WARNING message
-# See http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=517954   
-mod_rm() {
-  cat << EOF
-for mod in $@ ; do
-  if modinfo \$mod &>/dev/null ; then   
-    echo "blacklist \$mod" > /etc/modprobe.d/\$mod.conf ;
-    modprobe -r \$mod 2>/dev/null ;
-    rm \$(modinfo -n \$mod) ;
-  fi
-done
-EOF
-}
-mod_rmdir() {
-  cat << EOF
-for mod in $(chr find /lib/modules/$(kver)/kernel/$1 -type f -path *.ko -exec basename {} .ko \; 2>/dev/null | awk -v ORS=" " '{NF=NF; print $0}') ; do 
-  echo "blacklist \$mod" > /etc/modprobe.d/\$mod.conf
-  modprobe -r \$mod 2>/dev/null
-  rm \$(modinfo -n \$mod)
-done
-EOF
-}
-
-
-# See http://wiki.debian.org/KernelModuleBlacklisting
-#
-# NOTE: Some builtin modules like cdrom cannot be removed via modprobe -r, but
-# they can be blacklisted
-#
-# TODO: check these list 
-# /lib/modules/2.6.35-29-generic/kernel/drivers/firmware
-# /lib/modules/2.6.35-29-generic/kernel/drivers/firmware/net
-# 817K	/lib/modules/2.6.35-29-generic/kernel/drivers/hid
-# 2,8M	/lib/modules/2.6.35-29-generic/kernel/drivers/hwmon
-# /lib/modules/2.6.35-29-generic/kernel/drivers/idle
-# /lib/modules/2.6.35-29-generic/kernel/drivers/infiniband
-# 188K	/lib/modules/2.6.35-29-generic/kernel/drivers/pci
-# 228K	/lib/modules/2.6.35-29-generic/kernel/drivers/pcmcia
-# 729K	/lib/modules/2.6.35-29-generic/kernel/drivers/platform
-# 193K	/lib/modules/2.6.35-29-generic/kernel/drivers/power
-# 32K	/lib/modules/2.6.35-29-generic/kernel/drivers/pps
-# 7,0M	/lib/modules/2.6.35-29-generic/kernel/drivers/scsi
-# 96K	/lib/modules/2.6.35-29-generic/kernel/drivers/spi
-# 84K	/lib/modules/2.6.35-29-generic/kernel/drivers/ssb
-# 9,5M	/lib/modules/2.6.35-29-generic/kernel/drivers/staging
-# 32K	/lib/modules/2.6.35-29-generic/kernel/drivers/vhost
-#rm -rf /lib/modules/\$(kver)/kernel/drivers/serial
-
-inf "Purging modules"
-
-purge_mods() {
-  # floppy, cdrom, ide_cd_mod, snd-pcsp, psmouse, usb-storage
-  chr << EOT
-$(mod_rm \
-  floppy \
-  ide-floppy \
-  ide-tape \
-  cdrom \
-  ide_cd_mod \
-  snd-pcsp \
-  pcspkr \
-  psmouse \
-  usb-storage)
-EOT
-
-  # firewire
-  chr << EOT
-$(mod_rm \
-  ieee1394 \
-  pcilynx \
-  ohci1394 \
-  video1394 \
-  raw1394 \
-  sbp2 \
-  dv1394 \
-  eth1394 \
-  firewire-ohci \
-  firewire-net \
-  firewire-core \
-  firewire-sbp2)
-rm -f /lib/modules/$(kver)/modules.ieee1394map
-EOT
-
-  # atm
-  chr << EOT
-$(mod_rm \
-  zatm \
-  uPD98402 \
-  ambassador \
-  horizon \
-  iphase \
-  suni \
-  fore_200e \
-  eni \
-  idt77252 \
-  solos-pci \
-  atmtcp \
-  firestream \
-  lanai \
-  he)
-EOT
-
-  # auxdisplay
-  chr << EOT
-$(mod_rm \
-  ks0108 \
-  cfag12864b \
-  cfag12864bfb)
-EOT
-
-  # xen
-  chr << EOT
-$(mod_rm \
-  xen-blkfront \
-  xen-netfront \
-  netxen_nic \
-  xen-kbdfront \
-  xen-fbfront \
-  xenfs \
-  evtchn)
-EOT
-
-  # bluetooth
-  chr << EOT
-$(mod_rm \
-  bnep \
-  cmtp \
-  hidp \
-  rfcomm \
-  sco \
-  l2cap \
-  bluetooth \
-  toshiba_bluetooth \
-  bt3c_cs \
-  btmrvl_sdio \
-  hci_vhci \
-  bluecard_cs \
-  bcm203x \
-  btsdio \
-  dtl1_cs \
-  bfusb \
-  bpa10x \
-  btusb \
-  btmrvl \
-  btuart_cs \
-  ath3k \
-  hci_uart)
-EOT
-
-  # WM Family
-  # WM831x DC-DC Setup Converter, http://www.wolfsonmicro.com/documents/uploads/misc/en/WAN0228.pdf
-  # WM8350 Stereo CODEC with Integrated Power Management, http://www.wolfsonmicro.com/products/power_management/WM8350/
-  # WM8400 Stereo CODEC with Integrated Power Management, http://www.wolfsonmicro.com/products/power_management/WM8400/
-  # WM8739) # Stereo ADC, http://www.wolfsonmicro.com/products/adcs/WM8739/
-  # WM8775) # Stereo ADC with 4 input selector, http://www.wolfsonmicro.com/products/adcs/WM8775/
-  # WM8994 Multi-Channel CODEC with 3 digital audio interfaces, http://www.wolfsonmicro.com/products/audio_hubs/WM8994/
-  # WM97xx Touchscreen, etc, http://www.wolfsonmicro.com/media_centre/item/wolfson_unleashes_dual_codec/
-  chr << EOT
-$(mod_rm \
-  leds-wm831x-status \
-  leds-wm8350 \
-  wm831x_backup \
-  wm831x_bl \
-  wm831x-dcdc \
-  wm831x-gpio \
-  wm831x-hwmon \
-  wm831x-isink \
-  wm831x-ldo \
-  wm831x-on \
-  wm831x_power \
-  wm831x_wdt \
-  wm8350-gpiolib \
-  wm8350-hwmon \
-  wm8350_power \
-  wm8350-regulator \
-  wm8350_wdt \
-  wm8400-core \
-  wm8400-regulator \
-  wm8739 \
-  wm8775 \
-  wm8994-gpio \
-  wm8994-regulator \
-  wm97xx-ts)
-EOT
-
-  # leds
-  chr << EOT
-$(mod_rm \
-  leds-alix2 \
-  leds-mc13783 \
-  leds-net5501 \
-  ledtrig-backlight \
-  leds-88pm860x \
-  ledtrig-heartbeat \
-  leds-bd2802 \
-  leds-ss4200 \
-  ledtrig-default-on \
-  leds-lp3944 \
-  leds-dac124s085 \
-  ledtrig-gpio \
-  leds-da903x \
-  led-class \
-  leds-gpio \
-  dell-led \
-  leds-pca9532 \
-  leds-pca955x \
-  leds-lt3593 \
-  ledtrig-timer \
-  leds-regulator \
-  leds-adp5520)
-EOT
-
-  # memstick
-  chr << EOT
-$(mod_rm \
-  memstick \
-  mspro_block \
-  jmb38x_ms \
-  tifm_ms)
-EOT
-
-  # mfd: Multi-Function Device
-  # # Silicon Motion SM501
-  # TODO: Verify these modules
-  chr << EOT
-$(mod_rm \
-  sm501 \
-  pcf50633-adc \
-  htc-pasic3 \
-  rdc321x-southbridge \
-  janz-cmodio \
-  ab3100-otp \
-  ucb1400_core \
-  lpc_sch \
-  mc13783-core \
-  timberdale \
-  pcf50633-gpio \
-  tps65010 \
-  pcf50633 \
-  tps6507x)
-EOT
-
-  # mmc: MultiMediaCard subsystem, http://www.kernel.org/doc/Documentation/mmc/
-  chr << EOT
-$(mod_rm \
-  sdio_uart \
-  mmc_block \
-  via-sdmmc \
-  sdhci-pltfm \
-  mmc_spi \
-  tifm_sd \
-  sdhci \
-  cb710-mmc \
-  sdhci-pci \
-  wbsd \
-  sdricoh_cs)
-EOT
-
-  # regulator: Regulator, http://www.kernel.org/doc/htmldocs/regulator.html
-  chr << EOT
-$(mod_rm \
-  mc13783-regulator \
-  bq24022 \
-  tps65023-regulator \
-  virtual \
-  tps6507x-regulator \
-  max1586 \
-  max8649 \
-  max8660 \
-  max8925-regulator \
-  lp3971 \
-  da903x \
-  ab3100 \
-  pcf50633-regulator \
-  userspace-consumer)
-EOT
-
-  # uwb: Linux Ultra-Wide-Band stack, as well as drivers for Wireless USB Host Controller drivers, http://www.linuxuwb.org/thewiki/Linux-UWB+WUSB+WiNET
-  chr << EOT
-$(mod_rm \
-  wlp \
-  i1480-dfu-usb \
-  i1480u-wlp \
-  i1480-est \
-  whc-rc \
-  hwa-rc \
-  umc \
-  uwb \
-  whci)
-EOT
-
-  # more drastically purge
-  chr << EOT
-$(mod_rmdir drivers/media)
-$(mod_rmdir drivers/cdrom)
-$(mod_rmdir drivers/input/gameport)
-$(mod_rmdir drivers/input/joystick)
-$(mod_rmdir drivers/input/mouse)
-$(mod_rmdir drivers/input/touchscreen)
-$(mod_rmdir drivers/parport)
-$(mod_rmdir drivers/telephony)
-$(mod_rmdir sound)
-$(mod_rmdir drivers/isdn)
-$(mod_rmdir drivers/usb)
-$(mod_rmdir drivers/net/bluetooth)
-$(mod_rmdir net/bluetooth)
-$(mod_rmdir drivers/net/ieee80211)
-$(mod_rmdir net/ieee80211)
-$(mod_rmdir drivers/net/ipx)
-$(mod_rmdir net/ipx)
-$(mod_rmdir drivers/net/mac80211)
-$(mod_rmdir net/mac80211)
-$(mod_rmdir drivers/net/wireless)
-$(mod_rmdir net/wireless)
-$(mod_rmdir drivers/net/x25)
-$(mod_rmdir net/x25)
-$(mod_rmdir drivers/net/usb)
-$(mod_rmdir drivers/net/can/usb)
-$(mod_rmdir drivers/ieee1394)
-$(mod_rmdir drivers/firewire)
-EOT
-
-  # regenerarte modules.dep
-  chr << EOT
-depmod -ae
-update-initramfs -u
-EOT
-
-  # cleanup empty modules directories
-  chr << EOT
-find /lib/modules/ -type d -empty -delete
-EOT
-}
-
-purge_mods
+purge_base_mods
+rm_extra_mods
+rm_various_mod_dirs
+cleanup_mod_dirs
+reg_modules_dep
 
 step "Replace getty with ngetty"
 
 # ngetty is much more lightweight than getty. See
 # http://riemann.fmi.uni-sofia.bg/ngetty/
-chr_apt_get install ngetty
+apt_get_install ngetty
 case "$dtr" in
   debian)
     chr << EOT
@@ -1369,51 +1076,86 @@ EOT
    ;;
   ubuntu)
     # TODO: pending to test in ubuntu
-#    chr << EOT
-#sed -ie 's/exec \/sbin\/getty -8 38400 tty1/# &\n\n# Run ngetty in standard run-levels\nexec \/sbin\/ngetty 1 2 3 4 5 6/' /etc/init/#tty1.conf
-#sed -ie 's/start on runlevel \[23\]/# &/' /etc/init/tty2.conf
-#sed -ie 's/stop on runlevel \[!23\]/# &/' /etc/init/tty2.conf
-#sed -ie 's/respawn/# &/' /etc/init/tty2.conf
-#sed -ie 's/exec \/sbin\/getty -8 38400 tty2/# &/' /etc/init/tty2.conf
-#sed -ie 's/start on runlevel \[23\]/# &/' /etc/init/tty3.conf
-#sed -ie 's/stop on runlevel \[!23\]/# &/' /etc/init/tty3.conf
-#sed -ie 's/respawn/# &/' /etc/init/tty3.conf
-#sed -ie 's/exec \/sbin\/getty -8 38400 tty3/# &/' /etc/init/tty3.conf
-#sed -ie 's/start on runlevel \[23\]/# &/' /etc/init/tty4.conf
-#sed -ie 's/stop on runlevel \[!23\]/# &/' /etc/init/tty4.conf
-#sed -ie 's/respawn/# &/' /etc/init/tty4.conf
-#sed -ie 's/exec \/sbin\/getty -8 38400 tty4/# &/' /etc/init/tty4.conf
-#sed -ie 's/start on runlevel \[23\]/# &/' /etc/init/tty5.conf
-#sed -ie 's/stop on runlevel \[!23\]/# &/' /etc/init/tty5.conf
-#sed -ie 's/respawn/# &/' /etc/init/tty5.conf
-#sed -ie 's/exec \/sbin\/getty -8 38400 tty5/# &/' /etc/init/tty5.conf
-#sed -ie 's/start on runlevel \[23\]/# &/' /etc/init/tty6.conf
-#sed -ie 's/stop on runlevel \[!23\]/# &/' /etc/init/tty6.conf
-#sed -ie 's/respawn/# &/' /etc/init/tty6.conf
-#sed -ie 's/exec \/sbin\/getty -8 38400 tty6/# &/' /etc/init/tty6.conf
-#EOT
+    chr << EOT
+sed -ie 's/exec \/sbin\/getty -8 38400 tty1/# &\n\n# Run ngetty in standard run-levels\nexec \/sbin\/ngetty 1 2 3 4 5 6/' /etc/init/tty1.conf
+sed -ie 's/start on runlevel \[23\]/# &/' /etc/init/tty2.conf
+sed -ie 's/stop on runlevel \[!23\]/# &/' /etc/init/tty2.conf
+sed -ie 's/respawn/# &/' /etc/init/tty2.conf
+sed -ie 's/exec \/sbin\/getty -8 38400 tty2/# &/' /etc/init/tty2.conf
+sed -ie 's/start on runlevel \[23\]/# &/' /etc/init/tty3.conf
+sed -ie 's/stop on runlevel \[!23\]/# &/' /etc/init/tty3.conf
+sed -ie 's/respawn/# &/' /etc/init/tty3.conf
+sed -ie 's/exec \/sbin\/getty -8 38400 tty3/# &/' /etc/init/tty3.conf
+sed -ie 's/start on runlevel \[23\]/# &/' /etc/init/tty4.conf
+sed -ie 's/stop on runlevel \[!23\]/# &/' /etc/init/tty4.conf
+sed -ie 's/respawn/# &/' /etc/init/tty4.conf
+sed -ie 's/exec \/sbin\/getty -8 38400 tty4/# &/' /etc/init/tty4.conf
+sed -ie 's/start on runlevel \[23\]/# &/' /etc/init/tty5.conf
+sed -ie 's/stop on runlevel \[!23\]/# &/' /etc/init/tty5.conf
+sed -ie 's/respawn/# &/' /etc/init/tty5.conf
+sed -ie 's/exec \/sbin\/getty -8 38400 tty5/# &/' /etc/init/tty5.conf
+sed -ie 's/start on runlevel \[23\]/# &/' /etc/init/tty6.conf
+sed -ie 's/stop on runlevel \[!23\]/# &/' /etc/init/tty6.conf
+sed -ie 's/respawn/# &/' /etc/init/tty6.conf
+sed -ie 's/exec \/sbin\/getty -8 38400 tty6/# &/' /etc/init/tty6.conf
+EOT
    ;;
 esac
+
+step "Hostname and network configuration"
+
+set_hostname
+set_networking
+
+# NTP servers configuration
+if [ -n "$ntp" ] ; then 
+  chr sed -ie "s/^NTPSERVERS=.*/NTPSERVERS=\"${ntp}\"/" /etc/default/ntpdate
+fi
 
 step "Remove unnecessary packages and cleanup cache"
 
 # Purge unnecessary packages in a server environment
 inf "Purge unnecessary packages"
-chr_apt_get purge man-db
+apt_get_purge man-db
 
 # Remove “orphaned” packages
-inf "Remove “orphaned” packages, 'deborphan' and 'localepurge' later"
-chr_apt_get install deborphan
-chr_apt_get purge $(chr deborphan)
-chr_apt_get purge deborphan localepurge
+inf "Remove “orphaned” packages and 'deborphan'"
+apt_get_purge $(chr deborphan) deborphan
+
+step "Let the ${ACPI_PER_DISTRO[$dtr]}, rsyslog and ${READAHEAD_PER_SUITE[$st]} packages pending to configure on first boot"
+
+# Autoremove packages and clean /var/cache/apt/archives first
+apt_get_autoremove
+apt_get_clean
+
+# Download packages and dependencies
+config_on_first_boot="rsyslog acpid ${ACPI_PER_DISTRO[$dtr]}"
+
+# See http://wiki.debian.org/BootProcessSpeedup
+config_on_first_boot="${config_on_first_boot} ${READAHEAD_PER_SUITE[$st]}"
+
+# Download all the packages to /var/cache/apt/archives
+apt_get_download $config_on_first_boot
+
+# Move the packages to the pending location
+chr << EOT
+mkdir -p /var/lib/blss/var/cache/apt/archives
+mv /var/cache/apt/archives/*.deb /var/lib/blss/var/cache/apt/archives/
+EOT
+
+# Activate profiling on the second boot 
+if [ ${READAHEAD_PER_SUITE[$st]} = "readahead" ] ; then
+  chr << EOT
+cat >> /etc/rc.local << EOF
+touch /etc/readahead/profile-once
+EOF
+EOT
+fi
 
 # Clears out the local repository of retrieved package files
 inf "Clears out the local repository of retrieved package files at '/var/cache/apt/archives/' and '/var/cache/apt/archives/partial/'"
-chr_apt_get autoremove
-chr_apt_get clean
-chr_apt_get autoclean
-
-unbind_devs
+apt_get_clean
+apt_get_autoclean
 
 # No longer need to unbind on error
 trap - INT TERM EXIT

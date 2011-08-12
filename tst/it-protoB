@@ -64,6 +64,25 @@ ok $? "Verify is proto size $DU <= 151MB"
 
 . "$TST"/it-proto-all
 
+# Test Case: Test for hostname config
+ptx cat /etc/hostname | {
+  ln_is "my-debian-server" "Verify if '/etc/hostname' is correct"
+}
+ptx cat /etc/hosts | {
+  ln_is "127.0.0.1 localhost.localdomain localhost" "Verify if localhost is 127.0.0.1 at /etc/hosts"
+  ln_is "127.0.1.1 my-debian-server my-debian-server.home.dev" "Verify if myserver and myserver.home.dev is 127.0.1.1 at /etc/hosts"
+  ln_is_empty  
+  ln_is "# The following lines are desirable for IPv6 capable hosts" "Verify if IPv6 capable hosts is commented"
+  ln_is "## ::1 my-debian-server localhost6.localdomain6 localhost6"
+  ln_is "## ::1 localhost ip6-localhost ip6-loopback"
+  ln_is "## fe00::0 ip6-localnet"
+  ln_is "## ff00::0 ip6-mcastprefix"
+  ln_is "## ff02::1 ip6-allnodes"
+  ln_is "## ff02::2 ip6-allrouters"
+  ln_is "## ff02::3 ip6-allhosts"
+  no_ln	
+}
+
 # Test Case: Tests for GRUB
 ptx grep -v "^$" /boot/grub/menu.lst | awk '{NF=NF; print $0}' | tail -n 9 | head -n 8 | {
   ln_is   "title Debian GNU/Linux, kernel "$(kver)"" "Verify /boot/grub/menu.lst default option" 

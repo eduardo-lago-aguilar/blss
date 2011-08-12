@@ -1,0 +1,5 @@
+deb http://ubunturepo.home.dev/mirror/lucid/ubuntu/ lucid restricted multiverse
+deb http://ubunturepo.home.dev/mirror/lucid/ubuntu/ lucid-backports main restricted universe multiverse
+deb http://ubunturepo.home.dev/mirror/lucid/ubuntu/ lucid-proposed main restricted universe multiverse
+deb http://ubunturepo.home.dev/mirror/lucid/ubuntu/ lucid-security main restricted universe multiverse
+deb http://ubunturepo.home.dev/mirror/lucid/ubuntu/ lucid-updates main restricted universe multiverse

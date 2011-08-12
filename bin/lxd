@@ -1,4 +1,4 @@
-#!/bin/bash -ex
+#!/bin/bash -e
 #
 # WELCOME TO BLSS
 #
@@ -54,8 +54,6 @@ SYNOPSIS
 
 DESCRIPTION
 
-  TODO: argument it more. explain DEPLOYMENT_ROOT...
-
   lxd creates a virtual disk in qcow2 format and a libvirt config file from a clone root directory (/) located at CLONE_ROOT. The resulting .qcow2 and .xml files can be used with virsh to define a virtual machine.  
 
 GENERAL OPTIONS
@@ -63,7 +61,7 @@ GENERAL OPTIONS
     Show this help
 
   --clone-root CLONE_ROOT
-    The root directory of the spwecific clone to be loaded into the virtual disk. This parameter is mandatory.
+    The root directory of the specific clone to be loaded into the virtual disk. This parameter is mandatory.
 
 HYPERVISOR OPTIONS
 
@@ -80,6 +78,9 @@ DISK OPTIONS
 
   --size SIZE
     Hard disk size in megabytes. Defaults to ${DEF_SIZE}.    
+
+  --root-filesystem ROOT_FILESYSTEM
+    The root (/) partition filesystem format. Supported file systems are: ${SUPPORTED_FILESYSTEMS[*]}.
 
 EXAMPLES
 
@@ -109,7 +110,8 @@ clone-root:,\
 hypervisor:,\
 cpu:,\
 memory:,\
-size: \
+size:,\
+root-filesystem: \
 -- "$@")
 if [ $? != 0 ] ; then 
   usage >&2 ; 
@@ -126,7 +128,8 @@ unset \
   c_hypervisor \
   c_cpu \
   c_memory \
-  c_size
+  c_size \
+  c_root_filesystem
 
 declare -A c_os 
 while true; do
@@ -152,6 +155,9 @@ while true; do
     --size)
       c_size=${2:?$(err_non_empty $1)} ;
       shift 2 ;;
+    --root-filesystem)
+      c_root_filesystem=${2:?$(err_non_empty $1)} ;
+      shift 2 ;;
     --) 
       shift ; 
       break ;;
@@ -160,12 +166,13 @@ while true; do
   esac
 done
 
-# target is the remaining
+# deployment root is the remaining
 c_deployment_root=$(trim_spcs "$@")
-c_deployment_root=${c_deployment_root:?$(err_non_empty DEPLOYMENT_ROOT)}
+droot=${c_deployment_root:?$(err_non_empty DEPLOYMENT_ROOT)}
+if [ -e "$droot" ] ; then
+  [ "$(find "$droot" -maxdepth 1 -type d -empty )" != "$droot" ] && err "DEPLOYMENT_ROOT command line option shall be an existing empty directory or a non-existing directory" >&2 && exit 1 || true
+fi
 
-# target is the remaining
-c_clone_root=${c_clone_root:?$(err_non_empty --clone-root)}
 
 unset c_os
 
@@ -177,22 +184,25 @@ unset \
   hypervisor \
   cpu \
   memory \
-  size
+  size \
+  root_filesystem
 
 # import general env opts
 imp_conf "$ev"/lxd.conf
 
-# clone root 
+# clone root
 croot=${c_clone_root:-$clone_root}
-if [ -n "$croot" ] ; then
-  croot=$(realpath "$croot") || ( err "--clone-root/clone_root command line/conf file option shall be an existing non-empty directory containing a clone system" >&2 && exit 1 ) ;
-  [ "$(sudo find "$croot" -maxdepth 0 -type d -empty)" != "" ] && err "--clone-root/clone_root command line/conf file option shall be an existing non-empty directory containing a clone system" >&2 && exit 1 || true
+croot=${croot:?$(err_non_empty --clone-root)}
+croot=$(realpath "$croot") || ( err "--clone-root/clone_root command line/conf file option shall be an existing non-empty directory containing a clone system" >&2 && exit 1 ) ;
+empty=$(find "$croot" -maxdepth 0 -type d -empty)
+if [ "$empty" != "" ] ; then
+  err "--clone-root/clone_root command line/conf file option shall be an existing non-empty directory containing a clone system" >&2 && exit 1
 fi
 
 # hypervisor: command line may override the value imported from the 
 # environment, if the option is missing use the default value, finally verify if 
 # the value is supported.    
-hyv=${c_hypervisor:-$hyv} 
+hyv=${c_hypervisor:-$hypervisor} 
 if [ -n "$hyv" ] ; then
   hyv=${SUPPORTED_HYPERVISORS[$hyv]} ;
   hyv=${hyv:?$(err_non_sup hypervisor)} ;
@@ -230,11 +240,17 @@ else
   sz=$DEF_SIZE ;
 fi
 
-# deployment root
-droot=${c_deployment_root}
-if [ -e "$droot" ] ; then
-  [ "$(find "$droot" -maxdepth 1 -type d -empty )" != "$droot" ] && err "DEPLOYMENT_ROOT command line option shall be an existing empty directory or a non-existing directory" >&2 && exit 1 || true
+# root-filesystem: command line may override the value imported from the 
+# environment, if the option is missing use the default value, finally verify if 
+# the value is supported.    
+rootfs=${c_root_filesystem:-$root_filesystem} 
+if [ -n "$rootfs" ] ; then
+  rootfs=${SUPPORTED_FILESYSTEMS[$rootfs]} ;
+  rootfs=${rootfs:?$(err_non_sup root-filesystem root_filesystem)} ;
+else
+  rootfs=$DEF_ROOT_FILESYSTEM ;
 fi
+
 mkdir -p "$droot"
 
 inf "Detected environment '$ev'. All options were took from the environment conf files. Command line options override environment options" ;
@@ -267,41 +283,51 @@ step "Create a new disklabel"
 # "mac", "msdos", "pc98", or "sun".
 sudo parted --script "$droot"/disk.img mklabel msdos
 
-step "Make an ext3 primary partition on disk"
-# TODO: check this
-#   Warning: The resulting partition is not properly aligned for best performance.
-# Make a part-type partition with filesystem fs-type (if specified), 
-# beginning at start and ending at  end  (by default in megabytes).  
-# fs-type can be one of "fat16", "fat32", "ext2", "HFS", "linux-swap",
-# "NTFS",  "reiserfs",  or  "ufs".   part-type  should be one of 
-# "primary", "logical", or "extended".
-dend=$(( $sz - 1))
-sudo parted --script -- "$droot"/disk.img mkpart primary ext3 0 $dend
- 
-step "Add device map: /dev/mapper/XYZ"
-# Create device maps from partition tables.
-#  -a     Add partition mappings
-#  -l     List partition mappings that would be added -a
-details=$(sudo kpartx -av "$droot"/disk.img) 
+step "Make partitions on disk"
+sudo parted --script -- "$droot"/disk.img mkpart primary 1049kB 64MB
+sudo parted --script "$droot"/disk.img set 1 boot on
+sudo parted --script -- "$droot"/disk.img mkpart primary 64MB 100%
 
-map=$(printf "$details" | awk '{print $3}')
-inf "Device map: /dev/mapper/$map"
+_release_devs(){
+  # Detach the file or device associated with the specified loop device. 
+  # See the above explantaion of loop devices
+  sudo umount "$wroot"/boot && inf "Unmounted $wroot"/boot
+  sudo umount "$wroot" && inf "Unmounted $wroot"
 
-dev=$(printf "$details" | awk '{print $8}')
-inf "Loop device: $dev"
+  sudo rm /dev/mvda && inf "Block device removed"
+  sudo rm /dev/mvda1 && inf "Block device removed"
+  sudo rm /dev/mvda2 && inf "Block device removed"
 
-step "Create a filesystem"
-# mke2fs : Create an ext2/ext3/ext4 filesystem. If called as mkfs.ext3 a journal
-# is created as if the -j option was specified.
-sudo mkfs -t ext3 /dev/mapper/$map
-      
-step "Mount the disk image: disk.img into / as a loop device: /dev/loopN"
+  sudo kpartx -v -d /dev/mapper/vda && inf "Mapper detached"
+  sudo dmsetup remove vda && inf "Mapper detached"
+  sudo kpartx -d $ld  && inf "Mapper detached"
+  sudo losetup -d $ld && inf "Loop device detached" 
+}
+
+# trap cmd to unbind mounted devices on error
+_release_devs_on_err(){
+	local rc=${1:-''}
+	if [[ -z "$rc" ]] ; then
+		rc=$?
+	fi
+  _release_devs
+	local alt_rc=$?
+	(( alt_rc != 0 )) && rc=$alt_rc
+	trap - INT TERM EXIT
+	exit $rc
+}
+
+# Unbind devices on ERROR
+trap _release_devs_on_err INT TERM EXIT
+
+step "Create a loop device and device mappers for the disk"
+
 # Loop devices on Linux are virtual devices which can be used to mount files 
 # like real devices. For instance, to mount an ISO image you can use a loop 
 # device:
 #
-#   $ mkdir -p /mnt/myiso
-#   $ mount -o loop -t iso9660 ./disk.iso /mnt/myiso
+#   $ mkdir -p $wroot/myiso
+#   $ mount -o loop -t iso9660 ./disk.iso $wroot/myiso
 #
 # The parameter -o loop tells mount to mount this as a loop device. For each 
 # mounted loop device a block device file in /dev is used, named /dev/loopN 
@@ -309,11 +335,11 @@ step "Mount the disk image: disk.img into / as a loop device: /dev/loopN"
 # used but you can also specify manually which one to use with losetup command:
 #
 #   $ losetup /dev/loop3 ./disk.iso
-#   $ mount -t iso9660 /dev/loop3 /mnt/myiso
+#   $ mount -t iso9660 /dev/loop3 $wroot/myiso
 #
 # To unmount the ISO file and detatch it from /dev/loop3 run:
 #
-#  $ umount /mnt/myiso
+#  $ umount $wroot/myiso
 #  $ losetup -d /dev/loop3
 #
 # For historical reasons you have 8 such loop devices by default, numbered from 
@@ -327,7 +353,7 @@ step "Mount the disk image: disk.img into / as a loop device: /dev/loopN"
 #
 #  loop max_loop=64
 #
-# In Ubuntu add this to /etc/modprobe.d/options
+# In more recently kernels just add this to /etc/modprobe.d/options
 #
 #  options loop max_loop=64
 #
@@ -335,10 +361,66 @@ step "Mount the disk image: disk.img into / as a loop device: /dev/loopN"
 # mountable loop devices: 
 #
 #  $ ls /dev/loop* | wc -l
-sudo mount -o loop /dev/mapper/$map $wroot
+ld=$(sudo losetup -f --show "$droot"/disk.img)
 
-step "Populate the virtual disk with the system"
-sudo cp -a "$croot"/* "$wroot"
+# creates a device mapper /dev/mapper/vda for the whole disk
+sudo dmsetup create vda << EOT
+0 $(( ${sz} * 2048 )) linear ${ld} 0
+EOT
+
+# Creates device mappers /dev/mapper/vda{1,2} for the {first,second} partition
+# Create device maps from partition tables.
+#  -a     Add partition mappings
+#  -v     Operate verbosely
+sudo kpartx -v -a /dev/mapper/vda
+
+step "Create a block devices directly under /dev"
+
+# See http://savannah.gnu.org/bugs/?27737 
+eval $(stat -c 'major=%t ; minor=%T' $(realpath /dev/mapper/vda))
+sudo mknod /dev/mvda b $(hx2dc $major) $(hx2dc $minor)
+
+eval $(stat -c 'major=%t ; minor=%T' $(realpath /dev/mapper/vda1))
+sudo mknod /dev/mvda1 b $(hx2dc $major) $(hx2dc $minor) 
+
+eval $(stat -c 'major=%t ; minor=%T' $(realpath /dev/mapper/vda2))
+sudo mknod /dev/mvda2 b $(hx2dc $major) $(hx2dc $minor) 
+
+step "Create filesystems and grab UUIDs"
+
+# mke2fs : Create an ext2/ext3/ext4 filesystem. If called as mkfs.ext3 a journal
+# is created as if the -j option was specified.
+sudo mkfs -t ext3 /dev/mvda1
+yes | sudo mkfs -t $rootfs /dev/mvda2
+
+step "Mount and populate the virtual disk with the system"
+
+if [ $(lsb_release -is) = "Debian" ] && [ $rootfs = "ext4" ] ; then
+  # -E test_fs : 
+  #   Set a flag in the filesystem superblock indicating that it may be mounted 
+  # using experimental kernel code, such as the ext4dev filesystem
+  #  
+  # See http://forums.debian.net/viewtopic.php?t=33401
+  sudo tune2fs -E test_fs /dev/mvda2 ;
+  sudo mount -t ext4dev /dev/mvda2 "$wroot" ;
+else
+  sudo mount /dev/mvda2 "$wroot" ;
+fi
+
+# Grab UUIDs
+eval $(sudo blkid -o udev /dev/mvda1)
+VDA1_ID_FS_UUID=${ID_FS_UUID}
+
+# NOTE: blikd shall be executed after tune2fs becaused the UUID is changed! 
+eval $(sudo blkid -o udev /dev/mvda2)
+VDA2_ID_FS_UUID=${ID_FS_UUID}
+
+inf "Copying archives..."
+sudo find "$croot" -mindepth 1 -maxdepth 1 \! -path "$croot"/boot -exec cp -a {} "$wroot" \;
+
+sudo mkdir -p "$wroot"/boot
+sudo mount /dev/mvda1 "$wroot"/boot
+sudo cp -a "$croot"/boot "$wroot"/
 
 # grab locale
 lcl=$(sudo cat "$wroot"/etc/default/locale)
@@ -353,42 +435,89 @@ proc_tzon
 # grab hostname
 c_hn=$(chr cat /etc/hostname)
 
-step "Setup grub device mapping : /boot/grub/device.map"
+step "Setup grub device mapping, load.cfg and grub.cfg. Install GRUB2"
+
 chr << EOT
+mkdir -p /boot/grub
 cat > /boot/grub/device.map << EOF
-(hd0) /dev/sda 
+(hd0) /dev/mvda
+EOF
+cat > /boot/grub/load.cfg << EOF
+search.fs_uuid ${VDA1_ID_FS_UUID} root 
+set prefix=(\$root)/grub
+EOF
+cat > /boot/grub/grub.cfg << EOF
+insmod part_msdos
+insmod ext2
 EOF
 EOT
-device_map=$(mktemp)
-cat > $device_map << EOT
-(hd0) ${droot}/disk.img     
+if [ -n "${GRUB_MODS_PER_FILESYSTEM[$rootfs]}" ] ; then
+  chr << EOT
+cat >> /boot/grub/grub.cfg << EOF
+insmod ${GRUB_MODS_PER_FILESYSTEM[$rootfs]}
+EOF
 EOT
-sudo grub --device-map=$device_map --batch << EOT
-root (hd0,0)
-setup (hd0)
+fi 
+chr << EOT
+cat >> /boot/grub/grub.cfg << EOF
+set root='(hd0,msdos1)'
+search --no-floppy --fs-uuid --set=root ${VDA1_ID_FS_UUID}
+linux /vmlinuz-$(kver) root=UUID=${VDA2_ID_FS_UUID} ro quiet
+initrd /initrd.img-$(kver)
+boot
+EOF
 EOT
 
-step "Configuring GRUB menu.list: /boot/grub/menu.lst"
-# generate GRUB’s menu.lst file  used by the grub bootloader. Looks in /boot for
-# all files which start with "vmlinuz-". They will be treated as kernels, and 
-# grub menu entries will be created for each.  It will  also create the initial 
-# menu.lst if none exists. Also add initrd lines for ramdisk images found with 
-# the same version as kernels found. e.g. /boot/vmlinuz-2.4.5 and 
-# /boot/initrd-2.4.5 will cause a line of "initrd=/boot/initrd-2.4.5 or similar 
-# to be added for the kernel entry in the menu.lst 
-UUID=$(sudo blkid -s UUID -o value /dev/mapper/$map)
-chr sed -i 's/root=UUID=\([a-z0-9-]*\)\(.*\)/root=UUID='$UUID'\2/g' /boot/grub/menu.lst
-chr update-grub || true
-chr grub-set-default 0
-chr sed -ie 's/([^)]*)/(hd0,0)/' /boot/grub/menu.lst
+sudo grub-install --no-floppy --modules="part_msdos ext2 ${GRUB_MODS_PER_FILESYSTEM[$rootfs]}" --root-directory="$wroot" /dev/mvda
+
+step "Generate fstab"
+
+chr << EOT
+cat > /etc/fstab << EOF
+# /etc/fstab: static file system information.
+#
+# Use 'blkid' to print the universally unique identifier for a
+# device; this may be used with UUID= as a more robust way to name devices
+# that works even if disks are added and removed. See fstab(5).
+#
+# <file system> <mount point>   <type>  <options>       <dump>  <pass>
+proc            /proc           proc    defaults        0       0
+# / was on /dev/vda1 during installation
+UUID=${VDA1_ID_FS_UUID} /boot           ext3    noatime,nodev 0       1
+# /boot was on /dev/vda2 during installation
+UUID=${VDA2_ID_FS_UUID} /           ${rootfs}    defaults 0       2
+EOF
+EOT
+
+step "Unpack pending packages"
+
+# Autoremove packages and clean /var/cache/apt/archives first
+apt_get_autoremove
+apt_get_clean
+
+# Move the packages from the pending location to apt cache
+chr << EOT
+mv /var/lib/blss/var/cache/apt/archives/*.deb /var/cache/apt/archives/ 
+EOT
+
+# Filesystems requiere extra packages for self cheking and maintenance
+if [ -n "${EXTRA_PACKAGES_PER_FILESYSTEM[$rootfs]}" ] ; then 
+  apt_get_download ${EXTRA_PACKAGES_PER_FILESYSTEM[$rootfs]}
+fi
+
+# Unpack all the packages and postpone the configuration phase until first boot
+apt_get_unpack_all
+
+# Clears out the local repository of retrieved package files
+inf "Clears out the local repository of retrieved package files at '/var/cache/apt/archives/' and '/var/cache/apt/archives/partial/'"
+apt_get_clean
+apt_get_autoclean
 
 step "Unmount chroot and detach the loop device"
-# Detach the file or device associated with the specified loop device. 
-# See the above explantaion of loop devices
-sudo umount $wroot
-inf "Unmounted $wroot"
-sudo losetup -d $dev
-inf "Loop device detached: "$dev", mapper: "$map 
+_release_devs
+
+# No longer need to release devices on error
+trap - INT TERM EXIT
 
 step "Generates libvirt domain XML defininion file"
 mem_kb=$(( $mem * 1024))

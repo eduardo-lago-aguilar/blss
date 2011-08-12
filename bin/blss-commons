@@ -24,25 +24,37 @@
 #   Common functionalities for all blss scripts. Include this script on with the 
 # 'source' command.
 
-# Supported 
+## Support 
 declare -A SUPPORTED_DISTROS=(["debian"]="debian" ["ubuntu"]="ubuntu")
-declare -A SUPPORTED_SUITES=(["squezed"]="squezed" ["lenny"]="lenny" ["maverick"]="maverick" ["lucid"]="lucid" )
-declare -A DISTRO_PER_SUITE=(["lenny"]="debian" ["squezed"]="debian" ["lucid"]="ubuntu" ["maverick"]="ubuntu")
-declare -A SUITES_PER_DISTRO=(["debian"]="squezed, lenny" ["ubuntu"]="maverick, lucid")
+declare -A SUPPORTED_SUITES=(["squeeze"]="squeeze" ["lenny"]="lenny" ["natty"]="natty" ["maverick"]="maverick" ["lucid"]="lucid")
+declare -A DISTRO_PER_SUITE=(["lenny"]="debian" ["squeeze"]="debian" ["lucid"]="ubuntu" ["maverick"]="ubuntu"  ["natty"]="ubuntu")
+declare -A SUITES_PER_DISTRO=(["debian"]="squeeze, lenny" ["ubuntu"]="natty, maverick, lucid")
 declare -A SUPPORTED_ARCHS=(["amd64"]="amd64" ["i386"]="i386")
 declare -A SUPPORTED_HYPERVISORS=(["esxi"]="esxi" ["kvm"]="kvm" ["qemu"]="qemu" ["vbox"]="vbox" ["vmserver"]="vmserver" ["vmw6"]="vmw6" ["xen"]="xen")
+SUPPORTED_CPU=$(echo {1..32})
+declare -A DISTRO_LOCALE_GEN_PATH=(["debian"]="/etc/locale.gen" ["ubuntu"]="/var/lib/locales/supported.d/local")
+declare -A SUPPORTED_FILESYSTEMS=(["ext3"]="ext3" ["ext4"]="ext4" ["btrfs"]="btrfs" ["jfs"]="jfs" ["xfs"]="xfs" ["reiserfs"]="reiserfs")
+declare -A GRUB_MODS_PER_FILESYSTEM=(["ext3"]="" ["ext4"]="" ["btrfs"]="" ["jfs"]="jfs" ["xfs"]="xfs" ["reiserfs"]="reiserfs")
+declare -A EXTRA_PACKAGES_PER_FILESYSTEM=(["ext3"]="" ["ext4"]="" ["btrfs"]="btrfs-tools" ["jfs"]="jfsutils" ["xfs"]="xfsprogs" ["reiserfs"]="reiserfsprogs")
 
-# Defaults
+## Kernel image package per distro and architecture
+declare -A DISTRO_LNX_IMG_PKG=(["debian", "amd64"]="linux-image-amd64" ["debian", "i386"]="linux-image-686" ["ubuntu", "amd64"]="linux-image-server" ["ubuntu", "i386"]="linux-image-server")
+
+## Common packages
+declare -A EXTRA_PKGS_DISTROS=(["debian"]="" ["ubuntu"]="ubuntu-keyring")
+declare -A EXTRA_PKGS_SUITES=(["squeeze"]="readahead-fedora" ["lenny"]=" insserv readahead dash" ["natty"]="readahead-fedora" ["maverick"]="readahead-fedora" ["lucid"]="readahead-fedora")
+declare -A READAHEAD_PER_SUITE=(["squeeze"]="readahead-fedora" ["lenny"]="readahead" ["natty"]="readahead-fedora" ["maverick"]="readahead-fedora" ["lucid"]="readahead-fedora")
+declare -A ACPI_PER_DISTRO=(["debian"]="acpi-support-base" ["ubuntu"]="acpi")
+
+## Defaults
 declare -A DEF_INSTALL_MIRROR=(["debian"]="http://ftp.debian.org/debian" ["ubuntu"]="http://archive.ubuntu.com/ubuntu")
-DEF_BOOT_MENU_TIMEOUT=0
 DEF_PACKAGES=""
 DEF_HYPERVISOR=kvm
 DEF_CPU=1
-DEF_MEMORY=64
-DEF_SIZE=512
-
-# Profile mirror files
-DEF_EV=".blss"
+DEF_MEMORY=128
+DEF_SIZE=1024
+DEF_ROOT_FILESYSTEM=ext3
+DEF_EV=".blss" # Profile mirror files
 
 # process the environment settings
 proc_ev() {
@@ -52,6 +64,7 @@ proc_ev() {
   ( [ -d "$ev" ] && [ -r "$ev" ] ) || (err "Environment '$ev' doesn't exists or isn't a readable directory" >&2 && exit 1)
 }
 
+## Log and error messages
 inf() {
   cat << EOT
 >>> INFO: $1 >>>
@@ -79,19 +92,28 @@ err_non_r() {
 _stepnum=0
 step() {
   cat << EOT
->>>
 >>> STEP $_stepnum: $1 >>>
 >>>
 EOT
   _stepnum=$(( $_stepnum + 1 ))
 }
 
-# Trim leading and ending spaces
+## Utils 
+
+# trim leading and ending spaces
 trim_spcs() {
   printf "${1#"${1%%[![:space:]]*}"}"
 }
 
-# regex
+# convert form hexadecimal to decimal
+hx2dc() {
+  bc << EOT
+ibase=16; $(echo $1 | tr '[:lower:]' '[:upper:]')
+EOT
+}
+
+## Regex matching
+
 match_ip() {
   [[ "$1" =~ ^([01]?[[:digit:]][[:digit:]]?|2[0-4][[:digit:]]|25[0-5])\.([01]?[[:digit:]][[:digit:]]?|2[0-4][[:digit:]]|25[0-5])\.([01]?[[:digit:]][[:digit:]]?|2[0-4][[:digit:]]|25[0-5])\.([01]?[[:digit:]][[:digit:]]?|2[0-4][[:digit:]]|25[0-5])$ ]]
 }
@@ -102,7 +124,8 @@ match_positive_num() {
   [[ "$1" =~ ^[1-9]+[[:digit:]]*$ ]]
 }
 
-# Define wroot based commands
+## Chroot based commands
+
 chr() {
   env \
 -u LC_ALL \
@@ -111,8 +134,77 @@ LANGUAGE="$plang_ctry:$pbaselang" \
 TZ="$tzon" \
   sudo chroot $wroot $@
 }
-chr_apt_get() {
-  chr env DEBIAN_FRONTEND=noninteractive apt-get --force-yes -y $@
+# Acquire::Check-Valid-Until=false => See http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=595801
+apt_get_update() {
+  chr << EOT
+apt-get -o 'Acquire::Check-Valid-Until=false' update
+EOT
+}
+apt_get_download() {
+  chr << EOT
+apt-get --yes --force-yes --no-install-recommends --download-only install $@
+EOT
+}
+apt_get_install() {
+  bind_dev_proc
+  bind_dev_pts
+  chr << EOT
+export DEBIAN_FRONTEND=noninteractive 
+apt-get --yes --force-yes --no-install-recommends install $@
+EOT
+  unbind_dev_pts
+  unbind_dev_proc
+}
+apt_get_unpack() {
+  chr << EOT
+export DEBIAN_FRONTEND=noninteractive 
+dpkg --unpack /var/cache/apt/archives/${1}_*.deb
+EOT
+}
+apt_get_unpack_all() {
+  chr << EOT
+export DEBIAN_FRONTEND=noninteractive 
+dpkg --unpack /var/cache/apt/archives/*.deb
+EOT
+}
+apt_get_dist_upgrade() {
+  bind_dev_proc
+  bind_dev_pts
+  chr << EOT
+export DEBIAN_FRONTEND=noninteractive 
+apt-get --yes --force-yes --no-install-recommends dist-upgrade $@
+EOT
+  unbind_dev_pts
+  unbind_dev_proc
+}
+apt_get_purge() {
+  bind_dev_proc
+  bind_dev_pts
+  chr << EOT
+export DEBIAN_FRONTEND=noninteractive 
+apt-get --yes --force-yes purge $@ || true
+EOT
+  unbind_dev_pts
+  unbind_dev_proc
+}
+apt_get_autoremove() {
+  bind_dev_proc
+  bind_dev_pts
+  chr << EOT
+apt-get --yes --force-yes autoremove
+EOT
+  unbind_dev_pts
+  unbind_dev_proc
+}
+apt_get_clean() {
+  chr << EOT
+apt-get --yes --force-yes clean
+EOT
+}
+apt_get_autoclean() {
+  chr << EOT
+apt-get --yes --force-yes autoclean
+EOT
 }
 
 # When use linux-image-server the command depmod fails due to the path
@@ -122,16 +214,6 @@ chr_apt_get() {
 # STDOUT. For now use the this command instead of 'uname -r'
 kver() {
   chr find /boot -maxdepth 1 -type f | grep -m 1 /boot/vmlinuz | sort -r | sed 's/\/boot\/vmlinuz-//'
-}
-
-# Tmp working directory
-tmp_mk() { 
-  _tmp=$(mktemp -d) && inf "Created '$_tmp' directory"
-}
-
-# Tmp cleanup
-tmp_rm() {
-  sudo rm -rf "$_tmp" && inf "Deleted '$_tmp' directory"
 }
 
 # Copies a first boot script to the bootstrapped system a places an script call
@@ -170,6 +252,9 @@ cp_mirror_file() {
     # directory replaces "/" and " " with "_" to form an unique local name 
     local dst=/etc/apt/sources.list.d/$(dirname "$mf" | tr "/ " "__")_$(basename "$mf" | tr " " "_")  
     sudo cp "$mf" "${wroot}""${dst}" && inf "Copied mirror file at: '$dst'" 
+    chr << EOT
+chmod a+r "$dst"
+EOT
   else
     warn "No mirror file found at '$mf'"
   fi
@@ -199,48 +284,6 @@ enable_root_passwd() {
 root:$ROOTPASSWD
 EOT
   inf "Root password prompt was enabled";
-}
-
-# Bind (re-mount) devices on wroot
-bind_devs() {
-  sudo mount --bind /dev "$wroot"/dev && inf "Bounded '/dev' device"
-  sudo mount -t proc proc "$wroot"/proc && inf "Bounded 'proc' device"
-  sudo mount --bind /dev/pts "$wroot"/dev/pts && inf "Bounded '/dev/pts' device"
-}
-
-# Unbind shared devices
-unbind_devs() {
-  sudo umount "$wroot"/dev/pts 2>/dev/null && inf "Unbounded '/dev/pts' device" || true
-  sudo umount "$wroot"/proc 2>/dev/null && inf "Unbounded 'proc' device" || true
-  sudo umount "$wroot"/dev 2>/dev/null && inf "Unbounded '/dev' device" || true
-}
-
-# trap cmd to unbind mounted devices on error
-_unbind_on_err(){
-	local rc=${1:-''}
-	if [[ -z "$rc" ]] ; then
-		rc=$?
-	fi
-  unbind_devs
-	local alt_rc=$?
-	(( alt_rc != 0 )) && rc=$alt_rc
-	trap - INT TERM EXIT
-	exit $rc
-}
-
-# Import a conf file
-imp_conf() {
-  local conf="$1"
-  if [ -e "$conf"  ] ; then 
-    if [ -r "$conf" ] ; then 
-      . "$conf" && inf "Imported conf file '$conf'"
-    else
-      err "Could not import conf file '$conf'" ;
-      exit 1;
-    fi
-  else
-    warn "Non existing conf file '$conf'" ;
-  fi
 }
 
 # setup the hostname
@@ -338,7 +381,7 @@ install_user_pkgs() {
   step "Install user specified packages"
   if [ -n "$pkgs" ] ; then
     inf "Install user specified packages";
-    chr_apt_get install $pkgs
+    apt_get_install $pkgs
   else
     inf "No packages to install"
   fi
@@ -360,5 +403,414 @@ proc_lcl() {
 # process timezone
 proc_tzon() {
   tzon=$(find /usr/share/zoneinfo/ -type f -print | sed -e 's/\/usr\/share\/zoneinfo\///' -e 's/posix\///' -e 's/right\///' | egrep -m 1 ^$tzon$) || ( err_non_sup timezone >&2 && exit 1 )
+}
+
+# Import a conf file
+imp_conf() {
+  local conf="$1"
+  if [ -e "$conf"  ] ; then 
+    if [ -r "$conf" ] ; then 
+      . "$conf" && inf "Imported conf file '$conf'"
+    else
+      err "Could not import conf file '$conf'" ;
+      exit 1;
+    fi
+  fi
+}
+
+## Temporal working directory
+
+tmp_mk() { 
+  _tmp=$(mktemp -d) && inf "Created '$_tmp' directory"
+}
+tmp_rm() {
+  sudo rm -rf "$_tmp" && inf "Deleted '$_tmp' directory"
+}
+
+## Device handling
+
+bind_dev() {
+  sudo mount --bind /dev "$wroot"/dev && inf "Bounded '/dev' device"
+}
+unbind_dev() {
+  sudo umount "$wroot"/dev && inf "Unbounded '/dev' device"
+}
+bind_dev_proc() {
+  sudo mount -t proc proc "$wroot"/proc && inf "Bounded 'proc' device"
+}
+unbind_dev_proc() {
+  sudo umount "$wroot"/proc && inf "Unbounded 'proc' device"
+}
+bind_dev_pts() {
+  sudo mount --bind /dev/pts "$wroot"/dev/pts && inf "Bounded '/dev/pts' device"
+}
+unbind_dev_pts() {
+  sudo umount "$wroot"/dev/pts && inf "Unbounded '/dev/pts' device"
+}
+bind_devs() {
+  bind_dev
+  bind_dev_proc
+  bind_dev_pts
+}
+unbind_devs() {
+  unbind_dev_pts
+  unbind_dev_proc
+  unbind_dev
+}
+# trap cmd to unbind mounted devices on error
+_unbind_on_err(){
+	local rc=${1:-''}
+	if [[ -z "$rc" ]] ; then
+		rc=$?
+	fi
+  unbind_dev_pts || true
+  unbind_dev_proc || true
+  unbind_dev || true
+	local alt_rc=$?
+	(( alt_rc != 0 )) && rc=$alt_rc
+	trap - INT TERM EXIT
+	exit $rc
+}
+
+## Module handling
+
+# See http://wiki.debian.org/KernelModuleBlacklisting
+#
+# NOTE: Some builtin modules like cdrom cannot be removed via modprobe -r, but
+# they can be blacklisted
+#
+# NOTE: The redirection in 'modprobe -r \$mod 2>/dev/null' is due to a WARNING message
+# See http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=517954   
+
+# remove and the modules (no blacklist) 
+mod_rm() {
+  cat << EOF
+for mod in $@ ; do
+  if modinfo \$mod &>/dev/null ; then   
+    rm \$(modinfo -n \$mod) ;
+  fi
+done
+EOF
+}
+
+# remove the modules in a directory (no blacklist)
+mod_rmdir() {
+  cat << EOF
+for mod in $(chr find /lib/modules/$(kver)/kernel/$1 -type f -path *.ko -exec basename {} .ko \; 2>/dev/null | awk -v ORS=" " '{NF=NF; print $0}') ; do 
+  rm \$(modinfo -n \$mod)
+done
+EOF
+}
+
+# remove and blacklist the modules 
+mod_purge() {
+  cat << EOF
+for mod in $@ ; do
+  if modinfo \$mod &>/dev/null ; then   
+    echo "blacklist \$mod" >> /etc/modprobe.d/floppy.conf ;
+    rm \$(modinfo -n \$mod) ;
+  fi
+done
+EOF
+}
+
+# purge base modules not used very often in server environment 
+purge_base_mods() {
+  chr << EOT
+cat >> /etc/modprobe.d/floppy.conf << EOF
+
+# Blacklist modules not used very often in server environment
+EOF
+$(mod_purge \
+  floppy \
+  ide-floppy \
+  ide-tape \
+  cdrom \
+  ide_cd_mod \
+  snd-pcsp \
+  pcspkr \
+  psmouse \
+  usb-storage \
+  usbcore \
+  uhci_hcd \
+  ehci_hcd)
+EOT
+}
+
+rm_extra_mods() {
+  # firewire
+  chr << EOT
+$(mod_rm \
+  ieee1394 \
+  pcilynx \
+  ohci1394 \
+  video1394 \
+  raw1394 \
+  sbp2 \
+  dv1394 \
+  eth1394 \
+  firewire-ohci \
+  firewire-net \
+  firewire-core \
+  firewire-sbp2)
+rm -f /lib/modules/$(kver)/modules.ieee1394map
+EOT
+
+  # atm
+  chr << EOT
+$(mod_rm \
+  zatm \
+  uPD98402 \
+  ambassador \
+  horizon \
+  iphase \
+  suni \
+  fore_200e \
+  eni \
+  idt77252 \
+  solos-pci \
+  atmtcp \
+  firestream \
+  lanai \
+  he)
+EOT
+
+  # auxdisplay
+  chr << EOT
+$(mod_rm \
+  ks0108 \
+  cfag12864b \
+  cfag12864bfb)
+EOT
+
+  # xen
+  chr << EOT
+$(mod_rm \
+  xen-blkfront \
+  xen-netfront \
+  netxen_nic \
+  xen-kbdfront \
+  xen-fbfront \
+  xenfs \
+  evtchn)
+EOT
+
+  # bluetooth
+  chr << EOT
+$(mod_rm \
+  bnep \
+  cmtp \
+  hidp \
+  rfcomm \
+  sco \
+  l2cap \
+  bluetooth \
+  toshiba_bluetooth \
+  bt3c_cs \
+  btmrvl_sdio \
+  hci_vhci \
+  bluecard_cs \
+  bcm203x \
+  btsdio \
+  dtl1_cs \
+  bfusb \
+  bpa10x \
+  btusb \
+  btmrvl \
+  btuart_cs \
+  ath3k \
+  hci_uart)
+EOT
+
+  # WM Family
+  # WM831x DC-DC Setup Converter, http://www.wolfsonmicro.com/documents/uploads/misc/en/WAN0228.pdf
+  # WM8350 Stereo CODEC with Integrated Power Management, http://www.wolfsonmicro.com/products/power_management/WM8350/
+  # WM8400 Stereo CODEC with Integrated Power Management, http://www.wolfsonmicro.com/products/power_management/WM8400/
+  # WM8739) # Stereo ADC, http://www.wolfsonmicro.com/products/adcs/WM8739/
+  # WM8775) # Stereo ADC with 4 input selector, http://www.wolfsonmicro.com/products/adcs/WM8775/
+  # WM8994 Multi-Channel CODEC with 3 digital audio interfaces, http://www.wolfsonmicro.com/products/audio_hubs/WM8994/
+  # WM97xx Touchscreen, etc, http://www.wolfsonmicro.com/media_centre/item/wolfson_unleashes_dual_codec/
+  chr << EOT
+$(mod_rm \
+  leds-wm831x-status \
+  leds-wm8350 \
+  wm831x_backup \
+  wm831x_bl \
+  wm831x-dcdc \
+  wm831x-gpio \
+  wm831x-hwmon \
+  wm831x-isink \
+  wm831x-ldo \
+  wm831x-on \
+  wm831x_power \
+  wm831x_wdt \
+  wm8350-gpiolib \
+  wm8350-hwmon \
+  wm8350_power \
+  wm8350-regulator \
+  wm8350_wdt \
+  wm8400-core \
+  wm8400-regulator \
+  wm8739 \
+  wm8775 \
+  wm8994-gpio \
+  wm8994-regulator \
+  wm97xx-ts)
+EOT
+
+  # leds
+  chr << EOT
+$(mod_rm \
+  leds-alix2 \
+  leds-mc13783 \
+  leds-net5501 \
+  ledtrig-backlight \
+  leds-88pm860x \
+  ledtrig-heartbeat \
+  leds-bd2802 \
+  leds-ss4200 \
+  ledtrig-default-on \
+  leds-lp3944 \
+  leds-dac124s085 \
+  ledtrig-gpio \
+  leds-da903x \
+  led-class \
+  leds-gpio \
+  dell-led \
+  leds-pca9532 \
+  leds-pca955x \
+  leds-lt3593 \
+  ledtrig-timer \
+  leds-regulator \
+  leds-adp5520)
+EOT
+
+  # memstick
+  chr << EOT
+$(mod_rm \
+  memstick \
+  mspro_block \
+  jmb38x_ms \
+  tifm_ms)
+EOT
+
+  # mfd: Multi-Function Device
+  # # Silicon Motion SM501
+  # TODO: Verify these modules
+  chr << EOT
+$(mod_rm \
+  sm501 \
+  pcf50633-adc \
+  htc-pasic3 \
+  rdc321x-southbridge \
+  janz-cmodio \
+  ab3100-otp \
+  ucb1400_core \
+  lpc_sch \
+  mc13783-core \
+  timberdale \
+  pcf50633-gpio \
+  tps65010 \
+  pcf50633 \
+  tps6507x)
+EOT
+
+  # mmc: MultiMediaCard subsystem, http://www.kernel.org/doc/Documentation/mmc/
+  chr << EOT
+$(mod_rm \
+  sdio_uart \
+  mmc_block \
+  via-sdmmc \
+  sdhci-pltfm \
+  mmc_spi \
+  tifm_sd \
+  sdhci \
+  cb710-mmc \
+  sdhci-pci \
+  wbsd \
+  sdricoh_cs)
+EOT
+
+  # regulator: Regulator, http://www.kernel.org/doc/htmldocs/regulator.html
+  chr << EOT
+$(mod_rm \
+  mc13783-regulator \
+  bq24022 \
+  tps65023-regulator \
+  virtual \
+  tps6507x-regulator \
+  max1586 \
+  max8649 \
+  max8660 \
+  max8925-regulator \
+  lp3971 \
+  da903x \
+  ab3100 \
+  pcf50633-regulator \
+  userspace-consumer)
+EOT
+
+  # uwb: Linux Ultra-Wide-Band stack, as well as drivers for Wireless USB Host Controller drivers, http://www.linuxuwb.org/thewiki/Linux-UWB+WUSB+WiNET
+  chr << EOT
+$(mod_rm \
+  wlp \
+  i1480-dfu-usb \
+  i1480u-wlp \
+  i1480-est \
+  whc-rc \
+  hwa-rc \
+  umc \
+  uwb \
+  whci)
+EOT
+}
+
+# remove other various module directories
+rm_various_mod_dirs() {
+  # more drastically remove
+  chr << EOT
+$(mod_rmdir drivers/media)
+$(mod_rmdir drivers/cdrom)
+$(mod_rmdir drivers/input/gameport)
+$(mod_rmdir drivers/input/joystick)
+$(mod_rmdir drivers/input/mouse)
+$(mod_rmdir drivers/input/touchscreen)
+$(mod_rmdir drivers/parport)
+$(mod_rmdir drivers/telephony)
+$(mod_rmdir sound)
+$(mod_rmdir drivers/isdn)
+$(mod_rmdir drivers/usb)
+$(mod_rmdir drivers/net/bluetooth)
+$(mod_rmdir net/bluetooth)
+$(mod_rmdir drivers/net/ieee80211)
+$(mod_rmdir net/ieee80211)
+$(mod_rmdir drivers/net/ipx)
+$(mod_rmdir net/ipx)
+$(mod_rmdir drivers/net/mac80211)
+$(mod_rmdir net/mac80211)
+$(mod_rmdir drivers/net/wireless)
+$(mod_rmdir net/wireless)
+$(mod_rmdir drivers/net/x25)
+$(mod_rmdir net/x25)
+$(mod_rmdir drivers/net/usb)
+$(mod_rmdir drivers/net/can/usb)
+$(mod_rmdir drivers/ieee1394)
+$(mod_rmdir drivers/firewire)
+EOT
+}
+
+# regenerarte modules.dep
+reg_modules_dep() {
+  chr << EOT
+depmod -a
+update-initramfs -u
+EOT
+}
+
+# cleanup empty modules directories
+cleanup_mod_dirs() {
+  chr << EOT
+find /lib/modules/ -type d -empty -delete
+EOT
 }
 

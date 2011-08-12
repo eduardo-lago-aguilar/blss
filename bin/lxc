@@ -279,11 +279,12 @@ fi
 if [ -n "$pkgs" ] ; then
   # Unbind devices on ERROR
   trap _unbind_on_err INT TERM EXIT
-  bind_devs
   install_user_pkgs
-  unbind_devs
   # No longer need to unbind on error
   trap - INT TERM EXIT
 fi
+
+apt_get_autoremove
+apt_get_clean
 
 inf "Clone completed successfully" && exit 0
