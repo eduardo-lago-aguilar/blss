@@ -82,19 +82,21 @@ EXAMPLES
     \$ lxc --proto-root /tmp/ny-server-proto --address 192.168.2.113 --hostname ny-server3 /tmp/ny-clone3
     \$ lxc --proto-root /tmp/ny-server-proto --address 192.168.2.114 --hostname ny-server4 /tmp/ny-clone4
 
-  2- Clone a proto located on /tmp/nl-server-proto serveral times, assign a different ip addresses and hostnames, and install different packages depending on the role:
+  2- Clone a proto located on /tmp/nl-server-proto serveral times, assign a different ip addresses and hostnames, and install different packages depending on the server role (database: couchdb, mysql, web with static content: nginx, general web: apache2):
   
     \$ lxc --proto-root /tmp/nl-server-proto --address 192.168.3.111 --hostname nl-srv1 --packages nginx /tmp/nl-clone1
     \$ lxc --proto-root /tmp/nl-server-proto --address 192.168.3.112 --hostname nl-srv2 --packages couchdb /tmp/nl-clone2
     \$ lxc --proto-root /tmp/nl-server-proto --address 192.168.3.113 --hostname nl-srv3 --packages "apache2 nginx" /tmp/nl-clone3
     \$ lxc --proto-root /tmp/nl-server-proto --address 192.168.3.114 --hostname nl-srv4 --packages "mysql-server couchdb" /tmp/nl-clone4
 
-  3- Clone a proto located on /tmp/nl-server-proto serveral times and install different packages depending on the role, assumes DHCP previosly configured on the proto:
+  3- Clone a proto located on /tmp/hv-server-proto serveral times and install different packages depending on the server role (database: couchdb, mysql, web with static content: nginx, general web: apache2), assumes DHCP previosly configured on the proto:
   
     \$ lxc --proto-root /tmp/hv-server-proto --hostname hv-srv1 --packages nginx /tmp/hv-clone1
     \$ lxc --proto-root /tmp/hv-server-proto --hostname hv-srv2 --packages couchdb /tmp/hv-clone2
     \$ lxc --proto-root /tmp/hv-server-proto --hostname hv-srv3 --packages "apache2 nginx" /tmp/hv-clone3
     \$ lxc --proto-root /tmp/hv-server-proto --hostname hv-srv4 --packages "mysql-server couchdb" /tmp/hv-clone4
+
+  More examples of usage on the wiki: https://bitbucket.org/eduardo_lago_aguilar/blss/wiki/Home
 
 AUTHOR
   Written by Eduardo Lago Aguilar, eduardo.lago.aguilar@gmail.com
