@@ -98,7 +98,7 @@ sudo parted --script /tmp/deproot/disk.img print | awk '{NF=NF; print $0}' | {
   ln_is "Partition Table: msdos" "Verify partition table"
   ln_is_empty  
   ln_is "Number Start End Size Type File system Flags" "Verify table header"
-  ln_is "1 1049kB 64.0MB 63.0MB primary ext3 boot" "Verify /boot partition"
+  ln_is "1 1049kB 64.0MB 62.9MB primary ext3 boot" "Verify /boot partition"
   ln_is "2 64.0MB 1074MB 1010MB primary ${rootfs}" "Verify / partition"
   ln_is_empty  
   no_ln "Verify no more partitions"
@@ -169,3 +169,49 @@ verify_fstab() {
 verify_common_pkgs() {
   tst_pkg_unpacked rsyslog
 }
+
+# Test Case: Tests for libvirt.xml file
+verify_libvirt() {
+  lb_disk_fmt=${lb_disk_fmt:-"raw"}
+  lb_disk_ext=${lb_disk_ext:-"img"}
+  cat /tmp/deproot/libvirt.xml | {
+    ln_is "<domain type='kvm'>" "Verify libvirt domain type kvm"
+    ln_is "<name>debian-squeeze-amd64</name>" "Verify domain name with hostname"
+    ln_is "<memory>131072</memory>" "Verify RAM memory"
+    ln_is "<vcpu>1</vcpu>" "Verify number of CPUs"
+    ln_is "<os>"
+    ln_is "<type>hvm</type>"
+    ln_is "<boot dev='hd' />"
+    ln_is "</os>"
+    ln_is "<features>"
+    ln_is "<acpi />"
+    ln_is "</features>"
+    ln_is "<clock offset='utc' />"
+    ln_is "<on_poweroff>destroy</on_poweroff>"
+    ln_is "<on_reboot>restart</on_reboot>"
+    ln_is "<on_crash>destroy</on_crash>"
+    ln_is "<devices>"
+    ln_is "<emulator>/usr/bin/kvm</emulator>" "Verify emulator correctly configured"
+    ln_is "<interface type='bridge'>" 
+    ln_is "<source bridge='br0' />"
+    ln_is "<!--"
+    ln_is "This improves the network performances by a lot (factor 10, nearly). But"
+    ln_is "this works only with Ubuntu Hardy or Intrepid guests for the moment, which is why"
+    ln_is "it is not by default. Note that this also corrects the issue some are reporting with"
+    ln_is "their network connections going away after a period of time or data transfer"
+    ln_is "-->"
+    ln_is "<model type='virtio' />"
+    ln_is "</interface>"
+    ln_is "<input type='mouse' bus='ps2' />"
+    ln_is "<graphics type='vnc' port='-1' listen='127.0.0.1' />"
+    ln_is "<disk type='file' device='disk'>"
+    ln_is "<driver name='qemu' type='${lb_disk_fmt}' />" "Verify the disk driver type with the the first format"
+    ln_is "<source file='$(realpath /tmp/deproot/disk.${lb_disk_ext})' />" "Verify disk extension with the first format"
+    ln_is "<target dev='hda' />"
+    ln_is "</disk>"
+    ln_is "</devices>"
+    ln_is "</domain>"
+  }
+}
+
+verify_libvirt

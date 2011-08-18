@@ -34,6 +34,8 @@ declare -A SUPPORTED_HYPERVISORS=(["esxi"]="esxi" ["kvm"]="kvm" ["qemu"]="qemu" 
 SUPPORTED_CPU=$(echo {1..32})
 declare -A DISTRO_LOCALE_GEN_PATH=(["debian"]="/etc/locale.gen" ["ubuntu"]="/var/lib/locales/supported.d/local")
 declare -A SUPPORTED_FILESYSTEMS=(["ext3"]="ext3" ["ext4"]="ext4" ["btrfs"]="btrfs" ["jfs"]="jfs" ["xfs"]="xfs" ["reiserfs"]="reiserfs")
+declare -A SUPPORTED_FORMATS=(["raw"]="raw" ["qcow2"]="qcow2")
+declare -A EXTS_PER_FORMAT=(["raw"]="img" ["qcow2"]="qcow2")
 declare -A GRUB_MODS_PER_FILESYSTEM=(["ext3"]="" ["ext4"]="" ["btrfs"]="" ["jfs"]="jfs" ["xfs"]="xfs" ["reiserfs"]="reiserfs")
 declare -A EXTRA_PACKAGES_PER_FILESYSTEM=(["ext3"]="" ["ext4"]="" ["btrfs"]="btrfs-tools" ["jfs"]="jfsutils" ["xfs"]="xfsprogs" ["reiserfs"]="reiserfsprogs")
 
@@ -55,6 +57,7 @@ DEF_MEMORY=128
 DEF_SIZE=1024
 DEF_ROOT_FILESYSTEM=ext3
 DEF_EV=".blss" # Profile mirror files
+DEF_FORMATS="raw"
 
 # process the environment settings
 proc_ev() {
@@ -88,6 +91,9 @@ err_non_sup() {
 }
 err_non_r() {
   err "Command line/conf file option --${1}/${2:-$1} requires an existing-readable file argument. See --help command line option for help"
+}
+err_rep_value() {
+  err "Command line/conf file option --$1/${2:-$1} contains a repeated value in the argument. See --help command line option for help"
 }
 _stepnum=0
 step() {

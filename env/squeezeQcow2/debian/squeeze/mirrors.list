@@ -1,0 +1,3 @@
+deb http://172.23.1.57:3142/mirrors.datys.co.cu/debian-security squeeze/updates  main contrib non-free # Debian Security Repository
+deb http://debianrepo/mirror/squeeze/debian squeeze  contrib non-free # Debian Main Repository Mirror
+

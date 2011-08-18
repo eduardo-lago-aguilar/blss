@@ -82,6 +82,9 @@ DISK OPTIONS
   --root-filesystem ROOT_FILESYSTEM
     The root (/) partition filesystem format. Supported file systems are: ${SUPPORTED_FILESYSTEMS[*]}.
 
+  --formats FORMATS
+    A space separated list of the different formats for the disk. The first format in list is include as <disk /> element in the generated libvirt.xml file. Supported formats are: ${SUPPORTED_FORMATS[*]}. Defaults to ${DEF_FORMATS}
+.
 EXAMPLES
 
   TODO: ...
@@ -111,7 +114,8 @@ hypervisor:,\
 cpu:,\
 memory:,\
 size:,\
-root-filesystem: \
+root-filesystem:,\
+formats: \
 -- "$@")
 if [ $? != 0 ] ; then 
   usage >&2 ; 
@@ -129,7 +133,8 @@ unset \
   c_cpu \
   c_memory \
   c_size \
-  c_root_filesystem
+  c_root_filesystem \
+  c_formats
 
 declare -A c_os 
 while true; do
@@ -158,6 +163,9 @@ while true; do
     --root-filesystem)
       c_root_filesystem=${2:?$(err_non_empty $1)} ;
       shift 2 ;;
+    --formats)
+      c_formats=${2:?$(err_non_empty $1)} ;
+      shift 2 ;;
     --) 
       shift ; 
       break ;;
@@ -185,7 +193,8 @@ unset \
   cpu \
   memory \
   size \
-  root_filesystem
+  root_filesystem \
+  formats
 
 # import general env opts
 imp_conf "$ev"/lxd.conf
@@ -251,6 +260,23 @@ else
   rootfs=$DEF_ROOT_FILESYSTEM ;
 fi
 
+# formats: command line may override the value imported from the 
+# environment, if the option is missing use the default value, finally verify if 
+# the value is supported.    
+fmts=${c_formats:-$formats} 
+if [ -n "$fmts" ] ; then
+  declare -A fmt_incl
+  for fmt in $fmts ; do
+    f=${SUPPORTED_FORMATS[$fmt]} ;
+    f=${f:?$(err_non_sup formats)} ;
+    (( fmt_incl[$f] == 1 )) && err_rep_value formats && usage >&2 && exit 1 || true ; 
+    fmt_incl[$f]=1 ;  
+  done
+  unset fmt_incl
+else
+  fmts=$DEF_FORMATS ;
+fi
+
 mkdir -p "$droot"
 
 inf "Detected environment '$ev'. All options were took from the environment conf files. Command line options override environment options" ;
@@ -260,6 +286,8 @@ inf "hypervisor = '$hyv'"
 inf "cpu = '$vcpu'"
 inf "memory = '$mem'"
 inf "size = '$sz'"
+inf "root_filesystem = '$rootfs'"
+inf "formats = '$fmts'"
 inf "deployment_root = '$droot'"
 
 # define working root on random temporal directory
@@ -519,9 +547,21 @@ _release_devs
 # No longer need to release devices on error
 trap - INT TERM EXIT
 
+step "Processing disk formats"
+if [[ $fmts =~ (\ |^)qcow2(\ |$) ]] ; then
+  sudo qemu-img convert -f raw -O qcow2 "$droot"/disk.img "$droot"/disk.qcow2 && inf "Created QCOW2 disk image: '$droot/disk.qcow2'"
+fi
+if [[ ! $fmts =~ (\ |^)raw(\ |$) ]] ; then
+  sudo rm "$droot"/disk.img
+fi
+
 step "Generates libvirt domain XML defininion file"
-mem_kb=$(( $mem * 1024))
-cat > "$droot"/libvirt.xml << EOT
+libvirt() {
+  # take the first format from the --format/format command line/conf file option   
+  lb_disk_fmt=$(printf $fmts)  
+  lb_disk_ext=${EXTS_PER_FORMAT[$lb_disk_fmt]}
+  mem_kb=$(( $mem * 1024))
+  cat > "$droot"/libvirt.xml << EOT
 <domain type='${hyv}'>
   <name>${c_hn}</name>
   <memory>$mem_kb</memory>
@@ -552,12 +592,16 @@ their network connections going away after a period of time or data transfer
     <input type='mouse' bus='ps2' />
     <graphics type='vnc' port='-1' listen='127.0.0.1' />
     <disk type='file' device='disk'>
-      <source file='$(realpath "$droot"/disk.img)' />
+      <driver name='qemu' type='${lb_disk_fmt}' />
+      <source file='$(realpath "$droot"/disk.${lb_disk_ext})' />
       <target dev='hda' />
     </disk>
   </devices>
 </domain>
 EOT
-inf "Generated libvirt domain XML defininion file"
+  inf "Generated libvirt domain XML defininion file"
+}
+
+libvirt
 
 inf "Deployment completed successfully" && exit 0

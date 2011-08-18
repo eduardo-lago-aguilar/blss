@@ -44,7 +44,7 @@ TST="$BLSS_HOME"/tst
 . "$TST"/tst-commons 
 
 # Total amount of tests to perfom
-plan_tests 32
+plan_tests 37
 
 ### Test Case: Tests for DEPLOYMENT_ROOT command line option
 
@@ -301,4 +301,39 @@ $BIN/lxd $DR --clone-root $CR --root-filesystem "unknown" 2>&1 | {
 rm -r $BLSS_ENV $CR $DR
 unset BLSS_ENV CR DR
 ### End Test Case
+
+
+### Test Case: Tests for formats command line option
+export BLSS_ENV=$(mktemp -d) && CR=$(mktemp -d) && touch $CR/xfile && DR=$(mktemp -d)
+
+$BIN/lxd $DR --clone-root $CR --formats "raw qcow2" --formats "raw qcow2" &>/dev/null
+not_ok $? "Verify if a repeated command line option --formats fails"
+$BIN/lxd $DR --clone-root $CR --formats "raw qcow2" --formats "raw qcow2" 2>&1 | {
+  ln_is ">>> ERROR: --formats command line option was already specified >>>"
+}
+$BIN/lxd $DR --clone-root $CR --formats &>/dev/null
+not_ok $? "Verify if command line option --formats without argument fails"
+$BIN/lxd $DR --clone-root $CR --formats 2>&1 | {
+  ln_like "--formats' requires an argument"
+}
+$BIN/lxd $DR --clone-root $CR --formats "" &>/dev/null
+not_ok $? "Verify if command line option --formats with an empty argument fails"
+$BIN/lxd $DR --clone-root $CR --formats "" 2>&1 | {
+  ln_like ">>> ERROR: Command line option '--formats' requires an non-empty argument >>>"
+}
+$BIN/lxd $DR --clone-root $CR --formats "unknown" &>/dev/null
+not_ok $? "Verify if command line option --formats with an unsupported argument fails"
+$BIN/lxd $DR --clone-root $CR --formats "unknown" 2>&1 | {
+  lst_ln_like ">>> ERROR: Command line/conf file option --formats/formats requires a supported argument. See --help command line option for help >>>"
+}
+$BIN/lxd $DR --clone-root $CR --formats "raw qcow2 raw" &>/dev/null
+not_ok $? "Verify if command line option --formats with a repeated format in the argument fails"
+$BIN/lxd $DR --clone-root $CR --formats "raw qcow2 raw" 2>&1 | {
+  ln_like ">>> ERROR: Command line/conf file option --formats/formats contains a repeated value in the argument. See --help command line option for help >>>"
+}
+
+rm -r $BLSS_ENV $CR $DR
+unset BLSS_ENV CR DR
+### End Test Case
+
 
