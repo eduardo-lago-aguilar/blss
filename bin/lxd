@@ -350,45 +350,7 @@ trap _release_devs_on_err INT TERM EXIT
 
 step "Create a loop device and device mappers for the disk"
 
-# Loop devices on Linux are virtual devices which can be used to mount files 
-# like real devices. For instance, to mount an ISO image you can use a loop 
-# device:
-#
-#   $ mkdir -p $wroot/myiso
-#   $ mount -o loop -t iso9660 ./disk.iso $wroot/myiso
-#
-# The parameter -o loop tells mount to mount this as a loop device. For each 
-# mounted loop device a block device file in /dev is used, named /dev/loopN 
-# where N is a serial number, starting at 0. Normally the first free device is 
-# used but you can also specify manually which one to use with losetup command:
-#
-#   $ losetup /dev/loop3 ./disk.iso
-#   $ mount -t iso9660 /dev/loop3 $wroot/myiso
-#
-# To unmount the ISO file and detatch it from /dev/loop3 run:
-#
-#  $ umount $wroot/myiso
-#  $ losetup -d /dev/loop3
-#
-# For historical reasons you have 8 such loop devices by default, numbered from 
-# 0 to 7. If all devices are occupied, you will get the message “mount: could 
-# not find any free loop device” when trying to allocate more of them. In 
-# current Kernel releases you can of course use more than just 8 loop devices. 
-# To get n loop devices append max_loop=n as parameter to the kernel command 
-# line of your bootloader config.
-#
-# In Debian add this to /etc/modules:
-#
-#  loop max_loop=64
-#
-# In more recently kernels just add this to /etc/modprobe.d/options
-#
-#  options loop max_loop=64
-#
-# Then reboot the system and the following command will give you an idea of max 
-# mountable loop devices: 
-#
-#  $ ls /dev/loop* | wc -l
+# See https://bitbucket.org/eduardo_lago_aguilar/blss/wiki/Loop_devices 
 ld=$(sudo losetup -f --show "$droot"/disk.img)
 
 # creates a device mapper /dev/mapper/vda for the whole disk

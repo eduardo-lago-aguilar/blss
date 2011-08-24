@@ -829,26 +829,15 @@ apt_get_download ${DISTRO_LNX_IMG_PKG[$dtr, $arch]}
 # user packages
 apt_get_download $pkgs
 
-step "Prepare first boot execution scripts"
 
-# First boot script can result useful to automate task that runs only the first
-# time the system starts. The script calls are placed in /etc/rc.local and once
-# executed, a file is placed under /var/lib/blss/ with the same relative name and
-# ended in .done.
-inf "Prepare firstboot script calls in '/etc/rc.local'"
+step "Prepare /etc/rc.local header"
+
 chr << EOT
 cat > /etc/rc.local << EOF
 #!/bin/sh
 
 EOF
 EOT
-# All distros; specific distro & all suites; specific distro & suite; user 
-cp_firstboot_script "$ev"/firstboot.sh /root/${DEF_EV}/firstboot.sh
-cp_firstboot_script "$ev"/$dtr/firstboot.sh /root/${DEF_EV}/$dtr/firstboot.sh
-cp_firstboot_script "$ev"/$dtr/$st/firstboot.sh /root/${DEF_EV}/$dtr/$st/firstboot.sh
-if [ -n "$fbscript" ]; then
-  cp_firstboot_script "$fbscript" /root/${DEF_EV}/user/firstboot.sh
-fi
 
 step "Install debconf and localepurge"
 
@@ -944,7 +933,9 @@ apt_get_purge lsb-release
 step "Install useful packages"
 apt_get_install $useful_pkgs
 
-# Pending actions for first boot
+
+step "Setup pending actions for first boot"
+
 chr << EOT
 cat >> /etc/rc.local << EOF
 DEBIAN_FRONTEND=noninteractive dpkg --configure -a 
@@ -959,6 +950,20 @@ rm /etc/ssh/ssh_host*key*
 dpkg-reconfigure -fnoninteractive -pcritical openssh-server
 EOF
 EOT
+
+step "Prepare first boot execution scripts"
+# First boot script can result useful to automate task that runs only the first
+# time the system starts. The script calls are placed in /etc/rc.local and once
+# executed, a file is placed under /var/lib/blss/ with the same relative name and
+# ended in .done.
+inf "Prepare firstboot script calls in '/etc/rc.local'"
+# All distros; specific distro & all suites; specific distro & suite; user 
+cp_firstboot_script "$ev"/firstboot.sh /root/${DEF_EV}/firstboot.sh
+cp_firstboot_script "$ev"/$dtr/firstboot.sh /root/${DEF_EV}/$dtr/firstboot.sh
+cp_firstboot_script "$ev"/$dtr/$st/firstboot.sh /root/${DEF_EV}/$dtr/$st/firstboot.sh
+if [ -n "$fbscript" ]; then
+  cp_firstboot_script "$fbscript" /root/${DEF_EV}/user/firstboot.sh
+fi
 
 ## Enable dash as the default system shell (/bin/sh)  
 # See http://wiki.debian.org/BootProcessSpeedup

@@ -74,10 +74,6 @@ ptx find /usr/share/zoneinfo/ -type d -empty |  {
 ptx cat /etc/rc.local | {
   ln_is "#!/bin/sh" "Verify the correctness of /etc/rc.local"
   ln_is_empty
-  ln_is "if [ ! -e /var/lib/blss\"/root/.blss/firstboot.sh\".done ]; then"
-  ln_is "\"/root/.blss/firstboot.sh\""
-  ln_is "touch /var/lib/blss\"/root/.blss/firstboot.sh\".done"
-  ln_is "fi"
   ln_is "DEBIAN_FRONTEND=noninteractive dpkg --configure -a" 
   ln_is "chkconfig umountnfs.sh off"
   ln_is "chkconfig mountnfs-bootclean.sh off"
@@ -88,6 +84,10 @@ ptx cat /etc/rc.local | {
   ln_is "/usr/sbin/update-bootsystem-insserv"
   ln_is "rm /etc/ssh/ssh_host*key*"
   ln_is "dpkg-reconfigure -fnoninteractive -pcritical openssh-server"
+  ln_is "if [ ! -e /var/lib/blss\"/root/.blss/firstboot.sh\".done ]; then"
+  ln_is "\"/root/.blss/firstboot.sh\""
+  ln_is "touch /var/lib/blss\"/root/.blss/firstboot.sh\".done"
+  ln_is "fi"
 }
 ptx [ -x /root/.blss/firstboot.sh ] ; ok $? "Verify if firstboot.sh is executable"
 ptx [ -d /var/lib/blss ] ; ok $? "Verify the existence of directory /var/lib/blss" 
