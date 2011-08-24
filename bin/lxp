@@ -47,13 +47,13 @@ usage() {
   local IFS=","
   cat << EOF
 NAME
-  lxp - Bootstraps a Linux-Server System prototype (or simply a proto) with a reduced size and small memory footprint requirements for servicing purposes.
+  lxp - Bootstraps a Linux-Server System prototype with a reduced size and small memory footprint requirements for servicing purposes.
 
 SYNOPSIS
-  lxp [GENERAL OPTIONS...] [NETWORKING OPTIONS...] [ADMIN USER OPTIONS...] [ROOT OPTIONS...] PROTO_ROOT
+  lxp [GENERAL OPTIONS] [NETWORKING OPTIONS] [ADMIN USER OPTIONS] [ROOT OPTIONS] PROTO_ROOT
 
 DESCRIPTION
-  BLSS stands for Bootstrap Linux-Server System, it can be used to Bootstraps a Linux-Server system with a reduced size and small memory footprint requirements for servicing purposes. It uses Debian debootstrap script to automatically install the system from a repository or mirror without any user interaction to a target directory called "proto root". To save disk space, additional cleanup is performed once the system has been installed. When the installation is finished, the bootstrapped system (or proto) root directory (/) can be cloned and later used to create a virtual machine disk.
+  BLSS stands for Bootstrap Linux-Server System, it can be used to Bootstraps a Linux-Server system with a reduced size and small memory footprint requirements for servicing purposes. It uses Debian debootstrap script to automatically install the system from a repository or closer mirror without any user interaction to a target directory called PROTO_ROOT. To save disk space, additional cleanup is performed once the system has been installed. When the installation is finished, the prototype an be cloned and later used to create a virtual appliance.
 
   PROTO_ROOT command line/conf file options is mandatory and shall be an existing empty directory.
 
@@ -66,11 +66,11 @@ NOTES
   # Members of the admin group may gain root privileges plus no password prompt
   %admin ALL=NOPASSWD: ALL
 
-  ii) It's recommended to leave the root password locked under Linux, not allowing login with the root account. To run administrative commands use sudo command, sudo allows an authorized user to execute a command as the superuser.
+  ii) It is recommended to leave the root password locked under Linux, not allowing login with the root account. To run administrative commands use sudo command, sudo allows an authorized user to execute a command as the superuser.
 
-  iii) Once installed the locales and timezone, the remaining locales and timezones are deleted from the system to save space. So you cannot change locales and timezone later.
+  iii) Once installed the locales and timezone, the remaining locales and timezones are deleted from the system to save space. 
 
-  iv) Several modules are removed from the bootstrapped system once get installed. The list includes among others: floppy, cd-rom, snd-pcsp (sound), pcspkr (beep), mouse, usb, wireless, gameport, joystick, touchscreen, parport, telephony, isdn, bluetooth, ieee80211, ipx, mac80211, wireless, x25, firewire, etc...
+  iv) By default, several modules are removed from the bootstrapped system once get installed. The list includes among others: floppy, cd-rom, snd-pcsp (sound), pcspkr (beep), mouse, usb, wireless, gameport, joystick, touchscreen, parport, telephony, isdn, bluetooth, ieee80211, ipx, mac80211, wireless, x25, firewire, etc...
 
 GENERAL OPTIONS
   --help
@@ -86,18 +86,18 @@ GENERAL OPTIONS
     The mirror base URL to be used on bootstrapping. For Debian defaults to ${DEF_INSTALL_MIRROR["debian"]}, for Ubuntu defaults to ${DEF_INSTALL_MIRROR["ubuntu"]}.
 
   --mirror-file MIRROR_FILE
-    An extra mirrors file located at MIRROR_FILE to include in '/etc/apt/sources.list.d/'. The script also check the existence of additional mirrors files at '\~/${DEF_EV}/mirrors.list', '\~/${DEF_EV}/DISTRO/mirrors.list' and '\~/${DEF_EV}/DISTRO/SUITE/mirrors.list' for inclusion in '/etc/apt/sources.list.d/'. Examples of such files:
+    An extra mirrors file located at MIRROR_FILE to include in '/etc/apt/sources.list.d/'. The script also check the existence of additional mirrors files at '~/${DEF_EV}/mirrors.list', '~/${DEF_EV}/DISTRO/mirrors.list' and '~/${DEF_EV}/DISTRO/SUITE/mirrors.list' for inclusion in '/etc/apt/sources.list.d/'. Examples of such files:
 
     Debian, security and volatile repository mirror:
 
-    # \~/${DEF_EV}/debian/lenny/mirrors.list
+    # ~/${DEF_EV}/debian/lenny/mirrors.list
     deb http://repository/mirror/debian/debian lenny main contrib non-free
     deb http://repository/mirror/debian/debian-security lenny/updates main contrib non-free
     deb http://repository/mirror/debian/debian-volatile lenny/volatile main contrib non-free
 
     A home localized Ubuntu repository mirror:
 
-    # \~/${DEF_EV}/ubuntu/mirrors.list
+    # ~/${DEF_EV}/ubuntu/mirrors.list
     deb http://repository.home.dev/ubuntu maverick main restricted universe multiverse
 
   --locale LOCALE
@@ -105,11 +105,11 @@ GENERAL OPTIONS
 
   --timezone TIMEZONE
     Supported time zone. Defaults to host timezone located at '/etc/timezone'. For any Linux distribution '/etc/localtime' is a symlink to the correct timezone file or is the effective timezone file. The file '/etc/timezone' is used by 'dpkg-reconfigure tzdata' command to generate (or symlink) the effective timezone file at '/etc/localtime'. Timezone files are located at '/usr/share/zoneinfo/'. Examples TIMEZONE values are: 'America/New_York', 'Europe/Amsterdam' and 'America/Havana'. See 'tzselect' and 'dpkg-reconfigure tzdata' commands.
-ubuntu-keyring
-  --first-boot-script FIRST_BOOT_SCRIPT
-    An extra script file to be executed on first boot. The path is in the host filesystem. This command also check the existence of additional first boot script files at '\~/${DEF_EV}/firstboot.sh', '\~/${DEF_EV}/DISTRO/firstboot.sh', and '\~/${DEF_EV}/DISTRO/SUITE/firstboot.sh' for including on first boot execution process. Examples of such files are:
 
-    # \~/${DEF_EV}/firstboot.sh
+  --first-boot-script FIRST_BOOT_SCRIPT
+    An extra script file to be executed on first boot. The path is in the host filesystem. This command also check the existence of additional first boot script files at '~/${DEF_EV}/firstboot.sh', '~/${DEF_EV}/DISTRO/firstboot.sh', and '~/${DEF_EV}/DISTRO/SUITE/firstboot.sh' for including on first boot execution process. Examples of such files are:
+
+    # ~/${DEF_EV}/firstboot.sh
     apt-get update
     apt-get --force-yes -y install mc
 
@@ -157,7 +157,7 @@ NETWORKING OPTIONS
 
   NC:network configured, AA:configured for automatic address assigning via DHCP, DS:DNS server configured for queriying domain names, SS:configured for suffixing names in domain name queries, BC: broadcasting configured, GW: gateway configured
 
-  y:yes, n:no, x:doesn't matter, ?:depends on the settings of the DHCP server available in the network
+  y:yes, n:no, x:does not matter, ?:depends on the settings of the DHCP server available in the network
   
   --hostname HOSTNAME
     The proto hostname. Defaults to DISTRO-SUITE-ARCHITECTURE. The hostname can be changed later.     
@@ -231,9 +231,9 @@ ROOT OPTIONS
  remote_root=yes   |   |   |   |
 --------------------------------
 
-  RL:remote login, DL:direct login, PP:password prompt, x:doesn't matter, -: an special value to indicate no password prompt
+  RL:remote login, DL:direct login, PP:password prompt, x:does not matter, -: an special value to indicate no password prompt
 
-    Note that remote login wihtout password prompt is not permitted. It's recommended to use the root default options (both remote and direct login disabled) and setup another user that will have root capabilities to perform admin tasks. See ADMIN USER OPTIONS.
+    Note that remote login wihtout password prompt is not permitted. It is recommended to use the root default options (both remote and direct login disabled) and setup another user that will have root capabilities to perform admin tasks. See ADMIN USER OPTIONS.
 
   --root-password [ROOT_PASSWORD]
     Setup the root password. When a valid value is specified then the password is prompted on login and the --remote-root option can be should be equal to 'yes' or 'no'. When the special value '-' is specified then the password is never prompted on login, therefore the --remote-root option shall be equal to 'no'. 
@@ -257,7 +257,7 @@ EXAMPLES
 
 
 AUTHOR
-  Written by Eduardo Lago Aguilar, eduardo.lago.aguilar@gmail.com
+  Written by Eduardo Lago Aguilar, eduardo.lago.aguilar@gmail.com. Project hosted at https://bitbucket.org/eduardo_lago_aguilar/blss
 
 EOF
 }
