@@ -2,10 +2,10 @@
 #
 # WELCOME TO BLSS
 #
-# BLSS stands for Bootstrapped Linux-Server Systems, it's a collection of command line tools to
-# quickly assemble, without user interaction, multiple small and optimized Linux-Server Systems
+# BLSS stands for Bootstrapped Linux Server Systems, it's a collection of command line tools to
+# quickly assemble, without user interaction, multiple small and optimized Linux Server Systems
 # with the purpose of an easy deployment of distributed systems, like Apache Hadoop Cloudera
-# Distribution, where every Linux-Server may have a different role in the computational cluster or
+# Distribution, where every Linux Server may have a different role in the computational cluster or
 # grid.
 # With BLSS you can finally verify -with just one Enter key pressing- if your package-based
 # system really works when you distribute it, and pay any technical debt you posses with
@@ -17,11 +17,11 @@
 # deployment with lxd.
 #
 # AUTHOR
-#   Written by Eduardo Lago Aguilar, eduardo.lago.aguilar@gmail.com
+#   Written by Eduardo Lago Aguilar, eduardo.lago.aguilar@gmail.com. Project hosted at https://bitbucket.org/eduardo_lago_aguilar/blss
 
 # lxp:
 #
-#   proto creation. See run this script with --help for details.
+#   Prototype creation. See run this script with --help for details.
 
 # Resolve script location, $0 may be a link
 script="$0"
@@ -47,13 +47,13 @@ usage() {
   local IFS=","
   cat << EOF
 NAME
-  lxp - Bootstraps a Linux-Server System prototype with a reduced size and small memory footprint requirements for servicing purposes.
+  lxp - Bootstraps a Linux Server System prototype with a reduced size and small memory footprint requirements for servicing purposes.
 
 SYNOPSIS
   lxp [GENERAL OPTIONS] [NETWORKING OPTIONS] [ADMIN USER OPTIONS] [ROOT OPTIONS] PROTO_ROOT
 
 DESCRIPTION
-  BLSS stands for Bootstrap Linux-Server System, it can be used to Bootstraps a Linux-Server system with a reduced size and small memory footprint requirements for servicing purposes. It uses Debian debootstrap script to automatically install the system from a repository or closer mirror without any user interaction to a target directory called PROTO_ROOT. To save disk space, additional cleanup is performed once the system has been installed. When the installation is finished, the prototype an be cloned and later used to create a virtual appliance.
+  BLSS stands for Bootstrap Linux Server System, it can be used to Bootstraps a Linux Server system with a reduced size and small memory footprint requirements for servicing purposes. It uses Debian debootstrap script to automatically install the system from a repository or closer mirror without any user interaction to a target directory called PROTO_ROOT. To save disk space, additional cleanup is performed once the system has been installed. When the installation is finished, the prototype an be cloned and later used to create a virtual appliance.
 
   PROTO_ROOT command line/conf file options is mandatory and shall be an existing empty directory.
 
@@ -255,6 +255,7 @@ EXAMPLES
  
     \$ lxp --suite lenny --dhcp yes --admin-user adm --admin-full-name Administrator --admin-password adm  /tmp/debian-server-proto
 
+  More examples of usage on the wiki: https://bitbucket.org/eduardo_lago_aguilar/blss/wiki/Home
 
 AUTHOR
   Written by Eduardo Lago Aguilar, eduardo.lago.aguilar@gmail.com. Project hosted at https://bitbucket.org/eduardo_lago_aguilar/blss

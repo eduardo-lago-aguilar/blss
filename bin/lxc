@@ -2,10 +2,10 @@
 #
 # WELCOME TO BLSS
 #
-# BLSS stands for Bootstrapped Linux-Server Systems, it's a collection of command line tools to
-# quickly assemble, without user interaction, multiple small and optimized Linux-Server Systems
+# BLSS stands for Bootstrapped Linux Server Systems, it's a collection of command line tools to
+# quickly assemble, without user interaction, multiple small and optimized Linux Server Systems
 # with the purpose of an easy deployment of distributed systems, like Apache Hadoop Cloudera
-# Distribution, where every Linux-Server may have a different role in the computational cluster or
+# Distribution, where every Linux Server may have a different role in the computational cluster or
 # grid.
 # With BLSS you can finally verify -with just one Enter key pressing- if your package-based
 # system really works when you distribute it, and pay any technical debt you posses with
@@ -17,11 +17,11 @@
 # deployment with lxd.
 #
 # AUTHOR
-#   Written by Eduardo Lago Aguilar, eduardo.lago.aguilar@gmail.com
+#   Written by Eduardo Lago Aguilar, eduardo.lago.aguilar@gmail.com. Project hosted at https://bitbucket.org/eduardo_lago_aguilar/blss
 
 # lxc: 
 #
-#   clone creation. See run this script with --help for details.
+#   Clone creation. See run this script with --help for details.
 
 # Resolve script location, $0 may be a link
 script="$0"
@@ -47,10 +47,10 @@ usage() {
   local IFS=","
   cat << EOF
 NAME
-  lxc - Clones a Linux-Server System prototype.
+  lxc - Clones a Linux Server System prototype.
 
 SYNOPSIS
-  lxp [GENERAL OPTIONS...] [NETWORKING OPTIONS...] CLONE_ROOT
+  lxp [GENERAL OPTIONS] [NETWORKING OPTIONS] CLONE_ROOT
 
 DESCRIPTION
   Clones a proto from PROTO_ROOT to CLONE_ROOT and setup specific options for the clone. 
@@ -71,7 +71,7 @@ NETWORKING OPTIONS
     The proto hostname. Defaults to the hostname used in the proto.     
 
   --address IPADDRESS
-    Static IP address. This option shall be specified among --network and --netmask options, this option excludes --dhcp option. But can be optinally used among the --search and/or --nameservers options. This option shall be specified if DHCP isn't configured on the proto.     
+    Static IP address. This option shall be specified among --network and --netmask options, this option excludes --dhcp option. But can be optinally used among the --search and/or --nameservers options. This option shall be specified if DHCP is not configured on the proto.     
 
 EXAMPLES
 
@@ -99,7 +99,7 @@ EXAMPLES
   More examples of usage on the wiki: https://bitbucket.org/eduardo_lago_aguilar/blss/wiki/Home
 
 AUTHOR
-  Written by Eduardo Lago Aguilar, eduardo.lago.aguilar@gmail.com
+  Written by Eduardo Lago Aguilar, eduardo.lago.aguilar@gmail.com. Project hosted at https://bitbucket.org/eduardo_lago_aguilar/blss
 
 EOF
 }
@@ -231,7 +231,7 @@ p_dyn=${p_dyn:-no}
 if [ "$p_dyn" == "yes" ]; then
  [ -n "$ip" ] && err "--address/address command line/conf file options cannot be specified for cloning a proto with DHCP configured" >&2 && exit 1 || true
 else
-  # --address is mandatory if DHCP isn't configured on proto
+  # --address is mandatory if DHCP is not configured on proto
   c_address=${c_address:?$(err_non_empty --address)}
 fi
 
