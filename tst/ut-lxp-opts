@@ -44,7 +44,7 @@ TST="$BLSS_HOME"/tst
 . "$TST"/tst-commons 
 
 # Total amount of tests to perfom
-plan_tests 118
+plan_tests 122
 
 # Test Case: Test for environment
 
@@ -453,6 +453,30 @@ $BIN/lxp --ntpservers "" 2>&1 | {
  ln_like ">>> ERROR: Command line option '--ntpservers' requires an non-empty argument >>>"  
 }
 
+# --ip6
+$BIN/lxp --ip6 yes --ip6 no &>/dev/null
+not_ok $? "Verify if a repeated command line option --ip6 fails"
+$BIN/lxp --ip6 yes --ip6 no 2>&1 | {
+  ln_is ">>> ERROR: --ip6 command line option was already specified >>>"
+}
+
+$BIN/lxp --ip6 &>/dev/null   
+not_ok $? "Verify if command line option '--ip6' without argument fails"
+$BIN/lxp --ip6 2>&1 | {
+ ln_like "--ip6' requires an argument"  
+}
+
+$BIN/lxp --ip6 "" &>/dev/null   
+not_ok $? "Verify if command line option '--ip6' with an empty argument fails"
+$BIN/lxp --ip6 "" 2>&1 | {
+ ln_like ">>> ERROR: Command line option '--ip6' requires an non-empty argument >>>"  
+}
+
+$BIN/lxp --ip6 "maybe" &>/dev/null   
+not_ok $? "Verify if command line option --ip6 with an invalid argument fails"
+$BIN/lxp --ip6 "maybe" 2>&1 | {
+ lst_ln_is ">>> ERROR: Command line/conf file option --ip6/ip6 requires a supported argument. See --help command line option for help >>>"
+}
 
 # --various networking cmd ln opts combinations
 $BIN/lxp --dhcp yes --address 192.168.1.1 &>/dev/null

@@ -67,6 +67,9 @@ ok $? "Verify is proto size $DU <= ${expected_sz}MB"
 . "$TST"/it-proto-debian
 . "$TST"/it-proto-lenny
 
+verify_adm_user_config
+verify_static_networking\nverify_ip6_disabled
+
 # Test Case: Tests for Kernel
 ptx dpkg --get-selections linux-image* | awk '{print $1" "$2}' | {
   ln_is "linux-image-"$MJ.$MN.$RV-$RS"-686 install" "Verify if current Kernel is the correct Linux kernel image"

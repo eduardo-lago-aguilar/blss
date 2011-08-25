@@ -58,6 +58,8 @@ DEF_SIZE=1024
 DEF_ROOT_FILESYSTEM=ext3
 DEF_EV=".blss" # Profile mirror files
 DEF_FORMATS="raw"
+DEF_DHCP=yes
+DEF_IP6=no
 
 # process the environment settings
 proc_ev() {
@@ -128,6 +130,9 @@ match_ip_lst() {
 }
 match_positive_num() {
   [[ "$1" =~ ^[1-9]+[[:digit:]]*$ ]]
+}
+match_yesno() {
+  [[ "$1" =~ ^(yes|no)$ ]]
 }
 
 ## Chroot based commands
@@ -295,19 +300,20 @@ EOT
 # setup the hostname
 set_hostname() {
   inf "Setting hostname at '/etc/hosts' and '/etc/hostname'"
+  [ $ip6 == "no" ] && comment="## " || unset comment
   chr << EOT
 cat > /etc/hosts << EOF
 127.0.0.1 localhost.localdomain localhost
 127.0.1.1 ${hn}${srch:+" "$hn.$srch}
 
 # The following lines are desirable for IPv6 capable hosts
-## ::1 $hn localhost6.localdomain6 localhost6
-## ::1 localhost ip6-localhost ip6-loopback
-## fe00::0 ip6-localnet
-## ff00::0 ip6-mcastprefix
-## ff02::1 ip6-allnodes
-## ff02::2 ip6-allrouters
-## ff02::3 ip6-allhosts
+${comment}::1 $hn${srch:+" "$hn.$srch} localhost6.localdomain6 localhost6
+${comment}::1 localhost ip6-localhost ip6-loopback
+${comment}fe00::0 ip6-localnet
+${comment}ff00::0 ip6-mcastprefix
+${comment}ff02::1 ip6-allnodes
+${comment}ff02::2 ip6-allrouters
+${comment}ff02::3 ip6-allhosts
 EOF
 cat > /etc/hostname << EOF
 $hn

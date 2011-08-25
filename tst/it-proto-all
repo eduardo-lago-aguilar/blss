@@ -195,18 +195,6 @@ ptx find /boot -type f -name initrd.img-* | {
   ln_is "/boot/initrd.img-"$(kver) "Verify if only the current initrd.img (ram disk) file is on /boot"
   no_ln "Verify if no other initrd.img file is on /boot"
 }
-# Test Case: Tests for IPv6 disabling
-# TODO: do a test case (when a clone wake up) to verify, with lsmod, if IP6 is not active
-ptx grep "# Disable ipv6" /etc/modprobe.d/aliases | {
-  ln_is "alias net-pf-10 off # Disable ipv6" "Verify if IPv6 is disabled at /etc/modprobe.d/aliases"
-  ln_is "alias ipv6 off # Disable ipv6"
-}
-ptx find /lib/modules/$(kver)/kernel/net -type d -name ipv6 | {
-  no_ln "Verify if the directory /lib/modules/<kernel-release>/net/ipv6 doesn't exist"
-}
-ptx find /lib -type f -path *xtables/*ip6* | {
-  no_ln "Verify if no ip6 related files under /lib/xtables/"
-}
 
 # Test Case: Tests for various Kernel modules disabling
 # TODO: do a test case (when a clone wake up) to verify, with lsmod, if modules aren't active
@@ -468,40 +456,12 @@ ptx debconf-get-selections | grep insserv/enable | awk '{NF=NF; print $0}' | {
   ln_is "insserv insserv/enable boolean true" "Verify if dependency-based boot (insserv) order is activated"
 }
 
-# Test Case: Test for networking config
-ptx cat /etc/network/interfaces | {
-  ln_is "# The loopback network interface" "Verify if the loopback network interface is correct at /etc/network/interfaces"
-  ln_is "auto lo" "Verify if lo automatically wakes up"
-  ln_is "iface lo inet loopback" "Verify if lo defined as loopback"
-  ln_is_empty
-  ln_is "# The primary network interface" "Verify if the primary network interface eth0 is correct at /etc/network/interfaces"
-  ln_is "auto eth0" "Verify if eth0 automatically wakes up"
-  ln_is "iface eth0 inet static" "Verify if eth0 statically defined"
-  ln_is "address 172.23.0.111" "Verify if correct address"
-  ln_is "network 172.23.0.0" "Verify if correct network"
-  ln_is "netmask 255.255.0.0" "Verify if correct netmask"
-  ln_is "broadcast 172.23.255.255" "Verify if correct broadcast"
-  ln_is "gateway 172.23.0.1" "Verify if correct gateway"
-  ln_is "dns-nameservers 172.23.1.57" "Verify if dns-nameservers resolvconf option is correct at /etc/network/interfaces"
-  ln_is "dns-search home.dev" "Verify if dns-search resolvconf option is correct at /etc/network/interfaces"
-  no_ln
-}
-
-# Test Case: Test for admin user account
+# Test Case: Test for admin group
 ptx grep ^admin:x:103:$ /etc/group | {
   ln_is "admin:x:103:" "Verify if the group 'admin' exists"
 }
 ptx grep '%admin ALL=(ALL) ALL' /etc/sudoers | {
   ln_is "%admin ALL=(ALL) ALL" "Verify if 'admin' group is correctly configured in '/etc/sudoers'"
-} 
-ptx id -u adm | {
-  ln_is "1000" "Verify if the account 'adm' exists"
-}
-ptx id -g adm | {
-  ln_is "103" "Verify if 'admin' is the effective group id for the user 'adm'"
-}
-ptx ls -ld /home/adm | awk '{print $3" "$4}' | {
-  ln_is "adm admin" "Verify if /home/adm has the owner and group properly configured"
 }
 ptx ls -l $(ptx which su) $(ptx which su) | awk '{print $1}' | {
   ln_is "---s--x--x" "Verify if permisions for 'su' are correct"
@@ -521,3 +481,51 @@ ptx grep "root:x:0:0:root:/root:/bin/false" /etc/passwd | {
   ln_is "root:x:0:0:root:/root:/bin/false" "Verify if root login is disabled"
 }
 
+# Test Case: Test for adm user account
+verify_adm_user_config() {
+  ptx id -u adm | {
+    ln_is "1000" "Verify if the account 'adm' exists"
+  }
+  ptx id -g adm | {
+    ln_is "103" "Verify if 'admin' is the effective group id for the user 'adm'"
+  }
+  ptx ls -ld /home/adm | awk '{print $3" "$4}' | {
+    ln_is "adm admin" "Verify if /home/adm has the owner and group properly configured"
+  }
+} 
+
+# Test Case: Test for networking config
+verify_static_networking() {
+  ptx cat /etc/network/interfaces | {
+    ln_is "# The loopback network interface" "Verify if the loopback network interface is correct at /etc/network/interfaces"
+    ln_is "auto lo" "Verify if lo automatically wakes up"
+    ln_is "iface lo inet loopback" "Verify if lo defined as loopback"
+    ln_is_empty
+    ln_is "# The primary network interface" "Verify if the primary network interface eth0 is correct at /etc/network/interfaces"
+    ln_is "auto eth0" "Verify if eth0 automatically wakes up"
+    ln_is "iface eth0 inet static" "Verify if eth0 statically defined"
+    ln_is "address 172.23.0.111" "Verify if correct address"
+    ln_is "network 172.23.0.0" "Verify if correct network"
+    ln_is "netmask 255.255.0.0" "Verify if correct netmask"
+    ln_is "broadcast 172.23.255.255" "Verify if correct broadcast"
+    ln_is "gateway 172.23.0.1" "Verify if correct gateway"
+    ln_is "dns-nameservers 172.23.1.57" "Verify if dns-nameservers resolvconf option is correct at /etc/network/interfaces"
+    ln_is "dns-search home.dev" "Verify if dns-search resolvconf option is correct at /etc/network/interfaces"
+    no_ln
+  }
+}
+
+# Test Case: Tests for IPv6 disabling
+# TODO: do a test case (when a clone wake up) to verify, with lsmod, if IP6 is not active
+verify_ip6_disabled() {
+  ptx grep "# Disable ipv6" /etc/modprobe.d/aliases | {
+    ln_is "alias net-pf-10 off # Disable ipv6" "Verify if IPv6 is disabled at /etc/modprobe.d/aliases"
+    ln_is "alias ipv6 off # Disable ipv6"
+  }
+  ptx find /lib/modules/$(kver)/kernel/net -type d -name ipv6 | {
+    no_ln "Verify if the directory /lib/modules/<kernel-release>/net/ipv6 doesn't exist"
+  }
+  ptx find /lib -type f -path *xtables/*ip6* | {
+    no_ln "Verify if no ip6 related files under /lib/xtables/"
+  }
+}

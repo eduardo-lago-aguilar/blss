@@ -19,9 +19,9 @@
 # AUTHOR
 #   Written by Eduardo Lago Aguilar, eduardo.lago.aguilar@gmail.com
 
-# protoB:
 #
-#   Proto creation using the settings from environment $BLSS_HOME/env/B
+#   Creates the proto natty and the run all the integration tests for this proto
+#
 
 # Resolve script location, $0 may be a link
 script="$0"
@@ -35,11 +35,11 @@ while [ -h "$script" ] ; do
     script=$(dirname "$script")/"$lnk"
   fi
 done
-BLSS_HOME=$(dirname "$script")/..
+BLSS_HOME=$(dirname "$script")/../..
 BIN="$BLSS_HOME"/bin
 ENV="$BLSS_HOME"/env
 EXT="$BLSS_HOME"/ext
 TST="$BLSS_HOME"/tst
 
-sudo rm -rf /tmp/protoitroot && sudo mkdir /tmp/protoitroot && \
-  BLSS_ENV="`realpath "$ENV"/B`" $BIN/lxp /tmp/protoitroot
+$TST/nattyIP6/proto && $TST/nattyIP6/it-proto
+

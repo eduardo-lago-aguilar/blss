@@ -65,6 +65,9 @@ ok $? "Verify is proto size $DU <= ${expected_sz}MB"
 
 . "$TST"/it-proto-all
 
+verify_adm_user_config
+verify_static_networking\nverify_ip6_disabled
+
 # Test Case: Test for hostname config
 ptx cat /etc/hostname | {
   ln_is "my-ubuntu-proto" "Verify if '/etc/hostname' is correct"
@@ -84,22 +87,6 @@ ptx cat /etc/hosts | {
   ln_is "## ff02::3 ip6-allhosts"
   no_ln	
 }
-
-# Test Case: Tests for GRUB
-#ptx grep -v "^$" /boot/grub/menu.lst | awk '{NF=NF; print $0}' | tail -n 9 | head -n 8 | {
-#  ln_is   "title Debian GNU/Linux, kernel "$(kver)"" "Verify /boot/grub/menu.lst default option" 
-#  ln_is   "root (hd0,0)"
-#  ln_like "kernel\ /boot/vmlinuz-"$(kver)"\ root=UUID=........-....-....-....-............\ ro"
-#  ln_is   "initrd /boot/initrd.img-"$(kver)""
-
-#  ln_is   "title Debian GNU/Linux, kernel "$(kver)" (hd0,0)" "Verify /boot/grub/menu.lst recovery option"
-#  ln_is   "root (hd0,0)"
-#  ln_like "kernel\ /boot/vmlinuz-"$(kver)"\ root=UUID=........-....-....-....-............\ ro\ single"
-#  ln_is   "initrd /boot/initrd.img-"$(kver)""
-#}
-#ptx grep "^timeout 0$" /boot/grub/menu.lst | {
-#  one_ln "Verify timeout 0 at /boot/grub/menu.lst"
-#}
 
 # Test Case: Tests for Kernel
 ptx dpkg --get-selections linux-image\* | awk '{print $1" "$2}' | {

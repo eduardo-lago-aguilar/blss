@@ -19,19 +19,19 @@
 # AUTHOR
 #   Written by Eduardo Lago Aguilar, eduardo.lago.aguilar@gmail.com
 
-# Integration Test Suite for clone A.  
+# Integration Test Suite for proto natty.  
 #
-# Multiple calls to lxc can be very time consuming. Therefor several integration 
-# tests are executed for a single clone. An integration test, for any clone, 
-# assumes that the clone is located at '/tmp/cloneitroot', so every verification is 
-# performed on the filesystem hierarchy directly under '/tmp/cloneitroot'.
+# Multiple calls to lxp can be very time consuming. Therefor several integration 
+# tests are executed for a single proto. An integration test, for any proto, 
+# assumes that the proto is located at '/tmp/protoitroot', so every verification is 
+# performed on the filesystem hierarchy directly under '/tmp/protoitroot'.
 # 
-# Clone settings for Integration Tests are enviroments located under the 'env' 
-# directory. The enviroment corresponding to the "cloneA", for example, should 
+# Proto settings for Integration Tests are enviroments located under the 'env' 
+# directory. The enviroment corresponding to the "protoA", for example, should 
 # have the path $BLSS_HOME/env/A.
 # 
-# In the scope of Integration Tests, clones are named as 'clone' + one alphabet 
-# letters from A..Z in uppercase. 
+# In the scope of Integration Tests, protos are named as 'proto' + one alphabet 
+# letters from A..Z in uppercase or the name like natty. 
 
 # Resolve script location, $0 may be a link
 script="$0"
@@ -45,7 +45,7 @@ while [ -h "$script" ] ; do
     script=$(dirname "$script")/"$lnk"
   fi
 done
-BLSS_HOME=$(dirname "$script")/..
+BLSS_HOME=$(dirname "$script")/../..
 BIN="$BLSS_HOME"/bin
 ENV="$BLSS_HOME"/env
 EXT="$BLSS_HOME"/ext
@@ -54,25 +54,22 @@ TST="$BLSS_HOME"/tst
 . "$TST"/tst-commons
 
 # Total amount of tests to perfom
-plan_tests 4
+plan_tests 6
 
-. "$TST"/it-clone-all
+. "$TST"/it-proto-all
 
-# Test Case: Test for hostname and networking config
-ctx cat /etc/hostname | {
-  ln_is "my-ubuntu-clone" "Verify if '/etc/hostname' is correct"
-}
-ctx cat /etc/hosts | {
+# Test Case: Test for /etc/hosts IP6 enabling
+ptx cat /etc/hosts | {
   ln_is "127.0.0.1 localhost.localdomain localhost" "Verify if localhost is 127.0.0.1 at /etc/hosts"
-  ln_is "127.0.1.1 my-ubuntu-clone my-ubuntu-clone.home.dev" "Verify if my-ubuntu-clone and my-ubuntu-clone.home.dev is 127.0.1.1 at /etc/hosts"
+  ln_is "127.0.1.1 my-ip6-host my-ip6-host.home.dev" "Verify if myserver and myserver.home.dev is 127.0.1.1 at /etc/hosts"
   ln_is_empty  
-  ln_is "# The following lines are desirable for IPv6 capable hosts" "Verify if IPv6 capable hosts is commented"
-  ln_is "## ::1 my-ubuntu-clone localhost6.localdomain6 localhost6"
-  ln_is "## ::1 localhost ip6-localhost ip6-loopback"
-  ln_is "## fe00::0 ip6-localnet"
-  ln_is "## ff00::0 ip6-mcastprefix"
-  ln_is "## ff02::1 ip6-allnodes"
-  ln_is "## ff02::2 ip6-allrouters"
-  ln_is "## ff02::3 ip6-allhosts"
+  ln_is "# The following lines are desirable for IPv6 capable hosts" "Verify if IPv6 capable hosts is active"
+  ln_is "::1 my-ip6-host my-ip6-host.home.dev localhost6.localdomain6 localhost6"
+  ln_is "::1 localhost ip6-localhost ip6-loopback"
+  ln_is "fe00::0 ip6-localnet"
+  ln_is "ff00::0 ip6-mcastprefix"
+  ln_is "ff02::1 ip6-allnodes"
+  ln_is "ff02::2 ip6-allrouters"
+  ln_is "ff02::3 ip6-allhosts"
   no_ln	
 }

@@ -163,7 +163,7 @@ NETWORKING OPTIONS
     The proto hostname. Defaults to DISTRO-SUITE-ARCHITECTURE. The hostname can be changed later.     
 
   --dhcp yes|no
-    Configure the network with automatic DHCP settings. If the argument is 'yes', then  --address, --network, --netmask, --broadcast and --gateway options are excluded. But can be optinally used among the --search and --nameservers options. An argument equal to 'no' results in no installation of package 'dhcp3-client'. Defaults to 'yes'.
+    Configure the network with automatic DHCP settings. If the argument is 'yes', then  --address, --network, --netmask, --broadcast and --gateway options are excluded. But can be optinally used among the --search and --nameservers options. An argument equal to 'no' results in no installation of package 'dhcp3-client'. Defaults to ${DEF_DHCP}.
 
   --address IPADDRESS
     Static IP address. This option shall be specified among --network and --netmask options, this option excludes --dhcp option. But can be optinally used among the --search and/or --nameservers options. Defaults no static IP address assigning.     
@@ -188,6 +188,9 @@ NETWORKING OPTIONS
 
   --ntpservers NTPSERVERS
     Optional space separated list of NTP server IP addresses or host names. Defaults to no ntpservers.
+
+  --ip6 yes|no
+    Support for IPv6 protocol. Defaults to ${DEF_IP6}.
 
 ADMIN USER OPTIONS
   --admin-user ADMIN_USER
@@ -294,6 +297,7 @@ gateway:,\
 search:,\
 nameservers:,\
 ntpservers:,\
+ip6:,\
 admin-user:,\
 admin-full-name:,\
 admin-password:,\
@@ -329,6 +333,7 @@ unset \
   c_search \
   c_nameservers \
   c_ntpservers \
+  c_ip6 \
   c_admin_user \
   c_admin_full_name \
   c_admin_password \
@@ -400,6 +405,9 @@ while true; do
   --ntpservers)
       c_ntpservers=${2:?$(err_non_empty $1)} ;
       shift 2 ;;
+  --ip6)
+      c_ip6=${2:?$(err_non_empty $1)} ;
+      shift 2 ;;
   --admin-user)
       c_admin_user=${2:?$(err_non_empty $1)} ;
       shift 2 ;;
@@ -453,6 +461,7 @@ unset \
   search \
   nameservers \
   ntpservers \
+  ip6 \
   admin_user \
   admin_full_name \
   admin_password \
@@ -544,9 +553,9 @@ hn=${hn:-${dtr}"-"${st}"-"${arch}}
 dyn=${c_dhcp:-$dhcp}
 if [ -n "$dyn" ] ; then 
   dyn=${dyn,,} ;
-  [ "$dyn" != "yes" ] && [ "$dyn" != "no" ] && err_non_sup dhcp >&2 && exit 1 || true ;
+  match_yesno $dyn || ( err_non_sup dhcp >&2 && exit 1 );
 else
-  dyn="yes"
+  dyn=$DEF_DHCP
 fi
 ip=${c_address:-$address}
 nw=${c_network:-$network}
@@ -556,6 +565,17 @@ gw=${c_gateway:-$gateway}
 srch=${c_search:-$search}
 dns=${c_nameservers:-$nameservers}
 ntp=${c_ntpservers:-$ntpservers}
+
+# ip6: command line may override the value imported from the environment, 
+# if the option is missing use the default value 
+ip6=${c_ip6:-$ip6}
+if [ -n "$ip6" ] ; then 
+  ip6=${ip6,,} ;
+  match_yesno $ip6 || ( err_non_sup ip6 >&2 && exit 1 );
+else
+  ip6=$DEF_IP6
+fi
+
 if [ $dyn == "yes" ] ; then
   ( \
      [ -n "$ip" ] \
@@ -640,6 +660,8 @@ inf "broadcast = '$bcst'"
 inf "gateway = '$gw'"
 inf "search = '$srch'"
 inf "nameservers = '$dns'"
+inf "ntpservers = '$ntp'"
+inf "ip6 = '$ip6'"
 inf "admin_user = '$admusr'"
 inf "admin_full_name = '$admname'"
 inf "admin_password = '*****'"
@@ -829,7 +851,6 @@ apt_get_download ${DISTRO_LNX_IMG_PKG[$dtr, $arch]}
 
 # user packages
 apt_get_download $pkgs
-
 
 step "Prepare /etc/rc.local header"
 
@@ -1027,20 +1048,19 @@ step "Upgrade"
 inf "Distribution upgrade"
 apt_get_dist_upgrade
 
-step "Disable IPv6"
+if [ $ip6 == "no" ]; then
+  step "Disable IPv6"
 
-# See http://www.karkomaonline.com/index.php/2009/04/how-to-disable-ipv6-in-debian/
-inf "Disabling IPv6"
-chr << EOT
+  inf "Disabling IPv6"
+  chr << EOT
 cat >> /etc/modprobe.d/aliases << EOF
 alias net-pf-10 off # Disable ipv6
 alias ipv6 off # Disable ipv6
 EOF
 EOT
 
-# Delete IPv6 related files
-# See http://wiki.debian.org/ReduceDebian
-chr << EOT
+  # Delete IPv6 related files
+  chr << EOT
 rm -rf /lib/modules/$(kver)/kernel/net/ipv6
 rm -f /lib/xtables/libip6t_HL.so
 rm -f /lib/xtables/libip6t_ah.so
@@ -1057,6 +1077,8 @@ rm -f /lib/xtables/libip6t_hbh.so
 rm -f /lib/xtables/libip6t_eui64.so
 EOT
 
+fi
+
 step "Disable modules floppy, cdrom, ide_cd_mod, snd-pcsp, pcspkr (beep), psmouse, usb-storage and firewire"
 purge_base_mods
 rm_extra_mods
@@ -1066,8 +1088,6 @@ reg_modules_dep
 
 step "Replace getty with ngetty"
 
-# ngetty is much more lightweight than getty. See
-# http://riemann.fmi.uni-sofia.bg/ngetty/
 apt_get_install ngetty
 case "$dtr" in
   debian)
