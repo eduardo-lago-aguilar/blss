@@ -59,7 +59,7 @@ _lxp() {
   COMPREPLY=()
   cur="${COMP_WORDS[COMP_CWORD]}"
   prev="${COMP_WORDS[COMP_CWORD-1]}"
-  opts="--help --suite --architecture --install-mirror --mirror-file --locale --timezone --first-boot-script --packages --hostname --dhcp --address --network --netmask --broadcast --gateway --search --nameservers --ntpservers --admin-user --admin-full-name --admin-password --remote-root --root-password"
+  opts="--help --suite --architecture --install-mirror --mirror-file --locale --timezone --first-boot-script --packages --hostname --dhcp --address --network --netmask --broadcast --gateway --search --nameservers --ntpservers --ip6 --admin-user --admin-full-name --admin-password --remote-root --root-password"
 
   # Complete the arguments of long/short options
   case "${prev}" in
@@ -111,7 +111,7 @@ _lxp() {
         # TODO: generate a list instead of a single package
         COMPREPLY=( $(compgen -W "$(_find_pkgs)" -- ${cur}) ) ;
         return 0 ;;
-    --dhcp|--remote-root)
+    --dhcp|--remote-root|--ip6)
         COMPREPLY=( $(compgen -W "yes no" -- ${cur}) ) ;
         return 0 ;;
 --install-mirror|--hostname|--address|--network|--netmask|--broadcast|--gateway|--search|--nameservers|--ntpservers|--admin-user|--admin-full-name|--admin-password|--root-password)
