@@ -504,12 +504,12 @@ verify_static_networking() {
     ln_is "# The primary network interface" "Verify if the primary network interface eth0 is correct at /etc/network/interfaces"
     ln_is "auto eth0" "Verify if eth0 automatically wakes up"
     ln_is "iface eth0 inet static" "Verify if eth0 statically defined"
-    ln_is "address 172.23.0.111" "Verify if correct address"
-    ln_is "network 172.23.0.0" "Verify if correct network"
+    ln_is "address 192.168.0.111" "Verify if correct address"
+    ln_is "network 192.168.0.0" "Verify if correct network"
     ln_is "netmask 255.255.0.0" "Verify if correct netmask"
-    ln_is "broadcast 172.23.255.255" "Verify if correct broadcast"
-    ln_is "gateway 172.23.0.1" "Verify if correct gateway"
-    ln_is "dns-nameservers 172.23.1.57" "Verify if dns-nameservers resolvconf option is correct at /etc/network/interfaces"
+    ln_is "broadcast 192.168.255.255" "Verify if correct broadcast"
+    ln_is "gateway 192.168.0.1" "Verify if correct gateway"
+    ln_is "dns-nameservers 192.168.1.57" "Verify if dns-nameservers resolvconf option is correct at /etc/network/interfaces"
     ln_is "dns-search home.dev" "Verify if dns-search resolvconf option is correct at /etc/network/interfaces"
     no_ln
   }
