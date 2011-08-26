@@ -1,5 +1,29 @@
 #!/bin/bash
 
+# === WELCOME ===
+# 
+# BLSS stands for Bootstrapped Linux Server Systems, it is set of tools to quickly 
+# assemble multiple small & optimized Linux-based virtual appliances with the 
+# purpose of an easy deployment of package-based distributed systems, like Apache 
+# Hadoop Cloudera Distribution, where every server have a different role in a 
+# computational cluster or grid. 
+# 
+# The delivered virtual appliances fit better for servicing purpose, they are 
+# reduced in size and have a small memory footprint. The lifecycle of such systems 
+# is composed of three phases: prototyping, where shared packages & configuration 
+# is settled; cloning, where different server roles are defined; and finally 
+# deployment where unique appliances are produced.
+# 
+# The project is hosted at https://bitbucket.org/eduardo_lago_aguilar/blss
+# 
+# === AUTHOR ===
+#   Written by Eduardo Lago Aguilar, eduardo.lago.aguilar@gmail.com, 
+#   http://eduardo-lago.blogspot.com
+
+# it-dep-all:
+#
+#   Common ITs for all deployments
+
 dtx() {
   env -u LC_ALL LANG="nl_NL.UTF-8" LANGUAGE="nl_NL:nl" TZ="Europe/Amsterdam" sudo chroot /mnt "$@"
 }

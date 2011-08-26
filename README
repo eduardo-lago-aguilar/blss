@@ -1,57 +1,19 @@
+=== WELCOME ===
 
-COMMON QUESTIONS
-================
- 
+BLSS stands for Bootstrapped Linux Server Systems, it is set of tools to quickly 
+assemble multiple small & optimized Linux-based virtual appliances with the 
+purpose of an easy deployment of package-based distributed systems, like Apache 
+Hadoop Cloudera Distribution, where every server have a different role in a 
+computational cluster or grid. 
 
-THE TEST RESULTS
-================
+The delivered virtual appliances fit better for servicing purpose, they are 
+reduced in size and have a small memory footprint. The lifecycle of such systems 
+is composed of three phases: prototyping, where shared packages & configuration 
+is settled; cloning, where different server roles are defined; and finally 
+deployment where unique appliances are produced.
 
-  Verify installation time of 200 hundres systems
-  Verify the different indicators that BLSS-produced systems have
-  Verify small RAM memory footprint (about 20MB) in a clean install
+The project is hosted at https://bitbucket.org/eduardo_lago_aguilar/blss
 
-  The script has been successfully tested in the following combinations:
-  
-  HOST                    GUEST
-  ------------------------------------------------
-  Distro-Suite-Arch       Distro-Suite-Arch
-  ------------------------------------------------
-  Debian-Lenny-amd64      Debian-Lenny-amd64  
-  Ubuntu-Maverick-amd64   Ubuntu-Maverick-amd64
-
-  
- (TODO)
-
-THE SCRIPTS
-===========
-
-  The following scripts are of interest for non-expert people using BLSS:
-
-  (TODO:) 
-
-  For more advanced people who want dig into the details of BLSS:
-
-  (TODO:) 
-
-
-THE REQUIREMENTS
-================
-
-  (TODO)
-  
-  Hacer un script que instale los requerimientos
- 
-WHAT'S NEXT
-===========  
-
-- A better documentation, with man pages instead of usage. 
-- Package in .deb format according to Debian packaging. 
-- Support for LVM. 
-
-AUTHOR AND LICENSE
-==================
-  BLSS was written by Eduardo Lago Aguilar <eduardo.lago.aguilar@gmail.com>, See Ed's Tech Corner site at http://eduardo-lago.blogspot.com
-
-  BLSS is distributed under The MIT License. See LICENSE
-  
-
+=== AUTHOR ===
+  Written by Eduardo Lago Aguilar, eduardo.lago.aguilar@gmail.com, 
+  http://eduardo-lago.blogspot.com

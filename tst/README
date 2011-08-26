@@ -1,0 +1,50 @@
+=== WELCOME ===
+
+BLSS stands for Bootstrapped Linux Server Systems, it is set of tools to quickly 
+assemble multiple small & optimized Linux-based virtual appliances with the 
+purpose of an easy deployment of package-based distributed systems, like Apache 
+Hadoop Cloudera Distribution, where every server have a different role in a 
+computational cluster or grid. 
+
+The delivered virtual appliances fit better for servicing purpose, they are 
+reduced in size and have a small memory footprint. The lifecycle of such systems 
+is composed of three phases: prototyping, where shared packages & configuration 
+is settled; cloning, where different server roles are defined; and finally 
+deployment where unique appliances are produced.
+
+The project is hosted at https://bitbucket.org/eduardo_lago_aguilar/blss
+
+=== AUTHOR ===
+  Written by Eduardo Lago Aguilar, eduardo.lago.aguilar@gmail.com, 
+  http://eduardo-lago.blogspot.com
+
+
+=== INTEGRATION TESTS FOR PROTOTYPES ===
+
+Multiple calls to lxp are very time consuming, so several integration tests 
+are executed for a single prototype. ITs assume that the prototype is located at 
+'/tmp/protoitroot', therefor every verification is performed directly under this
+path. The settings for the prototype under test is always an environment located
+at the 'env' directory. Example, the environment corresponding to the prototype 
+creation script 'tst/squeeze/proto' is 'env/squeeze'.
+
+=== INTEGRATION TESTS FOR CLONES ===
+
+Multiple calls to lxc are very time consuming, so several integration tests 
+are executed for a single clone. ITs assume that the clone is located at 
+'/tmp/cloneitroot', therefor every verification is performed directly under this
+path. The settings for the clone under test is always an environment located at 
+the 'env' directory. Example, the environment corresponding to the clone creation
+script 'tst/squeeze/clone' is 'env/squeeze'.
+
+=== INTEGRATION TESTS FOR DEPLOYMENTS ===
+
+Multiple calls to lxd are very time consuming, so several integration tests 
+are executed for a single deployment. ITs assume that the deployment is located 
+at '/tmp/deproot/disk.img', therefor every verification is performed directly on 
+this archive. The settings for the deployment under test is always an 
+environment located at the 'env' directory. Example, the environment 
+corresponding to the deployment creation script 'tst/squeeze/dep' is 
+'env/squeeze'.
+
+
