@@ -23,10 +23,6 @@
 # tst-commons:
 #
 #   Common functionalities used across all tests.
-#
-# The testing framework used is TAP (Test Anything Protocol), which is a 
-# text-based interface between testing modules in a test harness. Tap-functions 
-# is a port of TAP to BASH. 
 
 . "$EXT"/tap-functions
 
