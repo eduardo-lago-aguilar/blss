@@ -351,7 +351,7 @@ trap _release_devs_on_err INT TERM EXIT
 
 step "Create a loop device and device mappers for the disk"
 
-# See https://bitbucket.org/eduardo_lago_aguilar/blss/wiki/Loop_devices 
+# create loop device for disk image
 ld=$(sudo losetup -f --show "$droot"/disk.img)
 
 # creates a device mapper /dev/mapper/vda for the whole disk
@@ -367,7 +367,6 @@ sudo kpartx -v -a /dev/mapper/vda
 
 step "Create a block devices directly under /dev"
 
-# See http://savannah.gnu.org/bugs/?27737 
 eval $(stat -c 'major=%t ; minor=%T' $(realpath /dev/mapper/vda))
 sudo mknod /dev/mvda b $(hx2dc $major) $(hx2dc $minor)
 
@@ -387,11 +386,6 @@ yes | sudo mkfs -t $rootfs /dev/mvda2
 step "Mount and populate the virtual disk with the system"
 
 if [ $(lsb_release -is) = "Debian" ] && [ $rootfs = "ext4" ] ; then
-  # -E test_fs : 
-  #   Set a flag in the filesystem superblock indicating that it may be mounted 
-  # using experimental kernel code, such as the ext4dev filesystem
-  #  
-  # See http://forums.debian.net/viewtopic.php?t=33401
   sudo tune2fs -E test_fs /dev/mvda2 ;
   sudo mount -t ext4dev /dev/mvda2 "$wroot" ;
 else

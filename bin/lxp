@@ -739,9 +739,6 @@ step "Config locale"
 #
 #   LANG, LC_ALL, LC_CTYPE, LC_NUMERIC, LC_TIME, etc...
 #
-# For a more detailed explanation on locales see
-# https://help.ubuntu.com/community/Locale
-#
 # Change the locale to be used by the bootstrapped system (or proto) by 
 # modifying the file /etc/default/locale. An example content for this file sets 
 # system locale to US English with UTF-8 ecoding:
@@ -749,7 +746,6 @@ step "Config locale"
 #   LANG="en_US.UTF-8"
 #
 # First reconfigure apt so that it does not install additional packages
-# See http://wiki.debian.org/ReduceDebian
 LANG=C LC_ALL=C sudo chroot $wroot << EOT
 cat > /etc/apt/apt.conf << EOF
 APT::Install-Recommends "0" ; APT::Install-Suggests "0" ;
@@ -896,8 +892,6 @@ apt_get_install localepurge
 
 step "Install and setup the Linux Kernel"
 
-# TODO: Seems to be no longer needed! 
-# see http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=554175
 inf "Config the Linux Kernel at '/etc/kernel-img.conf'"
 chr << EOT
 cat > /etc/mtab << EOF
@@ -989,10 +983,6 @@ if [ -n "$fbscript" ]; then
 fi
 
 ## Enable dash as the default system shell (/bin/sh)  
-# See http://wiki.debian.org/BootProcessSpeedup
-# http://en.wikipedia.org/wiki/Debian_Almquist_shell
-# http://wiki.debian.org/DashAsBinSh
-# https://wiki.ubuntu.com/DashAsBinSh
 for pkg in ${EXTRA_PKGS_SUITES[$st]} ; do
   [[ $pkg =~ ^dash$ ]] && {
     step "Use dash as the default system shell"
@@ -1004,21 +994,12 @@ apt_get_install dash
   }
 done 
 
-##step "Configuring kexec for warm reboots"
-# See http://wiki.debian.org/BootProcessSpeedup
-##chr debconf-set-selections << EOT
-# Should kexec-tools handle reboots?
-##kexec-tools	kexec-tools/load_kexec	boolean	true
-##EOT
-#apt_get_install kexec-tools
-
 step "Install deborphan"
 apt_get_install deborphan
 
 install_user_pkgs
 
 step "Configuring dependency-based boot ordering"
-# See http://wiki.debian.org/BootProcessSpeedup
 
 chr debconf-set-selections << EOT
 insserv	insserv/enable	boolean	true
@@ -1157,8 +1138,6 @@ apt_get_clean
 
 # Download packages and dependencies
 config_on_first_boot="rsyslog acpid ${ACPI_PER_DISTRO[$dtr]}"
-
-# See http://wiki.debian.org/BootProcessSpeedup
 config_on_first_boot="${config_on_first_boot} ${READAHEAD_PER_SUITE[$st]}"
 
 # Download all the packages to /var/cache/apt/archives
@@ -1228,9 +1207,6 @@ EOT
 
 # Setup permissions and group so only members of admin group (wheel for others)
 # can run 'su'.
-#
-# See http://sathyasays.com/2008/10/10/how-to-solution-for-sudo-must-be-setuid-root-problem/
-# and http://www.howtogeek.com/howto/linux/security-tip-disable-root-ssh-login-on-linux/
 chr << EOT
 chgrp admin \$(which su)
 chmod 4111 \$(which su)
@@ -1263,9 +1239,6 @@ else
 fi
 
 step "Final cleanup"
-
-# See http://en.gentoo-wiki.com/wiki/Freeing_Up_Disk_Space
-# See http://wiki.debian.org/ReduceDebian
 
 # Clean remaining locale and timezone data files and directories
 chr << EOT

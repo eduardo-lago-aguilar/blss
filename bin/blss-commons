@@ -271,8 +271,7 @@ EOT
   fi
 }
 
-# Disables root remote login trougth SSH, SCP and SFTP
-# See http://www.howtogeek.com/howto/linux/security-tip-disable-root-ssh-login-on-linux/
+# Disables root remote login through SSH, SCP and SFTP
 disable_root_remote() {
   chr << EOT
 sed -ie 's/PermitRootLogin yes/PermitRootLogin no/' /etc/ssh/sshd_config
@@ -281,7 +280,6 @@ EOT
 }
 
 # Disables root direct loging by changing the login shell
-# See http://sathyasays.com/2008/10/10/how-to-solution-for-sudo-must-be-setuid-root-problem/
 disable_root_direct() {
   chr << EOT
 sed -ie 's/\(root:x:0:0:root:\/root:\)\/bin\/bash/\1\/bin\/false/' /etc/passwd
@@ -486,15 +484,7 @@ _unbind_on_err(){
 
 ## Module handling
 
-# See http://wiki.debian.org/KernelModuleBlacklisting
-#
-# NOTE: Some builtin modules like cdrom cannot be removed via modprobe -r, but
-# they can be blacklisted
-#
-# NOTE: The redirection in 'modprobe -r \$mod 2>/dev/null' is due to a WARNING message
-# See http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=517954   
-
-# remove and the modules (no blacklist) 
+# remove the modules (no blacklist) 
 mod_rm() {
   cat << EOF
 for mod in $@ ; do
@@ -635,13 +625,6 @@ $(mod_rm \
 EOT
 
   # WM Family
-  # WM831x DC-DC Setup Converter, http://www.wolfsonmicro.com/documents/uploads/misc/en/WAN0228.pdf
-  # WM8350 Stereo CODEC with Integrated Power Management, http://www.wolfsonmicro.com/products/power_management/WM8350/
-  # WM8400 Stereo CODEC with Integrated Power Management, http://www.wolfsonmicro.com/products/power_management/WM8400/
-  # WM8739) # Stereo ADC, http://www.wolfsonmicro.com/products/adcs/WM8739/
-  # WM8775) # Stereo ADC with 4 input selector, http://www.wolfsonmicro.com/products/adcs/WM8775/
-  # WM8994 Multi-Channel CODEC with 3 digital audio interfaces, http://www.wolfsonmicro.com/products/audio_hubs/WM8994/
-  # WM97xx Touchscreen, etc, http://www.wolfsonmicro.com/media_centre/item/wolfson_unleashes_dual_codec/
   chr << EOT
 $(mod_rm \
   leds-wm831x-status \
@@ -727,7 +710,7 @@ $(mod_rm \
   tps6507x)
 EOT
 
-  # mmc: MultiMediaCard subsystem, http://www.kernel.org/doc/Documentation/mmc/
+  # MultiMediaCard subsystem
   chr << EOT
 $(mod_rm \
   sdio_uart \
@@ -743,7 +726,7 @@ $(mod_rm \
   sdricoh_cs)
 EOT
 
-  # regulator: Regulator, http://www.kernel.org/doc/htmldocs/regulator.html
+  # Regulator
   chr << EOT
 $(mod_rm \
   mc13783-regulator \
@@ -762,7 +745,7 @@ $(mod_rm \
   userspace-consumer)
 EOT
 
-  # uwb: Linux Ultra-Wide-Band stack, as well as drivers for Wireless USB Host Controller drivers, http://www.linuxuwb.org/thewiki/Linux-UWB+WUSB+WiNET
+  # Linux Ultra-Wide-Band stack, as well as drivers for Wireless USB Host Controller drivers
   chr << EOT
 $(mod_rm \
   wlp \
