@@ -1,0 +1,24 @@
+#!/bin/bash
+
+# Prototype creation 'env/squeezeVpc'
+
+# Resolve script location, $0 may be a link
+script="$0"
+# Need this for relative symlinks
+while [ -h "$script" ] ; do
+  lst=$(ls -ld "$script")
+  lnk=$(expr "$lst" : '.*-> \(.*\)$')
+  if expr "$lnk" : '/.*' > /dev/null; then
+    script="$lnk"
+  else
+    script=$(dirname "$script")/"$lnk"
+  fi
+done
+BLSS_HOME=$(dirname "$script")/../..
+BIN="$BLSS_HOME"/bin
+ENV="$BLSS_HOME"/env
+EXT="$BLSS_HOME"/ext
+TST="$BLSS_HOME"/tst
+
+sudo rm -rf /tmp/protoitroot && sudo mkdir /tmp/protoitroot && \
+  BLSS_ENV="`realpath "$ENV"/squeezeVpc`" $BIN/lxp /tmp/protoitroot

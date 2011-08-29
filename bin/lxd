@@ -526,6 +526,11 @@ if [[ $fmts =~ (\ |^)vmdk6(\ |$) ]] ; then
   sudo qemu-img convert -f raw -O vmdk -o compat6 "$droot"/disk.img "$droot"/disk.${EXTS_PER_FORMAT["vmdk6"]} && inf "Created VMDK 6 disk image: '$droot/disk.${EXTS_PER_FORMAT["vmdk6"]}'"
 fi
 
+# VPC
+if [[ $fmts =~ (\ |^)vpc(\ |$) ]] ; then
+  sudo qemu-img convert -f raw -O vpc "$droot"/disk.img "$droot"/disk.${EXTS_PER_FORMAT["vpc"]} && inf "Created VirtualPC compatible disk image: '$droot/disk.${EXTS_PER_FORMAT["vpc"]}'"
+fi
+
 # RAW
 if [[ ! $fmts =~ (\ |^)raw(\ |$) ]] ; then
   sudo rm "$droot"/disk.img
