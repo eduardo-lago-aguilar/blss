@@ -117,7 +117,7 @@ qemu-img info /tmp/deproot/disk.img | {
 rootfs=${rootfs:-"ext3"}
 sudo parted --script /tmp/deproot/disk.img print | awk '{NF=NF; print $0}' | {
   ln_is "Model: (file)" "Verify model"
-  ln_is "Disk /var/tmp/deproot/disk.img: 1074MB" "Verify location and size"
+  ln_is "Disk /tmp/deproot/disk.img: 1074MB" "Verify location and size"
   ln_is "Sector size (logical/physical): 512B/512B" "Verify sector size"
   ln_is "Partition Table: msdos" "Verify partition table"
   ln_is_empty  
@@ -217,7 +217,7 @@ verify_libvirt() {
     ln_is "<devices>"
     ln_is "<emulator>/usr/bin/kvm</emulator>" "Verify emulator correctly configured"
     ln_is "<interface type='bridge'>" 
-    ln_is "<source bridge='br0' />"
+    ln_is "<source bridge='virbr0' />"
     ln_is "<!--"
     ln_is "This improves the network performances by a lot (factor 10, nearly). But"
     ln_is "this works only with Ubuntu Hardy or Intrepid guests for the moment, which is why"

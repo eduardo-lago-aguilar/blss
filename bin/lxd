@@ -508,6 +508,9 @@ step "Processing disk formats"
 if [[ $fmts =~ (\ |^)qcow2(\ |$) ]] ; then
   sudo qemu-img convert -f raw -O qcow2 "$droot"/disk.img "$droot"/disk.qcow2 && inf "Created QCOW2 disk image: '$droot/disk.qcow2'"
 fi
+if [[ $fmts =~ (\ |^)vdi(\ |$) ]] ; then
+  sudo qemu-img convert -f raw -O vdi "$droot"/disk.img "$droot"/disk.vdi && inf "Created VDI disk image: '$droot/disk.vdi'"
+fi
 if [[ ! $fmts =~ (\ |^)raw(\ |$) ]] ; then
   sudo rm "$droot"/disk.img
 fi
@@ -537,7 +540,7 @@ libvirt() {
   <devices>
     <emulator>$(which $hyv)</emulator>
     <interface type='bridge'>
-      <source bridge='br0' />
+      <source bridge='virbr0' />
 <!-- 
 This improves the network performances by a lot (factor 10, nearly). But 
 this works only with Ubuntu Hardy or Intrepid guests for the moment, which is why 

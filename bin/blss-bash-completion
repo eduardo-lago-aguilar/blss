@@ -32,6 +32,7 @@ declare -A SUPPORTED_SUITES=(["squeeze"]="squeeze" ["lenny"]="lenny" ["natty"]="
 declare -A DISTRO_PER_SUITE=(["lenny"]="debian" ["squeeze"]="debian" ["lucid"]="ubuntu" ["maverick"]="ubuntu"  ["natty"]="ubuntu")
 declare -A SUPPORTED_ARCHS=(["amd64"]="amd64" ["i386"]="i386")
 declare -A SUPPORTED_FILESYSTEMS=(["ext3"]="ext3" ["ext4"]="ext4" ["btrfs"]="btrfs" ["jfs"]="jfs" ["xfs"]="xfs" ["reiserfs"]="reiserfs")
+declare -A SUPPORTED_FORMATS=(["raw"]="raw" ["qcow2"]="qcow2" ["vdi"]="vdi")
 declare -A SUPPORTED_HYPERVISORS=(["esxi"]="esxi" ["kvm"]="kvm" ["qemu"]="qemu" ["vbox"]="vbox" ["vmserver"]="vmserver" ["vmw6"]="vmw6" ["xen"]="xen")
 SUPPORTED_CPU=$(echo {1..32})
 
@@ -159,7 +160,7 @@ _lxd() {
   COMPREPLY=()
   cur="${COMP_WORDS[COMP_CWORD]}"
   prev="${COMP_WORDS[COMP_CWORD-1]}"
-  opts="--help --clone-root --hypervisor --cpu --memory --size --root-filesystem"
+  opts="--help --clone-root --hypervisor --cpu --memory --size --root-filesystem --formats"
 
   # Complete the arguments of long/short options
   case "${prev}" in
@@ -174,6 +175,9 @@ _lxd() {
         return 0 ;;
     --root-filesystem)
         COMPREPLY=( $(compgen -W "${SUPPORTED_FILESYSTEMS[*]}" -- ${cur}) ) ;
+        return 0 ;;
+    --formats)
+        COMPREPLY=( $(compgen -W "${SUPPORTED_FORMATS[*]}" -- ${cur}) ) ;
         return 0 ;;
     --memory|--size)
         COMPREPLY=( $(compgen -W "" -- ${cur}) ) ;
