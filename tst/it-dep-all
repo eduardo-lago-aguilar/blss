@@ -198,6 +198,7 @@ verify_common_pkgs() {
 verify_libvirt() {
   lb_disk_fmt=${lb_disk_fmt:-"raw"}
   lb_disk_ext=${lb_disk_ext:-"img"}
+  lb_disk_drv=${lb_disk_drv:-"raw"}
   cat /tmp/deproot/libvirt.xml | {
     ln_is "<domain type='kvm'>" "Verify libvirt domain type kvm"
     ln_is "<name>debian-squeeze-amd64</name>" "Verify domain name with hostname"
@@ -229,7 +230,7 @@ verify_libvirt() {
     ln_is "<input type='mouse' bus='ps2' />"
     ln_is "<graphics type='vnc' port='-1' listen='127.0.0.1' />"
     ln_is "<disk type='file' device='disk'>"
-    ln_is "<driver name='qemu' type='${lb_disk_fmt}' />" "Verify the disk driver type with the the first format"
+    ln_is "<driver name='qemu' type='${lb_disk_drv}' />" "Verify the disk driver type with the the first format"
     ln_is "<source file='$(realpath /tmp/deproot/disk.${lb_disk_ext})' />" "Verify disk extension with the first format"
     ln_is "<target dev='hda' />"
     ln_is "</disk>"

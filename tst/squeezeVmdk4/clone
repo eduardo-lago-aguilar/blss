@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Integration Tests for deployment 'env/squeezeQcow2'
+# Clone creation 'env/squeezeVmdk4'
 
 # Resolve script location, $0 may be a link
 script="$0"
@@ -20,22 +20,5 @@ ENV="$BLSS_HOME"/env
 EXT="$BLSS_HOME"/ext
 TST="$BLSS_HOME"/tst
 
-. "$TST"/tst-commons
-
-# Total amount of tests to perfom
-plan_tests 22
-
-lb_disk_fmt=qcow2
-lb_disk_ext=qcow2
-lb_disk_drv=qcow2
-
-. "$TST"/it-dep-all
-
-# Unbind devices on ERROR
-trap _release_devs_on_err INT TERM EXIT
-
-[ -e /tmp/deproot/disk.qcow2 ]
-ok $? "Verify existing image disk /tmp/deproot/disk.qcow2"
-
-# No longer need to release devices on error
-trap - INT TERM EXIT
+sudo rm -rf /tmp/cloneitroot && \
+BLSS_ENV="`realpath "$ENV"/squeezeVmdk4`" $BIN/lxc --proto-root /tmp/protoitroot /tmp/cloneitroot

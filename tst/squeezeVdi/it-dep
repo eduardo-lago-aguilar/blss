@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Integration Tests for deployment 'env/squeezeQcow2'
+# Integration Tests for deployment 'env/squeezeVdi'
 
 # Resolve script location, $0 may be a link
 script="$0"
@@ -27,6 +27,7 @@ plan_tests 22
 
 lb_disk_fmt=vdi
 lb_disk_ext=vdi
+lb_disk_drv=vdi
 
 . "$TST"/it-dep-all
 

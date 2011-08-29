@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Integration Tests for deployment 'env/squeezeQcow2'
+# Integration Tests for deployment 'env/squeezeVmdk4'
 
 # Resolve script location, $0 may be a link
 script="$0"
@@ -25,17 +25,17 @@ TST="$BLSS_HOME"/tst
 # Total amount of tests to perfom
 plan_tests 22
 
-lb_disk_fmt=qcow2
-lb_disk_ext=qcow2
-lb_disk_drv=qcow2
+lb_disk_fmt=vmdk4
+lb_disk_ext=vmdk
+lb_disk_drv=vmdk
 
 . "$TST"/it-dep-all
 
 # Unbind devices on ERROR
 trap _release_devs_on_err INT TERM EXIT
 
-[ -e /tmp/deproot/disk.qcow2 ]
-ok $? "Verify existing image disk /tmp/deproot/disk.qcow2"
+[ -e /tmp/deproot/disk.vmdk ]
+ok $? "Verify existing image disk /tmp/deproot/disk.vmdk"
 
 # No longer need to release devices on error
 trap - INT TERM EXIT

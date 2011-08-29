@@ -505,12 +505,23 @@ _release_devs
 trap - INT TERM EXIT
 
 step "Processing disk formats"
+
+# QCOW2
 if [[ $fmts =~ (\ |^)qcow2(\ |$) ]] ; then
-  sudo qemu-img convert -f raw -O qcow2 "$droot"/disk.img "$droot"/disk.qcow2 && inf "Created QCOW2 disk image: '$droot/disk.qcow2'"
+  sudo qemu-img convert -f raw -O qcow2 "$droot"/disk.img "$droot"/disk.${EXTS_PER_FORMAT["qcow2"]} && inf "Created QCOW2 disk image: '$droot/disk.${EXTS_PER_FORMAT["qcow2"]}'"
 fi
+
+# VDI
 if [[ $fmts =~ (\ |^)vdi(\ |$) ]] ; then
-  sudo qemu-img convert -f raw -O vdi "$droot"/disk.img "$droot"/disk.vdi && inf "Created VDI disk image: '$droot/disk.vdi'"
+  sudo qemu-img convert -f raw -O vdi "$droot"/disk.img "$droot"/disk.${EXTS_PER_FORMAT["vdi"]} && inf "Created VDI disk image: '$droot/disk.${EXTS_PER_FORMAT["vdi"]}'"
 fi
+
+# VMDK 3 and 4
+if [[ $fmts =~ (\ |^)vmdk4(\ |$) ]] ; then
+  sudo qemu-img convert -f raw -O vmdk "$droot"/disk.img "$droot"/disk.${EXTS_PER_FORMAT["vmdk4"]} && inf "Created VMDK 3 & 4 disk image: '$droot/disk.${EXTS_PER_FORMAT["vmdk4"]}'"
+fi
+
+# RAW
 if [[ ! $fmts =~ (\ |^)raw(\ |$) ]] ; then
   sudo rm "$droot"/disk.img
 fi
@@ -520,6 +531,7 @@ libvirt() {
   # take the first format from the --format/format command line/conf file option   
   lb_disk_fmt=$(printf $fmts)  
   lb_disk_ext=${EXTS_PER_FORMAT[$lb_disk_fmt]}
+  lb_disk_drv=${DISKDRIVER_PER_FORMAT[${lb_disk_fmt}]}
   mem_kb=$(( $mem * 1024))
   cat > "$droot"/libvirt.xml << EOT
 <domain type='${hyv}'>
@@ -552,7 +564,7 @@ their network connections going away after a period of time or data transfer
     <input type='mouse' bus='ps2' />
     <graphics type='vnc' port='-1' listen='127.0.0.1' />
     <disk type='file' device='disk'>
-      <driver name='qemu' type='${lb_disk_fmt}' />
+      <driver name='qemu' type='${lb_disk_drv}' />
       <source file='$(realpath "$droot"/disk.${lb_disk_ext})' />
       <target dev='hda' />
     </disk>
