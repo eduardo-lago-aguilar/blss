@@ -521,6 +521,11 @@ if [[ $fmts =~ (\ |^)vmdk4(\ |$) ]] ; then
   sudo qemu-img convert -f raw -O vmdk "$droot"/disk.img "$droot"/disk.${EXTS_PER_FORMAT["vmdk4"]} && inf "Created VMDK 3 & 4 disk image: '$droot/disk.${EXTS_PER_FORMAT["vmdk4"]}'"
 fi
 
+# VMDK 6
+if [[ $fmts =~ (\ |^)vmdk6(\ |$) ]] ; then
+  sudo qemu-img convert -f raw -O vmdk -o compat6 "$droot"/disk.img "$droot"/disk.${EXTS_PER_FORMAT["vmdk6"]} && inf "Created VMDK 6 disk image: '$droot/disk.${EXTS_PER_FORMAT["vmdk6"]}'"
+fi
+
 # RAW
 if [[ ! $fmts =~ (\ |^)raw(\ |$) ]] ; then
   sudo rm "$droot"/disk.img

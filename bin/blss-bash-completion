@@ -32,7 +32,7 @@ declare -A SUPPORTED_SUITES=(["squeeze"]="squeeze" ["lenny"]="lenny" ["natty"]="
 declare -A DISTRO_PER_SUITE=(["lenny"]="debian" ["squeeze"]="debian" ["lucid"]="ubuntu" ["maverick"]="ubuntu"  ["natty"]="ubuntu")
 declare -A SUPPORTED_ARCHS=(["amd64"]="amd64" ["i386"]="i386")
 declare -A SUPPORTED_FILESYSTEMS=(["ext3"]="ext3" ["ext4"]="ext4" ["btrfs"]="btrfs" ["jfs"]="jfs" ["xfs"]="xfs" ["reiserfs"]="reiserfs")
-declare -A SUPPORTED_FORMATS=(["raw"]="raw" ["qcow2"]="qcow2" ["vdi"]="vdi" ["vmdk4"]="vmdk4")
+declare -A SUPPORTED_FORMATS=(["raw"]="raw" ["qcow2"]="qcow2" ["vdi"]="vdi" ["vmdk4"]="vmdk4" ["vmdk6"]="vmdk6")
 declare -A SUPPORTED_HYPERVISORS=(["esxi"]="esxi" ["kvm"]="kvm" ["qemu"]="qemu" ["vbox"]="vbox" ["vmserver"]="vmserver" ["vmw6"]="vmw6" ["xen"]="xen")
 SUPPORTED_CPU=$(echo {1..32})
 

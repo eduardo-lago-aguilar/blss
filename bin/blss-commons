@@ -34,9 +34,9 @@ declare -A SUPPORTED_HYPERVISORS=(["esxi"]="esxi" ["kvm"]="kvm" ["qemu"]="qemu" 
 SUPPORTED_CPU=$(echo {1..32})
 declare -A DISTRO_LOCALE_GEN_PATH=(["debian"]="/etc/locale.gen" ["ubuntu"]="/var/lib/locales/supported.d/local")
 declare -A SUPPORTED_FILESYSTEMS=(["ext3"]="ext3" ["ext4"]="ext4" ["btrfs"]="btrfs" ["jfs"]="jfs" ["xfs"]="xfs" ["reiserfs"]="reiserfs")
-declare -A SUPPORTED_FORMATS=(["raw"]="raw" ["qcow2"]="qcow2" ["vdi"]="vdi" ["vmdk4"]="vmdk4")
-declare -A EXTS_PER_FORMAT=(["raw"]="img" ["qcow2"]="qcow2" ["vdi"]="vdi" ["vmdk4"]="vmdk")
-declare -A DISKDRIVER_PER_FORMAT=(["raw"]="raw" ["qcow2"]="qcow2" ["vdi"]="vdi" ["vmdk4"]="vmdk")
+declare -A SUPPORTED_FORMATS=(["raw"]="raw" ["qcow2"]="qcow2" ["vdi"]="vdi" ["vmdk4"]="vmdk4" ["vmdk6"]="vmdk6")
+declare -A EXTS_PER_FORMAT=(["raw"]="img" ["qcow2"]="qcow2" ["vdi"]="vdi" ["vmdk4"]="vmdk" ["vmdk6"]="vmdk")
+declare -A DISKDRIVER_PER_FORMAT=(["raw"]="raw" ["qcow2"]="qcow2" ["vdi"]="vdi" ["vmdk4"]="vmdk" ["vmdk6"]="vmdk")
 declare -A GRUB_MODS_PER_FILESYSTEM=(["ext3"]="" ["ext4"]="" ["btrfs"]="" ["jfs"]="jfs" ["xfs"]="xfs" ["reiserfs"]="reiserfs")
 declare -A EXTRA_PACKAGES_PER_FILESYSTEM=(["ext3"]="" ["ext4"]="" ["btrfs"]="btrfs-tools" ["jfs"]="jfsutils" ["xfs"]="xfsprogs" ["reiserfs"]="reiserfsprogs")
 
