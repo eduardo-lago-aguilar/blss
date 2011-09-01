@@ -215,7 +215,7 @@ fi
 hyv=${c_hypervisor:-$hypervisor} 
 if [ -n "$hyv" ] ; then
   hyv=${SUPPORTED_HYPERVISORS[$hyv]} ;
-  hyv=${hyv:?$(err_non_sup hypervisor)} ;
+  hyv=${hyv:?$(err_non_sup --hypervisor)} ;
 else
   hyv=$DEF_HYPERVISOR ;
 fi
@@ -225,7 +225,7 @@ fi
 # the value is supported.    
 vcpu=${c_cpu:-$cpu} 
 if [ -n "$vcpu" ] ; then
-  match_positive_num $vcpu || ( err_non_sup cpu >&2 && exit 1 ) ;
+  match_positive_num $vcpu || ( err_non_sup --cpu >&2 && exit 1 ) ;
 else
   vcpu=$DEF_CPU ;
 fi
@@ -235,7 +235,7 @@ fi
 # the value is supported.    
 mem=${c_memory:-$mem} 
 if [ -n "$mem" ] ; then
-  match_positive_num $mem || ( err_non_sup memory >&2 && exit 1 ) ;
+  match_positive_num $mem || ( err_non_sup --memory >&2 && exit 1 ) ;
 else
   mem=$DEF_MEMORY ;
 fi
@@ -245,7 +245,7 @@ fi
 # the value is supported.    
 sz=${c_size:-$size} 
 if [ -n "$sz" ] ; then
-  match_positive_num $sz || ( err_non_sup size >&2 && exit 1 ) ;
+  match_positive_num $sz || ( err_non_sup --size >&2 && exit 1 ) ;
 else
   sz=$DEF_SIZE ;
 fi
@@ -256,7 +256,7 @@ fi
 rootfs=${c_root_filesystem:-$root_filesystem} 
 if [ -n "$rootfs" ] ; then
   rootfs=${SUPPORTED_FILESYSTEMS[$rootfs]} ;
-  rootfs=${rootfs:?$(err_non_sup root-filesystem root_filesystem)} ;
+  rootfs=${rootfs:?$(err_non_sup --root-filesystem)} ;
 else
   rootfs=$DEF_ROOT_FILESYSTEM ;
 fi
@@ -269,8 +269,8 @@ if [ -n "$fmts" ] ; then
   declare -A fmt_incl
   for fmt in $fmts ; do
     f=${SUPPORTED_FORMATS[$fmt]} ;
-    f=${f:?$(err_non_sup formats)} ;
-    (( fmt_incl[$f] == 1 )) && err_rep_value formats && usage >&2 && exit 1 || true ; 
+    f=${f:?$(err_non_sup --formats)} ;
+    (( fmt_incl[$f] == 1 )) && err_rep_value --formats && usage >&2 && exit 1 || true ; 
     fmt_incl[$f]=1 ;  
   done
   unset fmt_incl
@@ -562,14 +562,7 @@ libvirt() {
   <devices>
     <emulator>$(which $hyv)</emulator>
     <interface type='bridge'>
-      <source bridge='virbr0' />
-<!-- 
-This improves the network performances by a lot (factor 10, nearly). But 
-this works only with Ubuntu Hardy or Intrepid guests for the moment, which is why 
-it is not by default. Note that this also corrects the issue some are reporting with 
-their network connections going away after a period of time or data transfer 
--->
-      <model type='virtio' />
+      <source bridge='br0' />
     </interface>
     <input type='mouse' bus='ps2' />
     <graphics type='vnc' port='-1' listen='127.0.0.1' />

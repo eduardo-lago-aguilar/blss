@@ -51,7 +51,7 @@ NAME
   lxp - Bootstraps a Linux Server System prototype with a reduced size and small memory footprint requirements for servicing purposes.
 
 SYNOPSIS
-  lxp [GENERAL OPTIONS] [NETWORKING OPTIONS] [ADMIN USER OPTIONS] [ROOT OPTIONS] PROTO_ROOT
+  lxp [GENERAL OPTIONS] [NETWORKING OPTIONS] [ADMIN USER OPTIONS] [ROOT OPTIONS] [MODULES OPTIONS] PROTO_ROOT
 
 DESCRIPTION
   BLSS stands for Bootstrap Linux Server System, it can be used to Bootstraps a Linux Server system with a reduced size and small memory footprint requirements for servicing purposes. It uses Debian debootstrap script to automatically install the system from a repository or closer mirror without any user interaction to a target directory called PROTO_ROOT. To save disk space, additional cleanup is performed once the system has been installed. When the installation is finished, the prototype an be cloned and later used to create a virtual appliance.
@@ -245,6 +245,11 @@ ROOT OPTIONS
   --remote-root yes|no
     Setup the remote login for root. If the value of this option is 'yes' then --root-password shall be a valid password. 
 
+MODULES OPTIONS
+$(mods_usage)
+
+    More about modules at: https://bitbucket.org/eduardo_lago_aguilar/blss/wiki/Modules
+
 EXAMPLES
 
   1- An Ubuntu Maverick proto with amd64 architecture, locale English US, timezone in New York and DHCP network configuration:
@@ -303,7 +308,30 @@ admin-user:,\
 admin-full-name:,\
 admin-password:,\
 root-password:,\
-remote-root: \
+remote-root:,\
+mod-floppy:,\
+mod-tape:,\
+mod-cdrom:,\
+mod-sound:,\
+mod-mouse:,\
+mod-usb:,\
+mod-firewire:,\
+mod-atm:,\
+mod-auxdisplay:,\
+mod-xen:,\
+mod-bluetooth:,\
+mod-wolfsonmicro:,\
+mod-leds:,\
+mod-memstick:,\
+mod-multi-function-device:,\
+mod-multi-media-card:,\
+mod-regulator:,\
+mod-ultra-wide-band:,\
+mod-wlan:,\
+mod-media:,\
+mod-gaming:,\
+mod-parport:,\
+mod-extra-networking: \
 -- "$@")
 if [ $? != 0 ] ; then 
   usage >&2 ; 
@@ -340,8 +368,10 @@ unset \
   c_admin_password \
   c_root_password \
   c_remote_root \
+  c_mods \
   c_proto_root
 
+declare -A c_mods 
 declare -A c_os 
 root_defaults_flag=1
 while true; do
@@ -430,7 +460,12 @@ while true; do
     shift ; 
     break ;;
   *) 
-    err "Error parsing arguments" && usage >&2 && exit 1 ;;
+    if [ -n "${MODS_CONF_OPTS[$1]}" ] ; then
+      c_mods[$1]=${2:?$(err_non_empty $1)}
+    else
+      err "Error parsing arguments" && usage >&2 && exit 1
+    fi
+    shift 2 ;;
   esac
 done
 # proto root is the remaining
@@ -468,7 +503,11 @@ unset \
   admin_password \
   root_password \
   remote_root \
-  proto_root
+  proto_root 
+
+for cf_opt in ${MODS_CONF_OPTS[*]} ; do 
+  eval "unset $cf_opt" 
+done
 
 # import general env opts
 imp_conf "$ev"/lxp.conf
@@ -479,7 +518,7 @@ imp_conf "$ev"/lxp.conf
 st=${c_suite:-$suite}
 st=${st:-$(lsb_release -cs)}
 st=${SUPPORTED_SUITES[$st]}
-st=${st:?$(err_non_sup suite)}
+st=${st:?$(err_non_sup --suite)}
 
 # distro: depends on the suite
 dtr=${DISTRO_PER_SUITE[$st]}
@@ -494,7 +533,7 @@ imp_conf "$ev"/$dtr/$st/lxp.conf
 arch=${c_architecture:-$architecture} 
 arch=${arch:-$(dpkg-architecture -qDEB_HOST_ARCH)}
 arch=${SUPPORTED_ARCHS[$arch]}
-arch=${arch:?$(err_non_sup architecture)}
+arch=${arch:?$(err_non_sup --architecture)}
 
 # install_mirror: command line may override the value imported from the 
 # environment, if the option is missing use the default mirror per distro.    
@@ -504,7 +543,7 @@ im=${im:-${DEF_INSTALL_MIRROR[$dtr]}}
 # mirror_file: command line may override the value imported from the environment
 mf=${c_mirror_file:-$mirror_file}
 if [ -n "$mf" ] ; then
-  mf=$(realpath "$mf") && [ -r "$mf" ] && [ -f "$mf" ] || ( err_non_r mirror-file mirror_file >&2 && exit 1 )
+  mf=$(realpath "$mf") && [ -r "$mf" ] && [ -f "$mf" ] || ( err_non_r --mirror-file >&2 && exit 1 )
 fi
 
 # locale: command line may override the value imported from the environment, if 
@@ -533,7 +572,7 @@ proc_tzon
 # environment
 fbscript=${c_first_boot_script:-$first_boot_script}
 if [ -n "$fbscript" ] ; then
-  fbscript=$(realpath "$fbscript") && [ -r "$fbscript" ] && [ -f "$fbscript" ] || ( err_non_r first-boot-script first_boot_script >&2 && exit 1 )
+  fbscript=$(realpath "$fbscript") && [ -r "$fbscript" ] && [ -f "$fbscript" ] || ( err_non_r --first-boot-script >&2 && exit 1 )
 fi
 
 # packages: command line may override the value imported from the environment, 
@@ -554,7 +593,7 @@ hn=${hn:-${dtr}"-"${st}"-"${arch}}
 dyn=${c_dhcp:-$dhcp}
 if [ -n "$dyn" ] ; then 
   dyn=${dyn,,} ;
-  match_yesno $dyn || ( err_non_sup dhcp >&2 && exit 1 );
+  match_yesno $dyn || ( err_non_sup --dhcp >&2 && exit 1 );
 else
   dyn=$DEF_DHCP
 fi
@@ -572,7 +611,7 @@ ntp=${c_ntpservers:-$ntpservers}
 ip6=${c_ip6:-$ip6}
 if [ -n "$ip6" ] ; then 
   ip6=${ip6,,} ;
-  match_yesno $ip6 || ( err_non_sup ip6 >&2 && exit 1 );
+  match_yesno $ip6 || ( err_non_sup --ip6 >&2 && exit 1 );
 else
   ip6=$DEF_IP6
 fi
@@ -591,13 +630,13 @@ else
   || [ -z "$nw" ] \
   || [ -z "$msk" ] \
   ) && err "--dhcp/dhcp=no command line/conf file option shall be specified among --address/address, --network/network and --netmask/netmask command line/conf file options" >&2 && exit 1 || true ;
-  match_ip $ip || ( err_non_sup address >&2 && exit 1 ) ;
-  match_ip $nw || ( err_non_sup network >&2 && exit 1 ) ;
-  match_ip $msk || ( err_non_sup netmask >&2 && exit 1 ) ;
+  match_ip $ip || ( err_non_sup --address >&2 && exit 1 ) ;
+  match_ip $nw || ( err_non_sup --network >&2 && exit 1 ) ;
+  match_ip $msk || ( err_non_sup --netmask >&2 && exit 1 ) ;
 fi
-[ -n "$bcst" ] && ! match_ip $bcst && err_non_sup broadcast >&2 && exit 1 || true
-[ -n "$gw" ] && ! match_ip $gw && err_non_sup gateway >&2 && exit 1 || true
-[ -n "$dns" ] && ! match_ip_lst $dns && err_non_sup nameservers >&2 && exit 1 || true
+[ -n "$bcst" ] && ! match_ip $bcst && err_non_sup --broadcast >&2 && exit 1 || true
+[ -n "$gw" ] && ! match_ip $gw && err_non_sup --gateway >&2 && exit 1 || true
+[ -n "$dns" ] && ! match_ip_lst $dns && err_non_sup --nameservers >&2 && exit 1 || true
 
 # admin_user, admin_full_name & admin_password: command line may override the 
 # values imported from the environment, if the options are missing use the 
@@ -623,7 +662,7 @@ if ! (( root_defaults_flag == 1 )) ; then
 
   if [ -n "$remroot" ] ; then 
     remroot=${remroot,,} ;
-    [ "$remroot" != "yes" ] && [ "$remroot" != "no" ] && err_non_sup remote-root remote_root >&2 && exit 1 || true ;
+    [ "$remroot" != "yes" ] && [ "$remroot" != "no" ] && err_non_sup --remote-root >&2 && exit 1 || true ;
   fi  
 
   [ $remroot == "yes" ] && [ $rootpwd = "-" ] && err "--remote-root/remote_root=yes command line/conf file option shall be used with non-empty --root-password/root_password different to the special argument '-'" >&2 && exit 1 || true
@@ -636,6 +675,26 @@ if [ -n "$proto_root" ] ; then
 fi
 proot=${c_proto_root:-$proto_root}
 [ "$(find "$proot" -maxdepth 1 -type d -empty )" != "$proot" ] && err "PROTO_ROOT/proto_root command line/conf file option shall be an existing empty directory" >&2 && exit 1 || true
+
+# mods: command line may override the value imported from the environment, 
+# if the option is missing use the default value 
+declare -A mods
+for cl_opt in ${!MODS_CONF_OPTS[*]} ; do 
+  cf_opt=${MODS_CONF_OPTS[$cl_opt]}
+  
+  val_cl_opt=${c_mods[$cl_opt]}
+  eval "val_cf_opt=$"${cf_opt}
+
+  val_opt=${val_cl_opt:-$val_cf_opt}
+  if [ -n "$val_opt" ] ; then 
+    val_opt=${val_opt,,} ;
+    match_yesno $val_opt || ( err_non_sup $cl_opt >&2 && exit 1 );
+  else
+    val_opt=${DEF_MODS[$cl_opt]}
+  fi
+
+  mods[$cl_opt]=$val_opt 
+done
 
 # define working root
 wroot=${proot}
@@ -668,6 +727,10 @@ inf "admin_full_name = '$admname'"
 inf "admin_password = '*****'"
 inf "root_password = '******'"
 inf "remote_root = '$remroot'"
+for cl_opt in ${!MODS_CONF_OPTS[*]} ; do 
+  cf_opt=${MODS_CONF_OPTS[$cl_opt]}
+  inf "$cf_opt = '"${mods[$cl_opt]}"'"
+done
 inf "proto_root = '$proot'"
     
 # Unbind devices on ERROR
@@ -1061,10 +1124,8 @@ EOT
 
 fi
 
-step "Disable modules floppy, cdrom, ide_cd_mod, snd-pcsp, pcspkr (beep), psmouse, usb-storage and firewire"
-purge_base_mods
-rm_extra_mods
-rm_various_mod_dirs
+# Modules
+purge_mods
 cleanup_mod_dirs
 reg_modules_dep
 
@@ -1083,7 +1144,6 @@ sed -ie 's/6:23:respawn:\/sbin\/getty 38400 tty6/# &\n\n# Run ngetty in standard
 EOT
    ;;
   ubuntu)
-    # TODO: pending to test in ubuntu
     chr << EOT
 sed -ie 's/exec \/sbin\/getty -8 38400 tty1/# &\n\n# Run ngetty in standard run-levels\nexec \/sbin\/ngetty 1 2 3 4 5 6/' /etc/init/tty1.conf
 sed -ie 's/start on runlevel \[23\]/# &/' /etc/init/tty2.conf

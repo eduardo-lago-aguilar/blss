@@ -170,8 +170,6 @@ tst_pkg_installed() {
   }
 }
 
-
-
 # Test Case: Tests for Kernel
 ptx cat /etc/kernel-img.conf | {
   ln_is "do_symlinks = Yes" "Verify the correctness of /etc/kernel-img.conf"
@@ -197,7 +195,7 @@ ptx find /boot -type f -name initrd.img-* | {
 }
 
 # Test Case: Tests for various Kernel modules disabling
-# TODO: do a test case (when a clone wake up) to verify, with lsmod, if modules aren't active
+# TODO: do a test case (when a clone wake up) to verify, with lsmod, whether a modules is active
 tst_mod_purged() {
   #ptx cat /etc/modprobe.d/${2:-$1}.conf | {
   #  ln_is "blacklist ${1}" "Verify if Kernel module is blacklisted at /etc/modprobe.d/${2:-$1}.conf"
@@ -206,6 +204,9 @@ tst_mod_purged() {
     no_ln "Verify if ${1}.ko file was expunged"
   }
 }
+tst_mod_ok() {
+  ptx modinfo ${1} &>/dev/null ; ok $? "Verify if module '${1}' is present" 
+}
 tst_moddir_purged() {
   dn=$(dirname ${1})
   [ "$dn" == "." ] && unset dn || true
@@ -213,198 +214,629 @@ tst_moddir_purged() {
     no_ln "Verify if ${1} modules files were expunged"
   }
 }
+tst_moddir_ok() {
+  dn=$(dirname ${1})
+  [ "$dn" == "." ] && unset dn || true
+  ptx find /lib/modules/$(kver)/kernel/${dn} -type d -name $(basename ${1}) | {
+    ln_is "/lib/modules/"$(kver)"/kernel/"${1}
+  }
+}
 
-tst_mod_purged floppy
-tst_mod_purged cdrom
-tst_mod_purged ide_cd_mod
-tst_mod_purged snd-pcsp
-tst_mod_purged pcspkr
-tst_mod_purged psmouse
-tst_mod_purged usb-storage
-tst_mod_purged ieee1394
-tst_mod_purged pcilynx
-tst_mod_purged ohci1394
-tst_mod_purged video1394
-tst_mod_purged raw1394
-tst_mod_purged sbp2
-tst_mod_purged dv1394
-tst_mod_purged eth1394
-tst_mod_purged firewire-ohci
-tst_mod_purged firewire-net
-tst_mod_purged firewire-core
-tst_mod_purged firewire-sbp2
-tst_mod_purged zatm
-tst_mod_purged uPD98402
-tst_mod_purged ambassador
-tst_mod_purged horizon
-tst_mod_purged iphase
-tst_mod_purged suni
-tst_mod_purged fore_200e
-tst_mod_purged eni
-tst_mod_purged idt77252
-tst_mod_purged solos-pci
-tst_mod_purged atmtcp
-tst_mod_purged firestream
-tst_mod_purged lanai
-tst_mod_purged he
-tst_mod_purged ks0108
-tst_mod_purged cfag12864b
-tst_mod_purged cfag12864bfb
-tst_mod_purged xen-blkfront
-tst_mod_purged xen-netfront
-tst_mod_purged netxen_nic
-tst_mod_purged xen-kbdfront
-tst_mod_purged xen-fbfront
-tst_mod_purged xenfs
-tst_mod_purged evtchn
-tst_mod_purged bnep
-tst_mod_purged cmtp
-tst_mod_purged hidp
-tst_mod_purged rfcomm
-tst_mod_purged sco
-tst_mod_purged l2cap
-tst_mod_purged bluetooth
-tst_mod_purged toshiba_bluetooth
-tst_mod_purged bt3c_cs
-tst_mod_purged btmrvl_sdio
-tst_mod_purged hci_vhci
-tst_mod_purged bluecard_cs
-tst_mod_purged bcm203x
-tst_mod_purged btsdio
-tst_mod_purged dtl1_cs
-tst_mod_purged bfusb
-tst_mod_purged bpa10x
-tst_mod_purged btusb
-tst_mod_purged btmrvl
-tst_mod_purged btuart_cs
-tst_mod_purged ath3k
-tst_mod_purged hci_uart
-tst_mod_purged leds-wm831x-status
-tst_mod_purged leds-wm8350
-tst_mod_purged wm831x_backup
-tst_mod_purged wm831x_bl
-tst_mod_purged wm831x-dcdc
-tst_mod_purged wm831x-gpio
-tst_mod_purged wm831x-hwmon
-tst_mod_purged wm831x-isink
-tst_mod_purged wm831x-ldo
-tst_mod_purged wm831x-on 
-tst_mod_purged wm831x_power
-tst_mod_purged wm831x_wdt
-tst_mod_purged wm8350-gpiolib
-tst_mod_purged wm8350-hwmon
-tst_mod_purged wm8350_power
-tst_mod_purged wm8350-regulator
-tst_mod_purged wm8350_wdt
-tst_mod_purged wm8400-core
-tst_mod_purged wm8400-regulator
-tst_mod_purged wm8739
-tst_mod_purged wm8775
-tst_mod_purged wm8994-gpio
-tst_mod_purged wm8994-regulator
-tst_mod_purged wm97xx-ts
-tst_mod_purged leds-alix2
-tst_mod_purged leds-mc13783
-tst_mod_purged leds-net5501
-tst_mod_purged ledtrig-backlight
-tst_mod_purged leds-88pm860x
-tst_mod_purged ledtrig-heartbeat
-tst_mod_purged leds-bd2802
-tst_mod_purged leds-ss4200
-tst_mod_purged ledtrig-default-on
-tst_mod_purged leds-lp3944
-tst_mod_purged leds-dac124s085
-tst_mod_purged ledtrig-gpio
-tst_mod_purged leds-da903x
-tst_mod_purged led-class
-tst_mod_purged leds-gpio
-tst_mod_purged dell-led
-tst_mod_purged leds-pca9532
-tst_mod_purged leds-pca955x
-tst_mod_purged leds-lt3593
-tst_mod_purged ledtrig-timer
-tst_mod_purged leds-regulator
-tst_mod_purged leds-adp5520
-tst_mod_purged memstick
-tst_mod_purged mspro_block
-tst_mod_purged jmb38x_ms
-tst_mod_purged tifm_ms
-tst_mod_purged sm501
-tst_mod_purged pcf50633-adc
-tst_mod_purged htc-pasic3
-tst_mod_purged rdc321x-southbridge
-tst_mod_purged janz-cmodio
-tst_mod_purged ab3100-otp
-tst_mod_purged ucb1400_core
-tst_mod_purged lpc_sch
-tst_mod_purged mc13783-core
-tst_mod_purged timberdale
-tst_mod_purged pcf50633-gpio
-tst_mod_purged tps65010
-tst_mod_purged pcf50633
-tst_mod_purged tps6507x
-tst_mod_purged sdio_uart
-tst_mod_purged mmc_block
-tst_mod_purged via-sdmmc
-tst_mod_purged sdhci-pltfm
-tst_mod_purged mmc_spi
-tst_mod_purged tifm_sd
-tst_mod_purged sdhci
-tst_mod_purged cb710-mmc
-tst_mod_purged sdhci-pci
-tst_mod_purged wbsd
-tst_mod_purged sdricoh_cs
-tst_mod_purged mc13783-regulator
-tst_mod_purged bq24022
-tst_mod_purged tps65023-regulator
-tst_mod_purged virtual
-tst_mod_purged tps6507x-regulator
-tst_mod_purged max1586
-tst_mod_purged max8649
-tst_mod_purged max8660
-tst_mod_purged max8925-regulator
-tst_mod_purged lp3971
-tst_mod_purged da903x
-tst_mod_purged ab3100
-tst_mod_purged pcf50633-regulator
-tst_mod_purged userspace-consumer
-tst_mod_purged wlp
-tst_mod_purged i1480-dfu-usb
-tst_mod_purged i1480u-wlp
-tst_mod_purged i1480-est
-tst_mod_purged whc-rc
-tst_mod_purged hwa-rc
-tst_mod_purged umc
-tst_mod_purged uwb
-tst_mod_purged whci
+## tests per module family 
 
-tst_moddir_purged drivers/media
-tst_moddir_purged drivers/cdrom
-tst_moddir_purged drivers/input/gameport
-tst_moddir_purged drivers/input/joystick
-tst_moddir_purged drivers/input/mouse
-tst_moddir_purged drivers/input/touchscreen
-tst_moddir_purged drivers/parport
-tst_moddir_purged drivers/telephony
-tst_moddir_purged sound
-tst_moddir_purged drivers/isdn
-tst_moddir_purged drivers/usb
-tst_moddir_purged drivers/net/bluetooth
-tst_moddir_purged net/bluetooth
-tst_moddir_purged drivers/net/ieee80211
-tst_moddir_purged net/ieee80211
-tst_moddir_purged drivers/net/ipx
-tst_moddir_purged net/ipx
-tst_moddir_purged drivers/net/mac80211
-tst_moddir_purged net/mac80211
-tst_moddir_purged drivers/net/wireless
-tst_moddir_purged net/wireless
-tst_moddir_purged drivers/net/x25
-tst_moddir_purged net/x25
-tst_moddir_purged drivers/net/usb
-tst_moddir_purged drivers/net/can/usb
-tst_moddir_purged drivers/ieee1394
-tst_moddir_purged drivers/firewire
+# floppy
+tst_mf_floppy_purged(){
+  tst_mod_purged floppy
+  tst_mod_purged ide-floppy
+}
+tst_mf_floppy_ok(){
+  tst_mod_ok floppy
+  tst_mod_ok ide-floppy
+}
+
+# tape
+tst_mf_tape_purged(){
+  tst_mod_purged ide-tape
+}
+tst_mf_tape_ok(){
+  tst_mod_ok ide-tape
+}
+
+# cdrom
+tst_mf_cdrom_purged() {
+  tst_mod_purged cdrom
+  tst_mod_purged ide_cd_mod
+
+  tst_moddir_purged drivers/cdrom
+}
+
+tst_mf_cdrom_ok(){
+  tst_mod_ok cdrom
+  tst_mod_ok ide_cd_mod
+
+  tst_moddir_ok drivers/cdrom
+}
+
+# sound
+tst_mf_sound_purged() {
+  tst_mod_purged snd-pcsp
+  tst_mod_purged pcspkr
+
+  tst_moddir_purged sound
+}
+
+tst_mf_sound_ok(){
+  tst_mod_ok snd-pcsp
+  tst_mod_ok pcspkr
+
+  tst_moddir_ok sound
+}
+
+# mouse
+tst_mf_mouse_purged() {
+  tst_mod_purged psmouse
+
+  tst_moddir_purged drivers/input/mouse
+  tst_moddir_purged drivers/input/touchscreen
+}
+
+tst_mf_mouse_ok(){
+  tst_mod_ok psmouse
+
+  tst_moddir_ok drivers/input/mouse
+  tst_moddir_ok drivers/input/touchscreen
+}
+
+# usb
+tst_mf_usb_purged() {
+  tst_mod_purged usb-storage
+  tst_mod_purged usbcore
+  tst_mod_purged uhci_hcd
+  tst_mod_purged ehci_hcd 
+
+  tst_moddir_purged drivers/usb
+}
+
+tst_mf_usb_ok(){
+  tst_mod_ok usb-storage
+  tst_mod_ok usbcore
+  tst_mod_ok uhci_hcd
+  tst_mod_ok ehci_hcd 
+
+  tst_moddir_ok drivers/usb
+}
+
+# firewire
+tst_mf_firewire_purged() {
+  tst_mod_purged ieee1394
+  tst_mod_purged pcilynx
+  tst_mod_purged ohci1394
+  tst_mod_purged video1394
+  tst_mod_purged raw1394
+  tst_mod_purged sbp2
+  tst_mod_purged dv1394
+  tst_mod_purged eth1394
+  tst_mod_purged firewire-ohci
+  tst_mod_purged firewire-net
+  tst_mod_purged firewire-core
+  tst_mod_purged firewire-sbp2
+
+  tst_moddir_purged drivers/ieee1394
+  tst_moddir_purged drivers/firewire
+}
+
+tst_mf_firewire_ok(){
+  tst_mod_ok ieee1394
+  tst_mod_ok pcilynx
+  tst_mod_ok ohci1394
+  tst_mod_ok video1394
+  tst_mod_ok raw1394
+  tst_mod_ok sbp2
+  tst_mod_ok dv1394
+  tst_mod_ok eth1394
+  tst_mod_ok firewire-ohci
+  tst_mod_ok firewire-net
+  tst_mod_ok firewire-core
+  tst_mod_ok firewire-sbp2
+
+  tst_moddir_ok drivers/ieee1394
+  tst_moddir_ok drivers/firewire
+}
+
+# atm
+tst_mf_atm_purged() {
+  tst_mod_purged zatm
+  tst_mod_purged uPD98402
+  tst_mod_purged ambassador
+  tst_mod_purged horizon
+  tst_mod_purged iphase
+  tst_mod_purged suni
+  tst_mod_purged fore_200e
+  tst_mod_purged eni
+  tst_mod_purged idt77252
+  tst_mod_purged solos-pci
+  tst_mod_purged atmtcp
+  tst_mod_purged firestream
+  tst_mod_purged lanai
+  tst_mod_purged he
+}
+
+tst_mf_atm_ok() {
+  tst_mod_ok zatm
+  tst_mod_ok uPD98402
+  tst_mod_ok ambassador
+  tst_mod_ok horizon
+  tst_mod_ok iphase
+  tst_mod_ok suni
+  tst_mod_ok fore_200e
+  tst_mod_ok eni
+  tst_mod_ok idt77252
+  tst_mod_ok solos-pci
+  tst_mod_ok atmtcp
+  tst_mod_ok firestream
+  tst_mod_ok lanai
+  tst_mod_ok he
+}
+
+# auxdisplay
+tst_mf_auxdisplay_purged() {
+  tst_mod_purged ks0108
+  tst_mod_purged cfag12864b
+  tst_mod_purged cfag12864bfb
+}
+
+tst_mf_auxdisplay_ok() {
+  tst_mod_ok ks0108
+  tst_mod_ok cfag12864b
+  tst_mod_ok cfag12864bfb
+}
+
+# xen
+tst_mf_xen_purged() {
+  tst_mod_purged xen-blkfront
+  tst_mod_purged xen-netfront
+  tst_mod_purged netxen_nic
+  tst_mod_purged xen-kbdfront
+  tst_mod_purged xen-fbfront
+  tst_mod_purged xenfs
+  tst_mod_purged evtchn
+}
+
+tst_mf_xen_ok() {
+  tst_mod_ok xen-blkfront
+  tst_mod_ok xen-netfront
+  tst_mod_ok netxen_nic
+  tst_mod_ok xen-kbdfront
+  tst_mod_ok xen-fbfront
+  tst_mod_ok xenfs
+  tst_mod_ok evtchn
+}
+
+# bluetooth
+tst_mf_bluetooth_purged() {
+  tst_mod_purged bnep
+  tst_mod_purged cmtp
+  tst_mod_purged hidp
+  tst_mod_purged rfcomm
+  tst_mod_purged sco
+  tst_mod_purged l2cap
+  tst_mod_purged bluetooth
+  tst_mod_purged toshiba_bluetooth
+  tst_mod_purged bt3c_cs
+  tst_mod_purged btmrvl_sdio
+  tst_mod_purged hci_vhci
+  tst_mod_purged bluecard_cs
+  tst_mod_purged bcm203x
+  tst_mod_purged btsdio
+  tst_mod_purged dtl1_cs
+  tst_mod_purged bfusb
+  tst_mod_purged bpa10x
+  tst_mod_purged btusb
+  tst_mod_purged btmrvl
+  tst_mod_purged btuart_cs
+  tst_mod_purged ath3k
+  tst_mod_purged hci_uart
+
+  tst_moddir_purged drivers/net/bluetooth
+  tst_moddir_purged net/bluetooth
+}
+
+tst_mf_bluetooth_ok() {
+  tst_mod_ok bnep
+  tst_mod_ok cmtp
+  tst_mod_ok hidp
+  tst_mod_ok rfcomm
+  tst_mod_ok sco
+  tst_mod_ok l2cap
+  tst_mod_ok bluetooth
+  tst_mod_ok toshiba_bluetooth
+  tst_mod_ok bt3c_cs
+  tst_mod_ok btmrvl_sdio
+  tst_mod_ok hci_vhci
+  tst_mod_ok bluecard_cs
+  tst_mod_ok bcm203x
+  tst_mod_ok btsdio
+  tst_mod_ok dtl1_cs
+  tst_mod_ok bfusb
+  tst_mod_ok bpa10x
+  tst_mod_ok btusb
+  tst_mod_ok btmrvl
+  tst_mod_ok btuart_cs
+  tst_mod_ok ath3k
+  tst_mod_ok hci_uart
+
+  tst_moddir_ok drivers/net/bluetooth
+  tst_moddir_ok net/bluetooth
+}
+
+# wolfsonmicro
+tst_mf_wolfsonmicro_purged() {
+  tst_mod_purged leds-wm831x-status
+  tst_mod_purged leds-wm8350
+  tst_mod_purged wm831x_backup
+  tst_mod_purged wm831x_bl
+  tst_mod_purged wm831x-dcdc
+  tst_mod_purged wm831x-gpio
+  tst_mod_purged wm831x-hwmon
+  tst_mod_purged wm831x-isink
+  tst_mod_purged wm831x-ldo
+  tst_mod_purged wm831x-on 
+  tst_mod_purged wm831x_power
+  tst_mod_purged wm831x_wdt
+  tst_mod_purged wm8350-gpiolib
+  tst_mod_purged wm8350-hwmon
+  tst_mod_purged wm8350_power
+  tst_mod_purged wm8350-regulator
+  tst_mod_purged wm8350_wdt
+  tst_mod_purged wm8400-core
+  tst_mod_purged wm8400-regulator
+  tst_mod_purged wm8739
+  tst_mod_purged wm8775
+  tst_mod_purged wm8994-gpio
+  tst_mod_purged wm8994-regulator
+  tst_mod_purged wm97xx-ts
+}
+
+tst_mf_wolfsonmicro_ok() {
+  tst_mod_ok leds-wm831x-status
+  tst_mod_ok leds-wm8350
+  tst_mod_ok wm831x_backup
+  tst_mod_ok wm831x_bl
+  tst_mod_ok wm831x-dcdc
+  tst_mod_ok wm831x-gpio
+  tst_mod_ok wm831x-hwmon
+  tst_mod_ok wm831x-isink
+  tst_mod_ok wm831x-ldo
+  tst_mod_ok wm831x-on 
+  tst_mod_ok wm831x_power
+  tst_mod_ok wm831x_wdt
+  tst_mod_ok wm8350-gpiolib
+  tst_mod_ok wm8350-hwmon
+  tst_mod_ok wm8350_power
+  tst_mod_ok wm8350-regulator
+  tst_mod_ok wm8350_wdt
+  tst_mod_ok wm8400-core
+  tst_mod_ok wm8400-regulator
+  tst_mod_ok wm8739
+  tst_mod_ok wm8775
+  tst_mod_ok wm8994-gpio
+  tst_mod_ok wm8994-regulator
+  tst_mod_ok wm97xx-ts
+}
+
+# leds
+tst_mf_leds_purged() {
+  tst_mod_purged leds-alix2
+  tst_mod_purged leds-mc13783
+  tst_mod_purged leds-net5501
+  tst_mod_purged ledtrig-backlight
+  tst_mod_purged leds-88pm860x
+  tst_mod_purged ledtrig-heartbeat
+  tst_mod_purged leds-bd2802
+  tst_mod_purged leds-ss4200
+  tst_mod_purged ledtrig-default-on
+  tst_mod_purged leds-lp3944
+  tst_mod_purged leds-dac124s085
+  tst_mod_purged ledtrig-gpio
+  tst_mod_purged leds-da903x
+  tst_mod_purged led-class
+  tst_mod_purged leds-gpio
+  tst_mod_purged dell-led
+  tst_mod_purged leds-pca9532
+  tst_mod_purged leds-pca955x
+  tst_mod_purged leds-lt3593
+  tst_mod_purged ledtrig-timer
+  tst_mod_purged leds-regulator
+  tst_mod_purged leds-adp5520
+}
+
+tst_mf_leds_ok() {
+  tst_mod_ok leds-alix2
+  tst_mod_ok leds-mc13783
+  tst_mod_ok leds-net5501
+  tst_mod_ok ledtrig-backlight
+  tst_mod_ok leds-88pm860x
+  tst_mod_ok ledtrig-heartbeat
+  tst_mod_ok leds-bd2802
+  tst_mod_ok leds-ss4200
+  tst_mod_ok ledtrig-default-on
+  tst_mod_ok leds-lp3944
+  tst_mod_ok leds-dac124s085
+  tst_mod_ok ledtrig-gpio
+  tst_mod_ok leds-da903x
+  tst_mod_ok led-class
+  tst_mod_ok leds-gpio
+  tst_mod_ok dell-led
+  tst_mod_ok leds-pca9532
+  tst_mod_ok leds-pca955x
+  tst_mod_ok leds-lt3593
+  tst_mod_ok ledtrig-timer
+  tst_mod_ok leds-regulator
+  tst_mod_ok leds-adp5520
+}
+
+# memstick
+tst_mf_memstick_purged() {
+  tst_mod_purged memstick
+  tst_mod_purged mspro_block
+  tst_mod_purged jmb38x_ms
+  tst_mod_purged tifm_ms
+}
+
+tst_mf_memstick_ok() {
+  tst_mod_ok memstick
+  tst_mod_ok mspro_block
+  tst_mod_ok jmb38x_ms
+  tst_mod_ok tifm_ms
+}
+
+# multi-function-device
+tst_mf_mfd_purged() {
+  tst_mod_purged sm501
+  tst_mod_purged pcf50633-adc
+  tst_mod_purged htc-pasic3
+  tst_mod_purged rdc321x-southbridge
+  tst_mod_purged janz-cmodio
+  tst_mod_purged ab3100-otp
+  tst_mod_purged ucb1400_core
+  tst_mod_purged lpc_sch
+  tst_mod_purged mc13783-core
+  tst_mod_purged timberdale
+  tst_mod_purged pcf50633-gpio
+  tst_mod_purged tps65010
+  tst_mod_purged pcf50633
+  tst_mod_purged tps6507x
+}
+
+tst_mf_mfd_ok() {
+  tst_mod_ok sm501
+  tst_mod_ok pcf50633-adc
+  tst_mod_ok htc-pasic3
+  tst_mod_ok rdc321x-southbridge
+  tst_mod_ok janz-cmodio
+  tst_mod_ok ab3100-otp
+  tst_mod_ok ucb1400_core
+  tst_mod_ok lpc_sch
+  tst_mod_ok mc13783-core
+  tst_mod_ok timberdale
+  tst_mod_ok pcf50633-gpio
+  tst_mod_ok tps65010
+  tst_mod_ok pcf50633
+  tst_mod_ok tps6507x
+}
+
+# multi-media-card
+tst_mf_mmc_purged() {
+  tst_mod_purged sdio_uart
+  tst_mod_purged mmc_block
+  tst_mod_purged via-sdmmc
+  tst_mod_purged sdhci-pltfm
+  tst_mod_purged mmc_spi
+  tst_mod_purged tifm_sd
+  tst_mod_purged sdhci
+  tst_mod_purged cb710-mmc
+  tst_mod_purged sdhci-pci
+  tst_mod_purged wbsd
+  tst_mod_purged sdricoh_cs
+}
+
+tst_mf_mmc_ok() {
+  tst_mod_ok sdio_uart
+  tst_mod_ok mmc_block
+  tst_mod_ok via-sdmmc
+  tst_mod_ok sdhci-pltfm
+  tst_mod_ok mmc_spi
+  tst_mod_ok tifm_sd
+  tst_mod_ok sdhci
+  tst_mod_ok cb710-mmc
+  tst_mod_ok sdhci-pci
+  tst_mod_ok wbsd
+  tst_mod_ok sdricoh_cs
+}
+
+# regulator
+tst_mf_regulator_purged() {
+  tst_mod_purged mc13783-regulator
+  tst_mod_purged bq24022
+  tst_mod_purged tps65023-regulator
+  tst_mod_purged virtual
+  tst_mod_purged tps6507x-regulator
+  tst_mod_purged max1586
+  tst_mod_purged max8649
+  tst_mod_purged max8660
+  tst_mod_purged max8925-regulator
+  tst_mod_purged lp3971
+  tst_mod_purged da903x
+  tst_mod_purged ab3100
+  tst_mod_purged pcf50633-regulator
+  tst_mod_purged userspace-consumer
+}
+
+tst_mf_regulator_ok() {
+  tst_mod_ok mc13783-regulator
+  tst_mod_ok bq24022
+  tst_mod_ok tps65023-regulator
+  tst_mod_ok virtual
+  tst_mod_ok tps6507x-regulator
+  tst_mod_ok max1586
+  tst_mod_ok max8649
+  tst_mod_ok max8660
+  tst_mod_ok max8925-regulator
+  tst_mod_ok lp3971
+  tst_mod_ok da903x
+  tst_mod_ok ab3100
+  tst_mod_ok pcf50633-regulator
+  tst_mod_ok userspace-consumer
+}
+
+# ultra-wide-band
+tst_mf_uwb_purged() {
+  tst_mod_purged wlp
+  tst_mod_purged i1480-dfu-usb
+  tst_mod_purged i1480u-wlp
+  tst_mod_purged i1480-est
+  tst_mod_purged whc-rc
+  tst_mod_purged hwa-rc
+  tst_mod_purged umc
+  tst_mod_purged uwb
+  tst_mod_purged whci
+}
+
+tst_mf_uwb_ok() {
+  tst_mod_ok wlp
+  tst_mod_ok i1480-dfu-usb
+  tst_mod_ok i1480u-wlp
+  tst_mod_ok i1480-est
+  tst_mod_ok whc-rc
+  tst_mod_ok hwa-rc
+  tst_mod_ok umc
+  tst_mod_ok uwb
+  tst_mod_ok whci
+}
+
+# wlan 
+tst_mf_wlan_purged() {
+  tst_moddir_purged drivers/net/ieee80211
+  tst_moddir_purged net/ieee80211
+  tst_moddir_purged drivers/net/mac80211
+  tst_moddir_purged net/mac80211
+  tst_moddir_purged drivers/net/wireless
+  tst_moddir_purged net/wireless
+}
+
+tst_mf_wlan_ok() {
+  tst_moddir_ok drivers/net/ieee80211
+  tst_moddir_ok net/ieee80211
+  tst_moddir_ok drivers/net/mac80211
+  tst_moddir_ok net/mac80211
+  tst_moddir_ok drivers/net/wireless
+  tst_moddir_ok net/wireless
+}
+
+# media
+tst_mf_media_purged() {
+  tst_moddir_purged drivers/media
+}
+
+tst_mf_media_ok() {
+  tst_moddir_ok drivers/media
+}
+
+# gaming
+tst_mf_gaming_purged() {
+  tst_moddir_purged drivers/input/gameport
+  tst_moddir_purged drivers/input/joystick
+}
+
+tst_mf_gaming_ok() {
+  tst_moddir_ok drivers/input/gameport
+  tst_moddir_ok drivers/input/joystick
+}
+
+# parport
+tst_mf_parport_purged() {
+  tst_moddir_purged drivers/parport
+}
+
+tst_mf_parport_ok() {
+  tst_moddir_ok drivers/parport
+}
+
+# extra-networking
+tst_mf_xn_purged() {
+  tst_moddir_purged drivers/telephony
+  tst_moddir_purged drivers/isdn
+  tst_moddir_purged drivers/net/ipx
+  tst_moddir_purged net/ipx
+  tst_moddir_purged drivers/net/x25
+  tst_moddir_purged net/x25
+  tst_moddir_purged drivers/net/usb
+  tst_moddir_purged drivers/net/can/usb
+}
+
+tst_mf_xn_ok() {
+  tst_moddir_ok drivers/telephony
+  tst_moddir_ok drivers/isdn
+  tst_moddir_ok drivers/net/ipx
+  tst_moddir_ok net/ipx
+  tst_moddir_ok drivers/net/x25
+  tst_moddir_ok net/x25
+  tst_moddir_ok drivers/net/usb
+  tst_moddir_ok drivers/net/can/usb
+}
+
+# all modules
+tst_mf_all_purged() {
+  tst_mf_floppy_purged
+  tst_mf_tape_purged
+  tst_mf_cdrom_purged
+  tst_mf_sound_purged
+  tst_mf_mouse_purged
+  tst_mf_usb_purged
+  tst_mf_firewire_purged
+  tst_mf_atm_purged
+  tst_mf_auxdisplay_purged
+  tst_mf_xen_purged
+  tst_mf_bluetooth_purged
+  tst_mf_wolfsonmicro_purged
+  tst_mf_leds_purged
+  tst_mf_memstick_purged
+  tst_mf_mfd_purged
+  tst_mf_mmc_purged
+  tst_mf_regulator_purged
+  tst_mf_uwb_purged
+  tst_mf_wlan_purged
+  tst_mf_media_purged
+  tst_mf_gaming_purged
+  tst_mf_parport_purged
+  tst_mf_xn_purged
+}
+
+tst_mf_all_ok() {
+  tst_mf_floppy_ok
+  tst_mf_tape_ok
+  tst_mf_cdrom_ok
+  tst_mf_sound_ok
+  tst_mf_mouse_ok
+  tst_mf_usb_ok
+  tst_mf_firewire_ok
+  tst_mf_atm_ok
+  tst_mf_auxdisplay_ok
+  tst_mf_xen_ok
+  tst_mf_bluetooth_ok
+  tst_mf_wolfsonmicro_ok
+  tst_mf_leds_ok
+  tst_mf_memstick_ok
+  tst_mf_mfd_ok
+  tst_mf_mmc_ok
+  tst_mf_regulator_ok
+  tst_mf_uwb_ok
+  tst_mf_wlan_ok
+  tst_mf_media_ok
+  tst_mf_gaming_ok
+  tst_mf_parport_ok
+  tst_mf_xn_ok
+}
 
 # Test Case: Tests for checking packages installed
 tst_pkg_installed gpgv

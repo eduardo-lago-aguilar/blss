@@ -49,6 +49,87 @@ declare -A EXTRA_PKGS_SUITES=(["squeeze"]="readahead-fedora" ["lenny"]=" insserv
 declare -A READAHEAD_PER_SUITE=(["squeeze"]="readahead-fedora" ["lenny"]="readahead" ["natty"]="readahead-fedora" ["maverick"]="readahead-fedora" ["lucid"]="readahead-fedora")
 declare -A ACPI_PER_DISTRO=(["debian"]="acpi-support-base" ["ubuntu"]="acpi")
 
+## Kernel modules
+declare -A MODS_CMDLN_OPTS="--mod-floppy --mod-tape --mod-cdrom --mod-sound --mod-mouse --mod-usb --mod-firewire --mod-atm --mod-auxdisplay --mod-xen --mod-bluetooth --mod-wolfsonmicro --mod-leds --mod-memstick --mod-multi-function-device --mod-multi-media-card --mod-regulator --mod-ultra-wide-band --mod-wlan --mod-media --mod-gaming --mod-parport --mod-extra-networking"
+declare -A MODS_CONF_OPTS
+for cl_opt in ${MODS_CMDLN_OPTS} ; do
+  cf_opt=${cl_opt/--/} ; 
+  cf_opt=${cf_opt//-/_} ;
+  MODS_CONF_OPTS[$cl_opt]=$cf_opt ;
+done
+
+# mods description
+declare -A MODS_DESC
+
+for cl_opt in ${MODS_CMDLN_OPTS} ; do
+  # default description
+  desc=${cl_opt/--mod-/}
+  desc=${desc//-/\ }
+  MODS_DESC[$cl_opt]=$desc
+done
+MODS_DESC["--mod-usb"]="USB"
+MODS_DESC["--mod-atm"]="ATM"
+MODS_DESC["--mod-wolfsonmicro"]="Wolfsonmicro"
+MODS_DESC["--mod-multi-function-device"]="Multi-Function Device"
+MODS_DESC["--mod-multi-media-card"]="Multi Media Card subsystem"
+MODS_DESC["--mod-ultra-wide-band"]="Linux Ultra-Wide-Band stack, as well as drivers for Wireless USB Host Controller drivers"
+MODS_DESC["--mod-wlan"]="IEEE 802.11 wireless local area network"
+MODS_DESC["--mod-media"]="various media related modules"
+MODS_DESC["--mod-gaming"]="various gaming related modules"
+MODS_DESC["--mod-parport"]="parallel port"
+MODS_DESC["--mod-extra-networking"]="some extra networking related modules for Telephony, ISDN, IPX, x25, USB-networking"
+
+mods_usage() {
+  for cl_opt in ${!MODS_CONF_OPTS[@]} ; do
+    cat << EOF
+
+  ${cl_opt} yes|no
+    Support for ${MODS_DESC[$cl_opt]}. Defaults to ${DEF_MODS[$cl_opt]}.
+EOF
+  done
+}
+
+# mods to be purge (removed and blacklisted)
+declare -A MODS_PURGE=(\
+["--mod-floppy"]="floppy ide-floppy" \
+["--mod-tape"]="ide-tape" \
+["--mod-cdrom"]="cdrom ide_cd_mod" \
+["--mod-sound"]="snd-pcsp pcspkr" \
+["--mod-mouse"]="psmouse" \
+["--mod-usb"]="usb-storage usbcore uhci_hcd ehci_hcd" \
+)
+
+# mods to be removed (not blacklisted)
+declare -A MODS_RM=(\
+["--mod-firewire"]="ieee1394 pcilynx ohci1394 video1394 raw1394 sbp2 dv1394 eth1394 firewire-ohci firewire-net firewire-core firewire-sbp2" \
+["--mod-atm"]="zatm uPD98402 ambassador horizon iphase suni fore_200e eni idt77252 solos-pci atmtcp firestream lanai he" \
+["--mod-auxdisplay"]="ks0108 cfag12864b cfag12864bfb" \
+["--mod-xen"]="xen-blkfront xen-netfront netxen_nic xen-kbdfront xen-fbfront xenfs evtchn" \
+["--mod-bluetooth"]="bnep cmtp hidp rfcomm sco l2cap bluetooth toshiba_bluetooth bt3c_cs btmrvl_sdio hci_vhci bluecard_cs bcm203x btsdio dtl1_cs bfusb bpa10x btusb btmrvl btuart_cs ath3k hci_uart" \
+["--mod-wolfsonmicro"]="leds-wm831x-status leds-wm8350 wm831x_backup wm831x_bl wm831x-dcdc wm831x-gpio wm831x-hwmon wm831x-isink wm831x-ldo wm831x-on wm831x_power wm831x_wdt wm8350-gpiolib wm8350-hwmon wm8350_power wm8350-regulator wm8350_wdt wm8400-core wm8400-regulator wm8739 wm8775 wm8994-gpio wm8994-regulator wm97xx-ts" \
+["--mod-leds"]="leds-alix2 leds-mc13783 leds-net5501 ledtrig-backlight leds-88pm860x ledtrig-heartbeat leds-bd2802 leds-ss4200 ledtrig-default-on leds-lp3944 leds-dac124s085 ledtrig-gpio leds-da903x led-class leds-gpio dell-led leds-pca9532 leds-pca955x leds-lt3593 ledtrig-timer leds-regulator leds-adp5520" \
+["--mod-memstick"]="memstick mspro_block jmb38x_ms tifm_ms" \
+["--mod-multi-function-device"]="sm501 pcf50633-adc htc-pasic3 rdc321x-southbridge janz-cmodio ab3100-otp ucb1400_core lpc_sch mc13783-core timberdale pcf50633-gpio tps65010 pcf50633 tps6507x" \
+["--mod-multi-media-card"]="sdio_uart mmc_block via-sdmmc sdhci-pltfm mmc_spi tifm_sd sdhci cb710-mmc sdhci-pci wbsd sdricoh_cs" \
+["--mod-regulator"]="mc13783-regulator bq24022 tps65023-regulator virtual tps6507x-regulator max1586 max8649 max8660 max8925-regulator lp3971 da903x ab3100 pcf50633-regulator userspace-consumer" \
+["--mod-ultra-wide-band"]="wlp i1480-dfu-usb i1480u-wlp i1480-est whc-rc hwa-rc umc uwb whci" \
+)
+
+# mods directories to be removed (not blacklisted)
+declare -A MODS_RMDIR=(\
+["--mod-cdrom"]="drivers/cdrom" \
+["--mod-sound"]="sound" \
+["--mod-mouse"]="drivers/input/mouse drivers/input/touchscreen" \
+["--mod-usb"]="drivers/usb" \
+["--mod-firewire"]="drivers/ieee1394 drivers/firewire" \
+["--mod-bluetooth"]="drivers/net/bluetooth net/bluetooth" \
+["--mod-wlan"]="drivers/net/ieee80211 net/ieee80211 drivers/net/mac80211 net/mac80211 drivers/net/wireless net/wireless" \
+["--mod-media"]="drivers/media" \
+["--mod-gaming"]="drivers/input/gameport drivers/input/joystick" \
+["--mod-parport"]="drivers/parport" \
+["--mod-extra-networking"]="drivers/telephony drivers/isdn drivers/net/ipx net/ipx drivers/net/x25 net/x25 drivers/net/usb drivers/net/can/usb" \
+)
+
 ## Defaults
 declare -A DEF_INSTALL_MIRROR=(["debian"]="http://ftp.debian.org/debian" ["ubuntu"]="http://archive.ubuntu.com/ubuntu")
 DEF_PACKAGES=""
@@ -61,6 +142,12 @@ DEF_EV=".blss" # Profile mirror files
 DEF_FORMATS="raw"
 DEF_DHCP=yes
 DEF_IP6=no
+
+# Kernel modules defaults
+declare -A DEF_MODS
+for cl_opt in ${MODS_CMDLN_OPTS} ; do
+  DEF_MODS[$cl_opt]=no ;
+done
 
 # process the environment settings
 proc_ev() {
@@ -90,13 +177,22 @@ err_non_empty() {
   err "Command line option '$1' requires an non-empty argument"
 }
 err_non_sup() {
-  err "Command line/conf file option --$1/${2:-$1} requires a supported argument. See --help command line option for help"
+  local cl_opt=$1
+  local cf_opt=${cl_opt/--/}
+  cf_opt=${cf_opt//-/_}
+  err "Command line/conf file option $cl_opt/$cf_opt requires a supported argument. See --help command line option for help"
 }
 err_non_r() {
-  err "Command line/conf file option --${1}/${2:-$1} requires an existing-readable file argument. See --help command line option for help"
+  local cl_opt=$1
+  local cf_opt=${cl_opt/--/}
+  cf_opt=${cf_opt//-/_}
+  err "Command line/conf file option $cl_opt/$cf_opt requires an existing-readable file argument. See --help command line option for help"
 }
 err_rep_value() {
-  err "Command line/conf file option --$1/${2:-$1} contains a repeated value in the argument. See --help command line option for help"
+  local cl_opt=$1
+  local cf_opt=${cl_opt/--/}
+  cf_opt=${cf_opt//-/_}
+  err "Command line/conf file option $cl_opt/$cf_opt contains a repeated value in the argument. See --help command line option for help"
 }
 _stepnum=0
 step() {
@@ -405,7 +501,7 @@ proc_lcl() {
     host_lang=${host_lang#LANG=\"};
     lcl=${host_lang%\"};
   fi
-  lcl=$(grep -v "^#.*" /usr/share/i18n/SUPPORTED | egrep -m 1 "$lcl") || ( err_non_sup locale >&2 && exit 1 )
+  lcl=$(grep -v "^#.*" /usr/share/i18n/SUPPORTED | egrep -m 1 "$lcl") || ( err_non_sup --locale >&2 && exit 1 )
   plang=${lcl/ */}
   plang_ctry=${plang/.*}
   pbaselang=${plang_ctry/_*/}
@@ -413,7 +509,7 @@ proc_lcl() {
 
 # process timezone
 proc_tzon() {
-  tzon=$(find /usr/share/zoneinfo/ -type f -print | sed -e 's/\/usr\/share\/zoneinfo\///' -e 's/posix\///' -e 's/right\///' | egrep -m 1 ^$tzon$) || ( err_non_sup timezone >&2 && exit 1 )
+  tzon=$(find /usr/share/zoneinfo/ -type f -print | sed -e 's/\/usr\/share\/zoneinfo\///' -e 's/posix\///' -e 's/right\///' | egrep -m 1 ^$tzon$) || ( err_non_sup --timezone >&2 && exit 1 )
 }
 
 # Import a conf file
@@ -499,8 +595,8 @@ EOF
 # remove the modules in a directory (no blacklist)
 mod_rmdir() {
   cat << EOF
-for mod in $(chr find /lib/modules/$(kver)/kernel/$1 -type f -path *.ko -exec basename {} .ko \; 2>/dev/null | awk -v ORS=" " '{NF=NF; print $0}') ; do 
-  rm \$(modinfo -n \$mod)
+for moddir in $@ ; do
+  rm -rf /lib/modules/$(kver)/kernel/\$moddir
 done
 EOF
 }
@@ -517,282 +613,35 @@ done
 EOF
 }
 
-# purge base modules not used very often in server environment 
-purge_base_mods() {
+# purge modules not used very often in server environment 
+purge_mods() {
+  step "Purge modules"
   chr << EOT
 cat >> /etc/modprobe.d/floppy.conf << EOF
 
 # Blacklist modules not used very often in server environment
 EOF
-$(mod_purge \
-  floppy \
-  ide-floppy \
-  ide-tape \
-  cdrom \
-  ide_cd_mod \
-  snd-pcsp \
-  pcspkr \
-  psmouse \
-  usb-storage \
-  usbcore \
-  uhci_hcd \
-  ehci_hcd)
-EOT
-}
-
-rm_extra_mods() {
-  # firewire
-  chr << EOT
-$(mod_rm \
-  ieee1394 \
-  pcilynx \
-  ohci1394 \
-  video1394 \
-  raw1394 \
-  sbp2 \
-  dv1394 \
-  eth1394 \
-  firewire-ohci \
-  firewire-net \
-  firewire-core \
-  firewire-sbp2)
-rm -f /lib/modules/$(kver)/modules.ieee1394map
 EOT
 
-  # atm
-  chr << EOT
-$(mod_rm \
-  zatm \
-  uPD98402 \
-  ambassador \
-  horizon \
-  iphase \
-  suni \
-  fore_200e \
-  eni \
-  idt77252 \
-  solos-pci \
-  atmtcp \
-  firestream \
-  lanai \
-  he)
+  for mod in $MODS_CMDLN_OPTS ; do
+    if [ ${mods[$mod]} == "no" ] ; then
+      if [ -n "${MODS_PURGE[$mod]}" ] ; then
+        chr << EOT
+$(mod_purge ${MODS_PURGE[$mod]})
 EOT
-
-  # auxdisplay
-  chr << EOT
-$(mod_rm \
-  ks0108 \
-  cfag12864b \
-  cfag12864bfb)
+      fi
+      if [ -n "${MODS_RM[$mod]}" ] ; then
+        chr << EOT
+$(mod_rm ${MODS_RM[$mod]})
 EOT
-
-  # xen
-  chr << EOT
-$(mod_rm \
-  xen-blkfront \
-  xen-netfront \
-  netxen_nic \
-  xen-kbdfront \
-  xen-fbfront \
-  xenfs \
-  evtchn)
+      fi
+      if [ -n "${MODS_RMDIR[$mod]}" ] ; then
+        chr << EOT
+$(mod_rmdir ${MODS_RMDIR[$mod]})
 EOT
-
-  # bluetooth
-  chr << EOT
-$(mod_rm \
-  bnep \
-  cmtp \
-  hidp \
-  rfcomm \
-  sco \
-  l2cap \
-  bluetooth \
-  toshiba_bluetooth \
-  bt3c_cs \
-  btmrvl_sdio \
-  hci_vhci \
-  bluecard_cs \
-  bcm203x \
-  btsdio \
-  dtl1_cs \
-  bfusb \
-  bpa10x \
-  btusb \
-  btmrvl \
-  btuart_cs \
-  ath3k \
-  hci_uart)
-EOT
-
-  # WM Family
-  chr << EOT
-$(mod_rm \
-  leds-wm831x-status \
-  leds-wm8350 \
-  wm831x_backup \
-  wm831x_bl \
-  wm831x-dcdc \
-  wm831x-gpio \
-  wm831x-hwmon \
-  wm831x-isink \
-  wm831x-ldo \
-  wm831x-on \
-  wm831x_power \
-  wm831x_wdt \
-  wm8350-gpiolib \
-  wm8350-hwmon \
-  wm8350_power \
-  wm8350-regulator \
-  wm8350_wdt \
-  wm8400-core \
-  wm8400-regulator \
-  wm8739 \
-  wm8775 \
-  wm8994-gpio \
-  wm8994-regulator \
-  wm97xx-ts)
-EOT
-
-  # leds
-  chr << EOT
-$(mod_rm \
-  leds-alix2 \
-  leds-mc13783 \
-  leds-net5501 \
-  ledtrig-backlight \
-  leds-88pm860x \
-  ledtrig-heartbeat \
-  leds-bd2802 \
-  leds-ss4200 \
-  ledtrig-default-on \
-  leds-lp3944 \
-  leds-dac124s085 \
-  ledtrig-gpio \
-  leds-da903x \
-  led-class \
-  leds-gpio \
-  dell-led \
-  leds-pca9532 \
-  leds-pca955x \
-  leds-lt3593 \
-  ledtrig-timer \
-  leds-regulator \
-  leds-adp5520)
-EOT
-
-  # memstick
-  chr << EOT
-$(mod_rm \
-  memstick \
-  mspro_block \
-  jmb38x_ms \
-  tifm_ms)
-EOT
-
-  # mfd: Multi-Function Device
-  # # Silicon Motion SM501
-  # TODO: Verify these modules
-  chr << EOT
-$(mod_rm \
-  sm501 \
-  pcf50633-adc \
-  htc-pasic3 \
-  rdc321x-southbridge \
-  janz-cmodio \
-  ab3100-otp \
-  ucb1400_core \
-  lpc_sch \
-  mc13783-core \
-  timberdale \
-  pcf50633-gpio \
-  tps65010 \
-  pcf50633 \
-  tps6507x)
-EOT
-
-  # MultiMediaCard subsystem
-  chr << EOT
-$(mod_rm \
-  sdio_uart \
-  mmc_block \
-  via-sdmmc \
-  sdhci-pltfm \
-  mmc_spi \
-  tifm_sd \
-  sdhci \
-  cb710-mmc \
-  sdhci-pci \
-  wbsd \
-  sdricoh_cs)
-EOT
-
-  # Regulator
-  chr << EOT
-$(mod_rm \
-  mc13783-regulator \
-  bq24022 \
-  tps65023-regulator \
-  virtual \
-  tps6507x-regulator \
-  max1586 \
-  max8649 \
-  max8660 \
-  max8925-regulator \
-  lp3971 \
-  da903x \
-  ab3100 \
-  pcf50633-regulator \
-  userspace-consumer)
-EOT
-
-  # Linux Ultra-Wide-Band stack, as well as drivers for Wireless USB Host Controller drivers
-  chr << EOT
-$(mod_rm \
-  wlp \
-  i1480-dfu-usb \
-  i1480u-wlp \
-  i1480-est \
-  whc-rc \
-  hwa-rc \
-  umc \
-  uwb \
-  whci)
-EOT
-}
-
-# remove other various module directories
-rm_various_mod_dirs() {
-  # more drastically remove
-  chr << EOT
-$(mod_rmdir drivers/media)
-$(mod_rmdir drivers/cdrom)
-$(mod_rmdir drivers/input/gameport)
-$(mod_rmdir drivers/input/joystick)
-$(mod_rmdir drivers/input/mouse)
-$(mod_rmdir drivers/input/touchscreen)
-$(mod_rmdir drivers/parport)
-$(mod_rmdir drivers/telephony)
-$(mod_rmdir sound)
-$(mod_rmdir drivers/isdn)
-$(mod_rmdir drivers/usb)
-$(mod_rmdir drivers/net/bluetooth)
-$(mod_rmdir net/bluetooth)
-$(mod_rmdir drivers/net/ieee80211)
-$(mod_rmdir net/ieee80211)
-$(mod_rmdir drivers/net/ipx)
-$(mod_rmdir net/ipx)
-$(mod_rmdir drivers/net/mac80211)
-$(mod_rmdir net/mac80211)
-$(mod_rmdir drivers/net/wireless)
-$(mod_rmdir net/wireless)
-$(mod_rmdir drivers/net/x25)
-$(mod_rmdir net/x25)
-$(mod_rmdir drivers/net/usb)
-$(mod_rmdir drivers/net/can/usb)
-$(mod_rmdir drivers/ieee1394)
-$(mod_rmdir drivers/firewire)
-EOT
+      fi
+    fi
+  done
 }
 
 # regenerarte modules.dep

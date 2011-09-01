@@ -34,7 +34,7 @@ ptx cat /etc/hosts | {
   ln_is "127.0.1.1 my-debian-proto my-debian-proto.home.dev" "Verify if myserver and myserver.home.dev is 127.0.1.1 at /etc/hosts"
   ln_is_empty  
   ln_is "# The following lines are desirable for IPv6 capable hosts" "Verify if IPv6 capable hosts is commented"
-  ln_is "## ::1 my-debian-proto localhost6.localdomain6 localhost6"
+  ln_is "## ::1 my-debian-proto my-debian-proto.home.dev localhost6.localdomain6 localhost6"
   ln_is "## ::1 localhost ip6-localhost ip6-loopback"
   ln_is "## fe00::0 ip6-localnet"
   ln_is "## ff00::0 ip6-mcastprefix"

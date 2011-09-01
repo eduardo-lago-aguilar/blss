@@ -204,7 +204,7 @@ hn=${c_hostname:-$hostname}
 
 ip=${c_address}
 if [ -n "$ip" ] ; then
-  match_ip $ip || ( err_non_sup address >&2 && exit 1 )
+  match_ip $ip || ( err_non_sup --address >&2 && exit 1 )
 fi
 
 # CLONE_ROOT

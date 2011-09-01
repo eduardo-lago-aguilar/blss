@@ -218,7 +218,7 @@ verify_libvirt() {
     ln_is "<devices>"
     ln_is "<emulator>/usr/bin/kvm</emulator>" "Verify emulator correctly configured"
     ln_is "<interface type='bridge'>" 
-    ln_is "<source bridge='virbr0' />"
+    ln_is "<source bridge='br0' />"
     ln_is "<!--"
     ln_is "This improves the network performances by a lot (factor 10, nearly). But"
     ln_is "this works only with Ubuntu Hardy or Intrepid guests for the moment, which is why"

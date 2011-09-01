@@ -46,7 +46,7 @@ TST="$BLSS_HOME"/tst
 . "$TST"/tst-commons 
 
 # Total amount of tests to perfom
-plan_tests 122
+plan_tests 126
 
 # Test Case: Test for environment
 
@@ -1045,3 +1045,35 @@ $BIN/lxp 2>&1 | {
 rm "$conf"
 
 rmdir "$BLSS_ENV" # remove the env
+
+
+# Test Case: Kernel modules families
+export BLSS_ENV=$(mktemp -d) # an empty BLSS_ENV
+
+# --mod-floppy
+$BIN/lxp --mod-floppy yes --mod-floppy no &>/dev/null
+not_ok $? "Verify if a repeated command line option --mod-floppy fails"
+$BIN/lxp --mod-floppy yes --mod-floppy no 2>&1 | {
+  ln_is ">>> ERROR: --mod-floppy command line option was already specified >>>"
+}
+
+$BIN/lxp --mod-floppy &>/dev/null   
+not_ok $? "Verify if command line option '--mod-floppy' without argument fails"
+$BIN/lxp --mod-floppy 2>&1 | {
+ ln_like "--mod-floppy' requires an argument"  
+}
+
+$BIN/lxp --mod-floppy "" &>/dev/null   
+not_ok $? "Verify if command line option '--mod-floppy' with an empty argument fails"
+$BIN/lxp --mod-floppy "" 2>&1 | {
+ ln_like ">>> ERROR: Command line option '--mod-floppy' requires an non-empty argument >>>"  
+}
+
+$BIN/lxp --mod-floppy "maybe" &>/dev/null   
+not_ok $? "Verify if command line option --mod-floppy with an invalid argument fails"
+$BIN/lxp --mod-floppy "maybe" 2>&1 | {
+ lst_ln_is ">>> ERROR: Command line/conf file option --mod-floppy/mod_floppy requires a supported argument. See --help command line option for help >>>"
+}
+
+rmdir "$BLSS_ENV" # remove the env
+

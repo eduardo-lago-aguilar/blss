@@ -37,7 +37,9 @@ ok $? "Verify is proto size $DU <= ${expected_sz}MB"
 . "$TST"/it-proto-lenny
 
 verify_adm_user_config
-verify_static_networking\nverify_ip6_disabled
+verify_static_networking
+verify_ip6_disabled
+tst_mf_all_purged
 
 # Test Case: Tests for Kernel
 ptx dpkg --get-selections linux-image* | awk '{print $1" "$2}' | {

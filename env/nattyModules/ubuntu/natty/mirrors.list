@@ -1,0 +1,5 @@
+deb http://ubunturepo/mirror/natty/ubuntu/ natty restricted multiverse
+deb http://ubunturepo/mirror/natty/ubuntu/ natty-backports main restricted universe multiverse
+deb http://ubunturepo/mirror/natty/ubuntu/ natty-proposed main restricted universe multiverse
+deb http://ubunturepo/mirror/natty/ubuntu/ natty-security main restricted universe multiverse
+deb http://ubunturepo/mirror/natty/ubuntu/ natty-updates main restricted universe multiverse
