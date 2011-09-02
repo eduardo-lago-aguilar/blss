@@ -46,7 +46,7 @@ TST="$BLSS_HOME"/tst
 . "$TST"/tst-commons 
 
 # Total amount of tests to perfom
-plan_tests 214
+plan_tests 217
 
 # Test Case: Test for environment
 
@@ -257,7 +257,7 @@ $BIN/lxp --hostname "" 2>&1 | {
   ln_like ">>> ERROR: Command line option '--hostname' requires an non-empty argument >>>"
 }
 
-# TODO: test for invalid hostname cmd ln opt
+# TODO: test for invalid argument in --hostname cmd ln opt
 
 # --dhcp
 $BIN/lxp --dhcp yes --dhcp no &>/dev/null
@@ -409,7 +409,26 @@ $BIN/lxp --gateway 192.168.0.256 --dhcp no --address 192.168.1.1 --network 192.1
  lst_ln_is ">>> ERROR: Command line/conf file option --gateway/gateway requires a supported argument. See --help command line option for help >>>"
 }
 
-# TODO: test for networking command line option search
+# --search
+$BIN/lxp --search "home.dev" --search "work.dev" &>/dev/null
+not_ok $? "Verify if a repeated command line option --search fails"
+$BIN/lxp --search "home.dev" --search "work.dev" 2>&1 | {
+  ln_is ">>> ERROR: --search command line option was already specified >>>"
+}
+
+$BIN/lxp --search &>/dev/null
+not_ok $? "Verify if command line option --search without argument fails"
+$BIN/lxp --search 2>&1 | {
+  ln_like "--search' requires an argument"
+}
+
+$BIN/lxp --search "" &>/dev/null
+not_ok $? "Verify if command line option --search with an empty argument fails"
+$BIN/lxp --search "" 2>&1 | {
+  ln_like ">>> ERROR: Command line option '--search' requires an non-empty argument >>>"
+}
+
+# TODO: test for invalid argument in --search cmd ln opt
 
 # --nameservers
 $BIN/lxp --nameservers 192.168.0.2,192.168.0.3 --nameservers 192.168.0.4,192.168.0.5 &>/dev/null
@@ -559,7 +578,7 @@ rmdir "$BLSS_ENV" # remove the env
 export BLSS_ENV=$(mktemp -d) # an empty BLSS_ENV
 conf="$BLSS_ENV"/lxp.conf
 
-# TODO: test for invalid hostname conf file opt
+# TODO: test for invalid argument in hostname conf file opt
 
 # dhcp
 cat > "$conf" << EOT
