@@ -39,10 +39,47 @@ declare -A MODS_CMDLN_OPTS="--mod-floppy --mod-tape --mod-cdrom --mod-sound --mo
 # Defaults
 declare -A DEF_INSTALL_MIRROR=(["debian"]="http://ftp.debian.org/debian" ["ubuntu"]="http://archive.ubuntu.com/ubuntu")
 
+
+## utils for dealing with space and quote escaping 
+
+_get_search() {
+  eval echo "$cur" 2>/dev/null || eval echo "$cur'" 2>/dev/null || eval echo "$cur\"" 2>/dev/null || ""   
+}
+_escape() {
+  sed -e "{" -e 's#\\#\\\\#g' -e "s#'#\\\'#g" -e 's#"#\\\"#g' -e "}"
+}
+_process_quotes() {
+  local escaped_single_qoute="'\''" ;
+  local i=0 ;
+  for entry in ${COMPREPLY[*]} ; do
+    if [[ "${cur:0:1}" == "'" ]] 
+    then
+      # started with single quote, escaping only other single quotes
+      # [']bla'bla"bla\bla bla --> [']bla'\''bla"bla\bla bla
+      COMPREPLY[$i]="${entry//\'/${escaped_single_qoute}}" 
+    elif [[ "${cur:0:1}" == "\"" ]] 
+    then
+      # started with double quote, escaping all double quotes and all backslashes
+      # ["]bla'bla"bla\bla bla --> ["]bla'bla\"bla\\bla bla
+      entry="${entry//\\/\\\\}" 
+      COMPREPLY[$i]="${entry//\"/\\\"}" 
+    else 
+      # no quotes in front, escaping _everything_
+      # [ ]bla'bla"bla\bla bla --> [ ]bla\'bla\"bla\\bla\ bla
+      entry="${entry//\\/\\\\}" 
+      entry="${entry//\'/\'}" 
+      entry="${entry//\"/\\\"}" 
+      COMPREPLY[$i]="${entry// /\\ }"
+    fi
+    (( i++ ))
+  done
+}
+
+
 _find_supported_locales()
 {
-  search=$(eval echo "$cur" 2>/dev/null || eval echo "$cur'" 2>/dev/null || eval echo "$cur\"" 2>/dev/null || "")
-  grep -v '^#.*' /usr/share/i18n/SUPPORTED | grep -- "^$search" | sed -e "{" -e 's#\\#\\\\#g' -e "s#'#\\\'#g" -e 's#"#\\\"#g' -e "}"
+  search=$(_get_search)
+  grep -v '^#.*' /usr/share/i18n/SUPPORTED | grep -- "^$search" | _escape
 }
 _find_supported_timezones()
 {
@@ -52,6 +89,7 @@ _find_supported_timezones()
 _find_pkgs() {
   apt-cache --no-generate pkgnames "$cur" 2> /dev/null
 }
+
 
 _lxp() {
   local cur prev opts
@@ -77,31 +115,7 @@ _lxp() {
     --locale)
         local IFS=$'\n' ;
         COMPREPLY=( $( compgen -W "$(_find_supported_locales)" -- "$cur" ) ) ;
-
-        local escaped_single_qoute="'\''" ;
-        local i=0 ;
-        for entry in ${COMPREPLY[*]} ; do
-          if [[ "${cur:0:1}" == "'" ]] 
-          then
-            # started with single quote, escaping only other single quotes
-            # [']bla'bla"bla\bla bla --> [']bla'\''bla"bla\bla bla
-            COMPREPLY[$i]="${entry//\'/${escaped_single_qoute}}" 
-          elif [[ "${cur:0:1}" == "\"" ]] 
-          then
-            # started with double quote, escaping all double quotes and all backslashes
-            # ["]bla'bla"bla\bla bla --> ["]bla'bla\"bla\\bla bla
-            entry="${entry//\\/\\\\}" 
-            COMPREPLY[$i]="${entry//\"/\\\"}" 
-          else 
-            # no quotes in front, escaping _everything_
-            # [ ]bla'bla"bla\bla bla --> [ ]bla\'bla\"bla\\bla\ bla
-            entry="${entry//\\/\\\\}" 
-            entry="${entry//\'/\'}" 
-            entry="${entry//\"/\\\"}" 
-            COMPREPLY[$i]="${entry// /\\ }"
-          fi
-          (( i++ ))
-        done
+        _process_quotes
         return 0 ;;
     --timezone)
         COMPREPLY=( $(compgen -W "$(_find_supported_timezones)" -- ${cur}) ) ;
@@ -117,7 +131,7 @@ _lxp() {
         COMPREPLY=( $(compgen -W "" -- ${cur}) ) ;
         return 0 ;;
      *)
-        if [ -n "${MODS_CONF_OPTS[${prev}]}" ] ; then
+        if [[ "${MODS_CMDLN_OPTS[*]}" =~ (\ |^)${prev}(\ |$) ]] ; then
           COMPREPLY=( $(compgen -W "yes no" -- ${cur}) ) ;
           return 0 ;
         fi
@@ -159,6 +173,17 @@ _lxc() {
 }
 complete -F _lxc lxc
 
+# find matching combinations with no repeated elements
+_combine_formats() {
+  search=$(_get_search)
+  lst_fmt=$(echo $search | awk '{print $NF}')
+  for fmt in ${SUPPORTED_FORMATS[*]} ; do
+    if [[ ! $search =~ (\ |^)$fmt(\ |$) ]] ; then
+      echo ${search%%$lst_fmt}${fmt} 
+    fi
+  done | grep -- "^$search" | _escape
+}
+
 _lxd() {
   local cur prev opts
   COMPREPLY=()
@@ -181,7 +206,9 @@ _lxd() {
         COMPREPLY=( $(compgen -W "${SUPPORTED_FILESYSTEMS[*]}" -- ${cur}) ) ;
         return 0 ;;
     --formats)
-        COMPREPLY=( $(compgen -W "${SUPPORTED_FORMATS[*]}" -- ${cur}) ) ;
+        local IFS=$'\n' ;
+        COMPREPLY=( $( compgen -W "$(_combine_formats)" -- "$cur" ) ) ;
+        _process_quotes
         return 0 ;;
     --memory|--size)
         COMPREPLY=( $(compgen -W "" -- ${cur}) ) ;
