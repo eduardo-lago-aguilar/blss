@@ -45,10 +45,17 @@ declare -A DEF_INSTALL_MIRROR=(["debian"]="http://ftp.debian.org/debian" ["ubunt
 _get_search() {
   eval echo "$cur" 2>/dev/null || eval echo "$cur'" 2>/dev/null || eval echo "$cur\"" 2>/dev/null || ""   
 }
+_get_head_search() {
+  _get_search | awk '{$NF=""; print $0}'
+}
+_get_lst_search_item() {
+  _get_search | awk '{print $NF}'  
+}
 _escape() {
   sed -e "{" -e 's#\\#\\\\#g' -e "s#'#\\\'#g" -e 's#"#\\\"#g' -e "}"
 }
 _process_quotes() {
+  local IFS=$'\n' ;
   local escaped_single_qoute="'\''" ;
   local i=0 ;
   for entry in ${COMPREPLY[*]} ; do
@@ -74,7 +81,21 @@ _process_quotes() {
     (( i++ ))
   done
 }
-
+# find matching combinations with no repeated elements
+_combine() {
+  search=$(_get_search)
+  head_search=$(_get_head_search)
+  lst_item=$(_get_lst_search_item)
+  while read item ; do
+    if [[ ! "$head_search" =~ (\ |^)$item(\ |$) ]] ; then
+      if [ "$lst_item" != "$item" ] ; then 
+        echo ${search%%$lst_item}${item}
+      else
+        echo ${search}
+      fi
+    fi
+  done | grep -- "^$search" | _escape
+}
 
 _find_supported_locales()
 {
@@ -87,9 +108,15 @@ _find_supported_timezones()
 }
 
 _find_pkgs() {
-  apt-cache --no-generate pkgnames "$cur" 2> /dev/null
+  apt-cache --no-generate pkgnames $1 2> /dev/null
 }
-
+_combine_pkgs() {
+  if [ "${cur: -1:1}" != " " ] ; then
+    _find_pkgs $(_get_lst_search_item) | _combine
+  else
+    _find_pkgs | _combine
+  fi
+}
 
 _lxp() {
   local cur prev opts
@@ -121,8 +148,9 @@ _lxp() {
         COMPREPLY=( $(compgen -W "$(_find_supported_timezones)" -- ${cur}) ) ;
         return 0 ;;
     --packages)
-        # TODO: generate a list instead of a single package
-        COMPREPLY=( $(compgen -W "$(_find_pkgs)" -- ${cur}) ) ;
+        local IFS=$'\n' ;
+        COMPREPLY=( $(compgen -W "$(_combine_pkgs)" -- ${cur}) ) ;
+        _process_quotes
         return 0 ;;
     --dhcp|--remote-root|--ip6)
         COMPREPLY=( $(compgen -W "yes no" -- ${cur}) ) ;
@@ -157,8 +185,9 @@ _lxc() {
         _filedir ;
         return 0 ;;
     --packages)
-        # TODO: generate a list instead of a single package
-        COMPREPLY=( $(compgen -W "$(_find_pkgs)" -- ${cur}) ) ;
+        local IFS=$'\n' ;
+        COMPREPLY=( $(compgen -W "$(_combine_pkgs)" -- ${cur}) ) ;
+        _process_quotes
         return 0 ;;
     --hostname|--address)
         COMPREPLY=( $(compgen -W "" -- ${cur}) ) ;
@@ -173,15 +202,11 @@ _lxc() {
 }
 complete -F _lxc lxc
 
-# find matching combinations with no repeated elements
 _combine_formats() {
-  search=$(_get_search)
-  lst_fmt=$(echo $search | awk '{print $NF}')
-  for fmt in ${SUPPORTED_FORMATS[*]} ; do
-    if [[ ! $search =~ (\ |^)$fmt(\ |$) ]] ; then
-      echo ${search%%$lst_fmt}${fmt} 
-    fi
-  done | grep -- "^$search" | _escape
+  local IFS=$'\n' ; 
+  _combine << EOT
+${SUPPORTED_FORMATS[*]}
+EOT
 }
 
 _lxd() {
