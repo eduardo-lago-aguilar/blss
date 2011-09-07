@@ -115,7 +115,7 @@ GENERAL OPTIONS
     apt-get --force-yes -y install mc
 
   --packages PACKAGES
-    Space separated list of packages to install after bootstrapping. Defaults to '${DEF_PACKAGES}'. Example package list is: 'nginx  apache2 mysql couchdb'.
+    Space separated list of packages to install after bootstrapping. Defaults to '${DEF_PACKAGES_PROTOTYPE}'. Example package list is: 'nginx  apache2 mysql couchdb'.
 
 NETWORKING OPTIONS
   Networking is mandatory for servicing, therefore there are serveral possible options combinations for networking configuration. See the list below:   
@@ -578,7 +578,7 @@ fi
 # packages: command line may override the value imported from the environment, 
 # if the option is missing use the default value
 pkgs=${c_packages:-$packages}
-pkgs=${pkgs:-${DEF_PACKAGES}}
+pkgs=${pkgs:-${DEF_PACKAGES_PROTOTYPE}}
 
 # hostname: command line may override the value imported from the environment, 
 # if the option is missing use the default value based on distro, suite and 

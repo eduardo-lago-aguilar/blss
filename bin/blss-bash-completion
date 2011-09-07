@@ -223,12 +223,20 @@ _lxd() {
   COMPREPLY=()
   cur="${COMP_WORDS[COMP_CWORD]}"
   prev="${COMP_WORDS[COMP_CWORD-1]}"
-  opts="--help --clone-root --hypervisor --cpu --memory --size --root-filesystem --formats"
+  opts="--help --clone-root --packages --hostname --address --hypervisor --cpu --memory --size --root-filesystem --formats"
 
   # Complete the arguments of long/short options
   case "${prev}" in
     --clone-root)
         _filedir ;
+        return 0 ;;
+    --packages)
+        local IFS=$'\n' ;
+        COMPREPLY=( $(compgen -W "$(_combine_pkgs)" -- ${cur}) ) ;
+        _process_quotes
+        return 0 ;;
+    --hostname|--address)
+        COMPREPLY=( $(compgen -W "" -- ${cur}) ) ;
         return 0 ;;
     --hypervisor)
         COMPREPLY=( $(compgen -W "${SUPPORTED_HYPERVISORS[*]}" -- ${cur}) ) ;

@@ -46,7 +46,7 @@ TST="$BLSS_HOME"/tst
 . "$TST"/tst-commons 
 
 # Total amount of tests to perfom
-plan_tests 37
+plan_tests 47
 
 ### Test Case: Tests for DEPLOYMENT_ROOT command line option
 
@@ -338,4 +338,86 @@ rm -r $BLSS_ENV $CR $DR
 unset BLSS_ENV CR DR
 ### End Test Case
 
+### Test Case: Tests for --packages command line option
+export BLSS_ENV=$(mktemp -d) && CR=$(mktemp -d) && touch $CR/xfile && DR=$(mktemp -d)
 
+$BIN/lxd --packages "apache2" --packages "mc" &>/dev/null
+not_ok $? "Verify if a repeated command line option --packages fails"
+$BIN/lxd --packages "apache2" --packages "mc" 2>&1 | {
+  ln_is ">>> ERROR: --packages command line option was already specified >>>"
+}
+
+$BIN/lxd --packages &>/dev/null
+not_ok $? "Verify if command line option --packages without argument fails"
+$BIN/lxd --packages 2>&1 | {
+  ln_like "--packages' requires an argument"
+}
+
+$BIN/lxd --packages "" &>/dev/null
+not_ok $? "Verify if command line option --packages with an empty argument fails"
+$BIN/lxd --packages "" 2>&1 | {
+  ln_like ">>> ERROR: Command line option '--packages' requires an non-empty argument >>>"
+}
+
+rm -r $BLSS_ENV $CR $DR
+unset BLSS_ENV CR DR
+### End Test Case
+
+### Test Case: Tests for --hostname command line option
+export BLSS_ENV=$(mktemp -d) && CR=$(mktemp -d) && touch $CR/xfile && DR=$(mktemp -d)
+
+$BIN/lxd $DR --clone-root $CR --hostname "myserver" --hostname "servermy" &>/dev/null
+not_ok $? "Verify if a repeated command line option --hostname fails"
+$BIN/lxd $DR --clone-root $CR --hostname "myserver" --hostname "servermy" 2>&1 | {
+  ln_is ">>> ERROR: --hostname command line option was already specified >>>"
+}
+
+$BIN/lxd $DR --clone-root $CR --hostname &>/dev/null
+not_ok $? "Verify if command line option --hostname without argument fails"
+$BIN/lxd $DR --clone-root $CR --hostname 2>&1 | {
+  ln_like "--hostname' requires an argument"
+}
+
+$BIN/lxd $DR --clone-root $CR --hostname "" &>/dev/null
+not_ok $? "Verify if command line option --hostname with an empty argument fails"
+$BIN/lxd $DR --clone-root $CR --hostname "" 2>&1 | {
+  ln_like ">>> ERROR: Command line option '--hostname' requires an non-empty argument >>>"
+}
+
+# TODO: test for invalid argument in --hostname cmd ln opt
+
+rm -r $BLSS_ENV $CR $DR
+unset BLSS_ENV CR DR
+### End Test Case
+
+
+### Test Case: Tests for --address command line option
+export BLSS_ENV=$(mktemp -d) && CR=$(mktemp -d) && touch $CR/xfile && DR=$(mktemp -d)
+
+$BIN/lxd $DR --clone-root $CR --address 192.168.1.1 --address 192.168.1.1 &>/dev/null
+not_ok $? "Verify if a repeated command line option --address fails"
+$BIN/lxd $DR --clone-root $CR --address 192.168.1.1 --address 192.168.1.1 2>&1 | {
+  ln_is ">>> ERROR: --address command line option was already specified >>>"
+}
+
+$BIN/lxd $DR --clone-root $CR --address &>/dev/null   
+not_ok $? "Verify if command line option '--address' without argument fails"
+$BIN/lxd $DR --clone-root $CR --address 2>&1 | {
+ ln_like "--address' requires an argument"  
+}
+
+$BIN/lxd $DR --clone-root $CR --address "" &>/dev/null   
+not_ok $? "Verify if command line option '--address' with an empty argument fails"
+$BIN/lxd $DR --clone-root $CR --address "" 2>&1 | {
+ ln_like ">>> ERROR: Command line option '--address' requires an non-empty argument >>>"  
+}
+
+$BIN/lxd $DR --clone-root $CR --address 192.168.0.256 &>/dev/null   
+not_ok $? "Verify if command line option --address with an invalid argument fails"
+$BIN/lxd $DR --clone-root $CR --address 192.168.0.256 2>&1 | {
+ lst_ln_is ">>> ERROR: Command line/conf file option --address/address requires a supported argument. See --help command line option for help >>>"
+}
+
+rm -r $BLSS_ENV $CR $DR
+unset BLSS_ENV CR DR
+### End Test Case

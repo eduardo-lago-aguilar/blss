@@ -64,6 +64,17 @@ GENERAL OPTIONS
   --clone-root CLONE_ROOT
     The root directory of the specific clone to be loaded into the virtual disk. This parameter is mandatory.
 
+  --packages PACKAGES
+    Space separated list of packages to install on this deployment. Defaults to '${DEF_PACKAGES_DEPLOYMENT}'. Example package list is: 'nginx  apache2 mysql couchdb'.
+
+NETWORKING OPTIONS
+
+  --hostname HOSTNAME
+    The deployment hostname. Defaults to the hostname used in the clone.     
+
+  --address IPADDRESS
+    Static IP address. This option shall be specified among --network and --netmask options, this option excludes --dhcp option. But can be optinally used among the --search and/or --nameservers options. This option shall be specified if DHCP is not configured on the clone.     
+
 HYPERVISOR OPTIONS
 
   --hypervisor HYPERVISOR
@@ -111,6 +122,9 @@ set +e
 TEMP=$(getopt -n 'lxc' -o '' --longoptions \
 help,\
 clone-root:,\
+packages:,\
+hostname:,\
+address:,\
 hypervisor:,\
 cpu:,\
 memory:,\
@@ -130,6 +144,9 @@ eval set -- "$TEMP"
 # unset c_* options
 unset \
   c_clone_root \
+  c_packages \
+  c_hostname \
+  c_address \
   c_hypervisor \
   c_cpu \
   c_memory \
@@ -148,6 +165,15 @@ while true; do
       usage && shift && exit 0 ;;
     --clone-root)
       c_clone_root=${2:?$(err_non_empty $1)} ; 
+      shift 2 ;;
+    --packages)
+      c_packages=${2:?$(err_non_empty $1)} ; 
+      shift 2 ;;
+    --hostname)
+      c_hostname=${2:?$(err_non_empty $1)} ; 
+      shift 2 ;;
+    --address)
+      c_address=${2:?$(err_non_empty $1)} ; 
       shift 2 ;;
     --hypervisor)
       c_hypervisor=${2:?$(err_non_empty $1)} ; 
@@ -190,6 +216,9 @@ proc_ev
 # unset conf file options before start importing from environment
 unset \
   clone_root \
+  packages \
+  hostname \
+  address \
   hypervisor \
   cpu \
   memory \
@@ -207,6 +236,19 @@ croot=$(realpath "$croot") || ( err "--clone-root/clone_root command line/conf f
 empty=$(find "$croot" -maxdepth 0 -type d -empty)
 if [ "$empty" != "" ] ; then
   err "--clone-root/clone_root command line/conf file option shall be an existing non-empty directory containing a clone system" >&2 && exit 1
+fi
+
+# packages: command line may override the value imported from the environment, 
+# if the option is missing use the default value
+pkgs=${c_packages:-$packages}
+pkgs=${pkgs:-${DEF_PACKAGES_CLONE}}
+
+# hostname: command line may override the value imported from the environment
+hn=${c_hostname:-$hostname}
+
+ip=${c_address}
+if [ -n "$ip" ] ; then
+  match_ip $ip || ( err_non_sup --address >&2 && exit 1 )
 fi
 
 # hypervisor: command line may override the value imported from the 
@@ -283,6 +325,8 @@ mkdir -p "$droot"
 inf "Detected environment '$ev'. All options were took from the environment conf files. Command line options override environment options" ;
 
 inf "clone_root = '$croot'"
+inf "packages = '$pkgs'"
+inf "hostname = '$hn'"
 inf "hypervisor = '$hyv'"
 inf "cpu = '$vcpu'"
 inf "memory = '$mem'"
@@ -290,6 +334,15 @@ inf "size = '$sz'"
 inf "root_filesystem = '$rootfs'"
 inf "formats = '$fmts'"
 inf "deployment_root = '$droot'"
+
+step "Identifying clone settings"
+
+# define working root on prototype to extract settings
+wroot=${croot}
+
+verify_dyn
+
+get_net_settings
 
 # define working root on random temporal directory
 wroot=$(mktemp -d)
@@ -417,9 +470,6 @@ proc_lcl
 tzon=$(sudo cat "$wroot"/etc/timezone)
 proc_tzon
 
-# grab hostname
-c_hn=$(chr cat /etc/hostname)
-
 step "Setup grub device mapping, load.cfg and grub.cfg. Install GRUB2"
 
 chr << EOT
@@ -474,6 +524,10 @@ UUID=${VDA2_ID_FS_UUID} /           ${rootfs}    defaults 0       2
 EOF
 EOT
 
+# download and install user packages
+apt_get_download $pkgs
+install_user_pkgs
+
 step "Unpack pending packages"
 
 # Autoremove packages and clean /var/cache/apt/archives first
@@ -485,7 +539,7 @@ chr << EOT
 mv /var/lib/blss/var/cache/apt/archives/*.deb /var/cache/apt/archives/ 
 EOT
 
-# Filesystems requiere extra packages for self cheking and maintenance
+# Filesystems requiere extra packages for self checking and maintenance
 if [ -n "${EXTRA_PACKAGES_PER_FILESYSTEM[$rootfs]}" ] ; then 
   apt_get_download ${EXTRA_PACKAGES_PER_FILESYSTEM[$rootfs]}
 fi
@@ -497,6 +551,8 @@ apt_get_unpack_all
 inf "Clears out the local repository of retrieved package files at '/var/cache/apt/archives/' and '/var/cache/apt/archives/partial/'"
 apt_get_clean
 apt_get_autoclean
+
+proc_net_settings
 
 step "Unmount chroot and detach the loop device"
 _release_devs
@@ -535,47 +591,6 @@ fi
 if [[ ! $fmts =~ (\ |^)raw(\ |$) ]] ; then
   sudo rm "$droot"/disk.img
 fi
-
-step "Generates libvirt domain XML defininion file"
-libvirt() {
-  # take the first format from the --format/format command line/conf file option   
-  lb_disk_fmt=$(printf $fmts)  
-  lb_disk_ext=${EXTS_PER_FORMAT[$lb_disk_fmt]}
-  lb_disk_drv=${DISKDRIVER_PER_FORMAT[${lb_disk_fmt}]}
-  mem_kb=$(( $mem * 1024))
-  cat > "$droot"/libvirt.xml << EOT
-<domain type='${hyv}'>
-  <name>${c_hn}</name>
-  <memory>$mem_kb</memory>
-  <vcpu>${vcpu}</vcpu>
-  <os>
-    <type>hvm</type>
-    <boot dev='hd' />
-  </os>
-  <features>
-    <acpi />
-  </features>
-  <clock offset='utc' />
-  <on_poweroff>destroy</on_poweroff>
-  <on_reboot>restart</on_reboot>
-  <on_crash>destroy</on_crash>
-  <devices>
-    <emulator>$(which $hyv)</emulator>
-    <interface type='bridge'>
-      <source bridge='br0' />
-    </interface>
-    <input type='mouse' bus='ps2' />
-    <graphics type='vnc' port='-1' listen='127.0.0.1' />
-    <disk type='file' device='disk'>
-      <driver name='qemu' type='${lb_disk_drv}' />
-      <source file='$(realpath "$droot"/disk.${lb_disk_ext})' />
-      <target dev='hda' />
-    </disk>
-  </devices>
-</domain>
-EOT
-  inf "Generated libvirt domain XML defininion file"
-}
 
 libvirt
 

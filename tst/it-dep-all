@@ -31,6 +31,12 @@ kver() {
   dtx find /boot -maxdepth 1 -type f | grep -m 1 /boot/vmlinuz | sort -r | sed 's/\/boot\/vmlinuz-//'
 }
 
+tst_pkg_installed() {
+  dtx dpkg-query -W -f='${Status}' ${1:?} | awk '{print $NF}' | {
+    ln_is "installed" "Verify if package "${1:?}" is installed"
+  }
+}
+
 _release_devs(){
   sudo umount /mnt/boot
   sudo umount /mnt
@@ -196,12 +202,13 @@ verify_common_pkgs() {
 
 # Test Case: Tests for libvirt.xml file
 verify_libvirt() {
+  lb_dom_name=${lb_dom_name:-"debian-squeeze-amd64"}
   lb_disk_fmt=${lb_disk_fmt:-"raw"}
   lb_disk_ext=${lb_disk_ext:-"img"}
   lb_disk_drv=${lb_disk_drv:-"raw"}
   cat /tmp/deproot/libvirt.xml | {
     ln_is "<domain type='kvm'>" "Verify libvirt domain type kvm"
-    ln_is "<name>debian-squeeze-amd64</name>" "Verify domain name with hostname"
+    ln_is "<name>${lb_dom_name}</name>" "Verify domain name with hostname"
     ln_is "<memory>131072</memory>" "Verify RAM memory"
     ln_is "<vcpu>1</vcpu>" "Verify number of CPUs"
     ln_is "<os>"
@@ -219,13 +226,6 @@ verify_libvirt() {
     ln_is "<emulator>/usr/bin/kvm</emulator>" "Verify emulator correctly configured"
     ln_is "<interface type='bridge'>" 
     ln_is "<source bridge='br0' />"
-    ln_is "<!--"
-    ln_is "This improves the network performances by a lot (factor 10, nearly). But"
-    ln_is "this works only with Ubuntu Hardy or Intrepid guests for the moment, which is why"
-    ln_is "it is not by default. Note that this also corrects the issue some are reporting with"
-    ln_is "their network connections going away after a period of time or data transfer"
-    ln_is "-->"
-    ln_is "<model type='virtio' />"
     ln_is "</interface>"
     ln_is "<input type='mouse' bus='ps2' />"
     ln_is "<graphics type='vnc' port='-1' listen='127.0.0.1' />"
@@ -238,5 +238,3 @@ verify_libvirt() {
     ln_is "</domain>"
   }
 }
-
-verify_libvirt

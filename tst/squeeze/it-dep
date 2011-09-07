@@ -27,6 +27,9 @@ plan_tests 22
 
 . "$TST"/it-dep-all
 
+lb_dom_name=my-debian-dep
+verify_libvirt
+
 # Unbind devices on ERROR
 trap _release_devs_on_err INT TERM EXIT
 
@@ -35,8 +38,48 @@ mount_img
 . "$TST"/it-dep-debian
 . "$TST"/it-dep-squeeze
 
-[ -h /mnt/lib64 ]
-ok $? "Verify if link exists"
+[ -h /mnt/lib64 ] ; ok $? "Verify if link exists"
+
+## Test Case: Test for hostname config
+dtx cat /etc/hostname | {
+  ln_is "my-debian-dep" "Verify if '/etc/hostname' is correct"
+}
+dtx cat /etc/hosts | {
+  ln_is "127.0.0.1 localhost.localdomain localhost" "Verify if localhost is 127.0.0.1 at /etc/hosts"
+  ln_is "127.0.1.1 my-debian-dep my-debian-dep.home.dev" "Verify if my-debian-dep and my-debian-dep.home.dev is 127.0.1.1 at /etc/hosts"
+  ln_is_empty  
+  ln_is "# The following lines are desirable for IPv6 capable hosts" "Verify if IPv6 capable hosts is commented"
+  ln_is "## ::1 my-debian-dep my-debian-dep.home.dev localhost6.localdomain6 localhost6"
+  ln_is "## ::1 localhost ip6-localhost ip6-loopback"
+  ln_is "## fe00::0 ip6-localnet"
+  ln_is "## ff00::0 ip6-mcastprefix"
+  ln_is "## ff02::1 ip6-allnodes"
+  ln_is "## ff02::2 ip6-allrouters"
+  ln_is "## ff02::3 ip6-allhosts"
+  no_ln	
+}
+
+## Test Case: Test for networking config
+dtx cat /etc/network/interfaces | {
+  ln_is "# The loopback network interface" "Verify if the loopback network interface is correct at /etc/network/interfaces"
+  ln_is "auto lo" "Verify if lo automatically wakes up"
+  ln_is "iface lo inet loopback" "Verify if lo defined as loopback"
+  ln_is_empty
+  ln_is "# The primary network interface" "Verify if the primary network interface eth0 is correct at /etc/network/interfaces"
+  ln_is "auto eth0" "Verify if eth0 automatically wakes up"
+  ln_is "iface eth0 inet static" "Verify if eth0 statically defined"
+  ln_is "address 192.168.3.111" "Verify if correct address"
+  ln_is "network 192.168.0.0" "Verify if correct network"
+  ln_is "netmask 255.255.0.0" "Verify if correct netmask"
+  ln_is "broadcast 192.168.255.255" "Verify if correct broadcast"
+  ln_is "gateway 192.168.0.1" "Verify if correct gateway"
+  ln_is "dns-nameservers 192.168.1.57" "Verify if dns-nameservers resolvconf option is correct at /etc/network/interfaces"
+  ln_is "dns-search home.dev" "Verify if dns-search resolvconf option is correct at /etc/network/interfaces"
+  no_ln
+}
+
+## Test Case: Tests for checking packages installed
+tst_pkg_installed aptitude
 
 _release_devs
 

@@ -64,12 +64,12 @@ GENERAL OPTIONS
     The root directory of the proto to be cloned. This options is mandatory.
   
   --packages PACKAGES
-    Space separated list of packages to install after bootstrapping. Defaults to '${DEF_PACKAGES}'. Example package list is: 'nginx  apache2 mysql couchdb'.
+    Space separated list of packages to install on this clone. Defaults to '${DEF_PACKAGES_CLONE}'. Example package list is: 'nginx  apache2 mysql couchdb'.
 
 NETWORKING OPTIONS
 
   --hostname HOSTNAME
-    The proto hostname. Defaults to the hostname used in the proto.     
+    The clone hostname. Defaults to the hostname used in the prototype.     
 
   --address IPADDRESS
     Static IP address. This option shall be specified among --network and --netmask options, this option excludes --dhcp option. But can be optinally used among the --search and/or --nameservers options. This option shall be specified if DHCP is not configured on the proto.     
@@ -196,10 +196,9 @@ fi
 # packages: command line may override the value imported from the environment, 
 # if the option is missing use the default value
 pkgs=${c_packages:-$packages}
+pkgs=${pkgs:-${DEF_PACKAGES_CLONE}}
 
-# hostname: command line may override the value imported from the environment, 
-# if the option is missing use the default value based on distro, suite and 
-# architecture
+# hostname: command line may override the value imported from the environment
 hn=${c_hostname:-$hostname}
 
 ip=${c_address}
@@ -221,38 +220,14 @@ inf "hostname = '$hn'"
 inf "address = '$ip'"
 inf "clone_root = '$croot'"
     
-step "Identifying proto settings"
+step "Identifying prototype settings"
 
-# define working root on proto to extract settings
+# define working root on prototype to extract settings
 wroot=${proot}
 
-p_hn=$(chr cat /etc/hostname)
-p_dyn=$(chr egrep '^[[:space:]]*iface[[:space:]]+eth0[[:space:]]+inet[[:space:]]+dhcp' /etc/network/interfaces | sed -r 's/iface[[:space:]]+eth0[[:space:]]+inet[[:space:]]+dhcp/yes/')
-p_dyn=${p_dyn:-no}
-if [ "$p_dyn" == "yes" ]; then
- [ -n "$ip" ] && err "--address/address command line/conf file options cannot be specified for cloning a proto with DHCP configured" >&2 && exit 1 || true
-else
-  # --address is mandatory if DHCP is not configured on proto
-  c_address=${c_address:?$(err_non_empty --address)}
-fi
+verify_dyn
 
-p_ip=$(chr egrep '^[[:space:]]*address[[:space:]]+.*' /etc/network/interfaces | sed -r 's/[[:space:]]*address[[:space:]]+(.*)/\1/')
-p_nw=$(chr egrep '^[[:space:]]*network[[:space:]]+.*' /etc/network/interfaces | sed -r 's/[[:space:]]*network[[:space:]]+(.*)/\1/')
-p_msk=$(chr egrep '^[[:space:]]*netmask[[:space:]]+.*' /etc/network/interfaces | sed -r 's/[[:space:]]*netmask[[:space:]]+(.*)/\1/')
-p_bcst=$(chr egrep '^[[:space:]]*broadcast[[:space:]]+.*' /etc/network/interfaces | sed -r 's/[[:space:]]*broadcast[[:space:]]+(.*)/\1/')
-p_gw=$(chr egrep '^[[:space:]]*gateway[[:space:]]+.*' /etc/network/interfaces | sed -r 's/[[:space:]]*gateway[[:space:]]+(.*)/\1/')
-p_dns=$(chr egrep '^[[:space:]]*dns-nameservers[[:space:]]+.*' /etc/network/interfaces | sed -r 's/[[:space:]]*dns-nameservers[[:space:]]+(.*)/\1/')
-p_srch=$(chr egrep '^[[:space:]]*dns-search[[:space:]]+.*' /etc/network/interfaces | sed -r 's/[[:space:]]*dns-search[[:space:]]+(.*)/\1/')
-
-inf "Proto hostname = '$p_hn'"
-inf "Proto dhcp = '$p_dyn'"
-inf "Proto address = '$p_ip'"
-inf "Proto network = '$p_nw'"
-inf "Proto netmask = '$p_msk'"
-inf "Proto broadcast = '$p_bcst'"
-inf "Proto gateway = '$p_gw'"
-inf "Proto search = '$p_srch'"
-inf "Proto nameservers = '$p_dns'"
+get_net_settings
 
 # define working root on clone
 wroot=${croot}
@@ -260,24 +235,6 @@ wroot=${croot}
 step "Cloning the prototype"
 mkdir -p $wroot
 sudo cp -a "$proot"/* "$wroot"
-
-step "Hostname and network configuration"
-
-# preserve these settings for the clone
-nw=$p_nw
-msk=$p_msk
-bcst=$p_bcst
-gw=$p_gw
-dns=$p_dns
-srch=$p_srch
-
-if [ -n "$hn" ] ; then
-  set_hostname
-fi
-
-if [ -n "$ip" ] ; then 
-  set_networking
-fi
 
 if [ -n "$pkgs" ] ; then
   # Unbind devices on ERROR
@@ -289,5 +246,7 @@ fi
 
 apt_get_autoremove
 apt_get_clean
+
+proc_net_settings
 
 inf "Clone completed successfully" && exit 0

@@ -27,6 +27,8 @@ plan_tests 22
 
 . "$TST"/it-dep-all
 
+verify_libvirt
+
 # Unbind devices on ERROR
 trap _release_devs_on_err INT TERM EXIT
 

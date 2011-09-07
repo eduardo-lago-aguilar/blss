@@ -132,7 +132,9 @@ declare -A MODS_RMDIR=(\
 
 ## Defaults
 declare -A DEF_INSTALL_MIRROR=(["debian"]="http://ftp.debian.org/debian" ["ubuntu"]="http://archive.ubuntu.com/ubuntu")
-DEF_PACKAGES=""
+DEF_PACKAGES_PROTOTYPE=""
+DEF_PACKAGES_CLONE=""
+DEF_PACKAGES_DEPLOYMENT=""
 DEF_HYPERVISOR=kvm
 DEF_CPU=1
 DEF_MEMORY=128
@@ -395,6 +397,7 @@ EOT
 # setup the hostname
 set_hostname() {
   inf "Setting hostname at '/etc/hosts' and '/etc/hostname'"
+  [ -z "$ip6" ] && ip6=$DEF_IP6 || true 
   [ $ip6 == "no" ] && comment="## " || unset comment
   chr << EOT
 cat > /etc/hosts << EOF
@@ -657,5 +660,128 @@ cleanup_mod_dirs() {
   chr << EOT
 find /lib/modules/ -type d -empty -delete
 EOT
+}
+
+# getting prototype and clone settings
+_get_hostname() {
+  chr cat /etc/hostname
+}
+_get_dyn() {
+  local dyn=$(chr egrep '^[[:space:]]*iface[[:space:]]+eth0[[:space:]]+inet[[:space:]]+dhcp' /etc/network/interfaces | sed -r 's/iface[[:space:]]+eth0[[:space:]]+inet[[:space:]]+dhcp/yes/')
+  echo ${dyn:-no}
+}
+_get_ip() {
+  chr egrep '^[[:space:]]*address[[:space:]]+.*' /etc/network/interfaces | sed -r 's/[[:space:]]*address[[:space:]]+(.*)/\1/'
+}
+_get_nw() {
+  chr egrep '^[[:space:]]*network[[:space:]]+.*' /etc/network/interfaces | sed -r 's/[[:space:]]*network[[:space:]]+(.*)/\1/'
+}
+_get_msk() {
+  chr egrep '^[[:space:]]*netmask[[:space:]]+.*' /etc/network/interfaces | sed -r 's/[[:space:]]*netmask[[:space:]]+(.*)/\1/'
+}
+_get_bcst() {
+  chr egrep '^[[:space:]]*broadcast[[:space:]]+.*' /etc/network/interfaces | sed -r 's/[[:space:]]*broadcast[[:space:]]+(.*)/\1/'
+}
+_get_gw() {
+  chr egrep '^[[:space:]]*gateway[[:space:]]+.*' /etc/network/interfaces | sed -r 's/[[:space:]]*gateway[[:space:]]+(.*)/\1/'
+}
+_get_dns() {
+  chr egrep '^[[:space:]]*dns-nameservers[[:space:]]+.*' /etc/network/interfaces | sed -r 's/[[:space:]]*dns-nameservers[[:space:]]+(.*)/\1/'
+}
+_get_srch() {
+  chr egrep '^[[:space:]]*dns-search[[:space:]]+.*' /etc/network/interfaces | sed -r 's/[[:space:]]*dns-search[[:space:]]+(.*)/\1/'
+}
+verify_dyn() {
+  if [ $(_get_dyn) == "yes" ]; then
+   [ -n "$ip" ] && err "--address/address command line/conf file options cannot be specified with DHCP configured" >&2 && exit 1 || true
+#  else
+#    # --address is mandatory if DHCP is not configured
+#    c_address=${c_address:?$(err_non_empty --address)}
+  fi
+}
+get_net_settings() {
+  _hn=$(_get_hostname)
+  _dyn=$(_get_dyn)
+  _ip=$(_get_ip)
+  _nw=$(_get_nw)
+  _msk=$(_get_msk)
+  _bcst=$(_get_bcst)
+  _gw=$(_get_gw)
+  _dns=$(_get_dns)
+  _srch=$(_get_srch)
+
+  inf "Detected hostname = '$_hn'"
+  inf "Detected dhcp = '$_dyn'"
+  inf "Detected address = '$_ip'"
+  inf "Detected network = '$_nw'"
+  inf "Detected netmask = '$_msk'"
+  inf "Detected broadcast = '$_bcst'"
+  inf "Detected gateway = '$_gw'"
+  inf "Detected search = '$_srch'"
+  inf "Detected nameservers = '$_dns'"
+}
+
+proc_net_settings() {
+  step "Hostname and network configuration"
+
+  # preserve these settings for the clone
+  nw=$_nw
+  msk=$_msk
+  bcst=$_bcst
+  gw=$_gw
+  dns=$_dns
+  srch=$_srch
+
+  if [ -n "$hn" ] ; then
+    set_hostname
+  fi
+
+  if [ -n "$ip" ] ; then 
+    set_networking
+  fi
+}
+
+## Libvirt
+
+libvirt() {
+  step "Generates libvirt domain XML defininion file"
+
+  # take the first format from the --format/format command line/conf file option   
+  lb_disk_fmt=$(printf $fmts)  
+  lb_disk_ext=${EXTS_PER_FORMAT[$lb_disk_fmt]}
+  lb_disk_drv=${DISKDRIVER_PER_FORMAT[${lb_disk_fmt}]}
+  mem_kb=$(( $mem * 1024))
+  cat > "$droot"/libvirt.xml << EOT
+<domain type='${hyv}'>
+  <name>${hn}</name>
+  <memory>$mem_kb</memory>
+  <vcpu>${vcpu}</vcpu>
+  <os>
+    <type>hvm</type>
+    <boot dev='hd' />
+  </os>
+  <features>
+    <acpi />
+  </features>
+  <clock offset='utc' />
+  <on_poweroff>destroy</on_poweroff>
+  <on_reboot>restart</on_reboot>
+  <on_crash>destroy</on_crash>
+  <devices>
+    <emulator>$(which $hyv)</emulator>
+    <interface type='bridge'>
+      <source bridge='br0' />
+    </interface>
+    <input type='mouse' bus='ps2' />
+    <graphics type='vnc' port='-1' listen='127.0.0.1' />
+    <disk type='file' device='disk'>
+      <driver name='qemu' type='${lb_disk_drv}' />
+      <source file='$(realpath "$droot"/disk.${lb_disk_ext})' />
+      <target dev='hda' />
+    </disk>
+  </devices>
+</domain>
+EOT
+  inf "Generated libvirt domain XML defininion file"
 }
 
