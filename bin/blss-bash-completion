@@ -83,9 +83,9 @@ _process_quotes() {
 }
 # find matching combinations with no repeated elements
 _combine() {
-  search=$(_get_search)
-  head_search=$(_get_head_search)
-  lst_item=$(_get_lst_search_item)
+  local search=$(_get_search)
+  local head_search=$(_get_head_search)
+  local lst_item=$(_get_lst_search_item)
   while read item ; do
     if [[ ! "$head_search" =~ (\ |^)$item(\ |$) ]] ; then
       if [ "$lst_item" != "$item" ] ; then 
@@ -97,9 +97,20 @@ _combine() {
   done | grep -- "^$search" | _escape
 }
 
+# no repeat options
+_no_repeated_opts() {
+  unset no_rep_opts
+  for opt in $@ ; do
+    if ! [[ "${COMP_WORDS[*]}" =~ (\ |^)${opt}(\ |$) ]] ; then
+      no_rep_opts="${no_rep_opts} ${opt}"
+    fi
+  done
+  echo $no_rep_opts
+}
+
 _find_supported_locales()
 {
-  search=$(_get_search)
+  local search=$(_get_search)
   grep -v '^#.*' /usr/share/i18n/SUPPORTED | grep -- "^$search" | _escape
 }
 _find_supported_timezones()
@@ -111,7 +122,8 @@ _find_pkgs() {
   apt-cache --no-generate pkgnames $1 2> /dev/null
 }
 _combine_pkgs() {
-  if [ "${cur: -1:1}" != " " ] ; then
+  local search=$(_get_search)  
+  if [ "${search: -1:1}" != " " ] ; then
     _find_pkgs $(_get_lst_search_item) | _combine
   else
     _find_pkgs | _combine
@@ -133,10 +145,7 @@ _lxp() {
     --architecture)
         COMPREPLY=( $(compgen -W "${SUPPORTED_ARCHS[*]}" -- ${cur}) ) ;
         return 0 ;;
-    --mirror-file)
-        _filedir ;
-        return 0 ;;
-    --first-boot-script)
+    --mirror-file|--first-boot-script)
         _filedir ;
         return 0 ;;
     --locale)
@@ -167,7 +176,7 @@ _lxp() {
   esac
 
   # Complete the long/short options
-  COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
+  COMPREPLY=( $(compgen -W "$(_no_repeated_opts $opts)" -- ${cur}) )
   return 0
 }
 complete -F _lxp lxp
@@ -197,7 +206,7 @@ _lxc() {
   esac
 
   # Complete the long/short options
-  COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
+  COMPREPLY=( $(compgen -W "$(_no_repeated_opts $opts)" -- ${cur}) )
   return 0
 }
 complete -F _lxc lxc
@@ -243,7 +252,7 @@ _lxd() {
   esac
 
   # Complete the long/short options
-  COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
+  COMPREPLY=( $(compgen -W "$(_no_repeated_opts $opts)" -- ${cur}) )
   return 0
 }
 complete -F _lxd lxd
