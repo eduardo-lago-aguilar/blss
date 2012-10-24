@@ -51,19 +51,13 @@ plan_tests 217
 # Test Case: Test for environment
 
 export BLSS_ENV=$(mktemp -d) && rmdir "$BLSS_ENV"
-$BIN/lxp &>/dev/null
-not_ok $? "Verify if BLSS_ENV=(non-existing directory) fails"
-$BIN/lxp 2>&1 | {
+not_ok_ "Verify if BLSS_ENV=(non-existing directory) fails" $BIN/lxp | \
   ln_is ">>> ERROR: Environment '$BLSS_ENV' doesn't exists or isn't a readable directory >>>"
-}
 unset BLSS_ENV
 
 export BLSS_ENV=$(mktemp)
-$BIN/lxp &>/dev/null
-not_ok $? "Verify if BLSS_ENV=(non-a-directory) fails"
-$BIN/lxp 2>&1 | {
+not_ok_ "Verify if BLSS_ENV=(non-a-directory) fails" $BIN/lxp | \
   ln_is ">>> ERROR: Environment '$BLSS_ENV' doesn't exists or isn't a readable directory >>>"
-}
 rm "$BLSS_ENV"
 unset BLSS_ENV
 
@@ -71,506 +65,272 @@ unset BLSS_ENV
 export BLSS_ENV=$(mktemp -d) # an empty BLSS_ENV
 
 # --suite
-$BIN/lxp --suite lenny --suite maverick &>/dev/null
-not_ok $? "Verify if a repeated command line option --suite fails"
-$BIN/lxp --suite lenny --suite maverick 2>&1 | {
+not_ok_ "Verify if a repeated command line option --suite fails" $BIN/lxp --suite lenny --suite maverick | \
   ln_is ">>> ERROR: --suite command line option was already specified >>>"
-}
 
-$BIN/lxp --suite &>/dev/null
-not_ok $? "Verify if command line option --suite without argument fails"
-$BIN/lxp --suite 2>&1 | {
+not_ok_ "Verify if command line option --suite without argument fails" $BIN/lxp --suite | \
   ln_like "--suite' requires an argument"
-}
 
-$BIN/lxp --suite "" &>/dev/null
-not_ok $? "Verify if command line option --suite with an empty argument fails"
-$BIN/lxp --suite "" 2>&1 | {
+not_ok_ "Verify if command line option --suite with an empty argument fails" $BIN/lxp --suite "" | \
   ln_like ">>> ERROR: Command line option '--suite' requires an non-empty argument >>>"
-}
 
-$BIN/lxp --suite "unamed" &>/dev/null
-not_ok $? "Verify if command line option --suite with an unsupported argument fails"
-$BIN/lxp --suite "unamed" 2>&1 | {
+not_ok_ "Verify if command line option --suite with an unsupported argument fails" $BIN/lxp --suite "unamed" | \
   lst_ln_like ">>> ERROR: Command line/conf file option --suite/suite requires a supported argument. See --help command line option for help >>>"
-}
 
 # --architecture
-$BIN/lxp --architecture amd64 --architecture i386 &>/dev/null
-not_ok $? "Verify if a repeated command line option --architecture fails"
-$BIN/lxp --architecture amd64 --architecture i386 2>&1 | {
+not_ok_ "Verify if a repeated command line option --architecture fails" $BIN/lxp --architecture amd64 --architecture i386 | \
   ln_is ">>> ERROR: --architecture command line option was already specified >>>"
-}
 
-$BIN/lxp --architecture &>/dev/null
-not_ok $? "Verify if command line option --architecture without argument fails"
-$BIN/lxp --architecture 2>&1 | {
+not_ok_ "Verify if command line option --architecture without argument fails" $BIN/lxp --architecture | \
   ln_like "--architecture' requires an argument"
-}
 
-$BIN/lxp --architecture "" &>/dev/null
-not_ok $? "Verify if command line option --architecture with an empty argument fails"
-$BIN/lxp --architecture "" 2>&1 | {
+not_ok_ "Verify if command line option --architecture with an empty argument fails" $BIN/lxp --architecture "" | \
   ln_like ">>> ERROR: Command line option '--architecture' requires an non-empty argument >>>"
-}
 
-$BIN/lxp --architecture "unamed" &>/dev/null
-not_ok $? "Verify if command line option --architecture with an unsupported argument fails"
-$BIN/lxp --architecture "unamed" 2>&1 | {
+not_ok_ "Verify if command line option --architecture with an unsupported argument fails" $BIN/lxp --architecture "unamed" | \
   lst_ln_like ">>> ERROR: Command line/conf file option --architecture/architecture requires a supported argument. See --help command line option for help >>>"
-}
 
 # --mirror-file
-$BIN/lxp --mirror-file "somefile" --mirror-file "somefile" &>/dev/null
-not_ok $? "Verify if a repeated command line option --mirror-file fails"
-$BIN/lxp --mirror-file "somefile" --mirror-file "somefile" 2>&1 | {
+not_ok_ "Verify if a repeated command line option --mirror-file fails" $BIN/lxp --mirror-file "somefile" --mirror-file "somefile" | \
   ln_is ">>> ERROR: --mirror-file command line option was already specified >>>"
-}
 
 mf=$(mktemp) && rm $mf
-$BIN/lxp --mirror-file "$mf" &>/dev/null 
-not_ok $? "Verify if command line option --mirror-file=(non-existing file) fails"
-$BIN/lxp --mirror-file "$mf" 2>&1 | {
+not_ok_ "Verify if command line option --mirror-file=(non-existing file) fails" $BIN/lxp --mirror-file "$mf" | \
   lst_ln_is ">>> ERROR: Command line/conf file option --mirror-file/mirror_file requires an existing-readable file argument. See --help command line option for help >>>"
-} 
 
 mf=$(mktemp -d)
-$BIN/lxp --mirror-file "$mf" &>/dev/null 
-not_ok $? "Verify if command line option --mirror-file=(a directory) fails"
-$BIN/lxp --mirror-file "$mf" 2>&1 | {
+not_ok_ "Verify if command line option --mirror-file=(a directory) fails" $BIN/lxp --mirror-file "$mf" | \
   lst_ln_is ">>> ERROR: Command line/conf file option --mirror-file/mirror_file requires an existing-readable file argument. See --help command line option for help >>>"
-}
 rmdir "$mf" 
 
 # --locale
-$BIN/lxp --locale "en_US.UTF-8" --locale "es_ES.UTF-8" &>/dev/null
-not_ok $? "Verify if a repeated command line option --locale fails"
-$BIN/lxp --locale "en_US.UTF-8" --locale "es_ES.UTF-8" 2>&1 | {
+not_ok_ "Verify if a repeated command line option --locale fails" $BIN/lxp --locale "en_US.UTF-8" --locale "es_ES.UTF-8" | \
   ln_is ">>> ERROR: --locale command line option was already specified >>>"
-}
 
-$BIN/lxp --locale &>/dev/null
-not_ok $? "Verify if command line option --locale without argument fails"
-$BIN/lxp --locale 2>&1 | {
+not_ok_ "Verify if command line option --locale without argument fails" $BIN/lxp --locale | \
   ln_like "--locale' requires an argument"
-}
 
-$BIN/lxp --locale "" &>/dev/null
-not_ok $? "Verify if command line option --locale with an empty argument fails"
-$BIN/lxp --locale "" 2>&1 | {
+not_ok_ "Verify if command line option --locale with an empty argument fails" $BIN/lxp --locale "" | \
   ln_like ">>> ERROR: Command line option '--locale' requires an non-empty argument >>>"
-}
 
-$BIN/lxp --locale "unamed" &>/dev/null
-not_ok $? "Verify if command line option --locale with an unsupported argument fails"
-$BIN/lxp --locale "unamed" 2>&1 | {
+not_ok_ "Verify if command line option --locale with an unsupported argument fails" $BIN/lxp --locale "unamed" | \
   lst_ln_like ">>> ERROR: Command line/conf file option --locale/locale requires a supported argument. See --help command line option for help >>>"
-}
 
 # --timezone
-$BIN/lxp --timezone America/New_York --timezone Europe/Madrid &>/dev/null
-not_ok $? "Verify if a repeated command line option --timezone fails"
-$BIN/lxp --timezone America/New_York --timezone Europe/Madrid 2>&1 | {
+not_ok_ "Verify if a repeated command line option --timezone fails" $BIN/lxp --timezone America/New_York --timezone Europe/Madrid | \
   ln_is ">>> ERROR: --timezone command line option was already specified >>>"
-}
 
-$BIN/lxp --timezone &>/dev/null
-not_ok $? "Verify if command line option --timezone without argument fails"
-$BIN/lxp --timezone 2>&1 | {
+not_ok_ "Verify if command line option --timezone without argument fails" $BIN/lxp --timezone | \
   ln_like "--timezone' requires an argument"
-}
 
-$BIN/lxp --timezone "" &>/dev/null
-not_ok $? "Verify if command line option --timezone with an empty argument fails"
-$BIN/lxp --timezone "" 2>&1 | {
+not_ok_ "Verify if command line option --timezone with an empty argument fails" $BIN/lxp --timezone "" | \
   ln_like ">>> ERROR: Command line option '--timezone' requires an non-empty argument >>>"
-}
 
-$BIN/lxp --timezone "America/Unsupported" &>/dev/null
-not_ok $? "Verify if command line option --timezone with an unsupported argument fails"
-$BIN/lxp --timezone "America/Unsupported" 2>&1 | {
+not_ok_ "Verify if command line option --timezone with an unsupported argument fails" $BIN/lxp --timezone "America/Unsupported" | \
   lst_ln_like ">>> ERROR: Command line/conf file option --timezone/timezone requires a supported argument. See --help command line option for help >>>"
-}
 
 # --first-boot-script
-$BIN/lxp --first-boot-script "somefile" --first-boot-script "somefile" &>/dev/null
-not_ok $? "Verify if a repeated command line option --first-boot-script fails"
-$BIN/lxp --first-boot-script "somefile" --first-boot-script "somefile" 2>&1 | {
+not_ok_ "Verify if a repeated command line option --first-boot-script fails" $BIN/lxp --first-boot-script "somefile" --first-boot-script "somefile" | \
   ln_is ">>> ERROR: --first-boot-script command line option was already specified >>>"
-}
 
 fbs=$(mktemp) && rm $fbs
-$BIN/lxp --first-boot-script "$fbs" &>/dev/null 
-not_ok $? "Verify if command line option --first-boot-script=(non-existing file) fails"
-$BIN/lxp --first-boot-script "$fbs" 2>&1 | {
+not_ok_ "Verify if command line option --first-boot-script=(non-existing file) fails" $BIN/lxp --first-boot-script "$fbs" | \
   lst_ln_is ">>> ERROR: Command line/conf file option --first-boot-script/first_boot_script requires an existing-readable file argument. See --help command line option for help >>>"
-} 
 
 fbs=$(mktemp -d)
-$BIN/lxp --first-boot-script "$fbs" &>/dev/null 
-not_ok $? "Verify if command line option --first-boot-script=(a directory) fails"
-$BIN/lxp --first-boot-script "$fbs" 2>&1 | {
+not_ok_ "Verify if command line option --first-boot-script=(a directory) fails" $BIN/lxp --first-boot-script "$fbs" | \
   lst_ln_is ">>> ERROR: Command line/conf file option --first-boot-script/first_boot_script requires an existing-readable file argument. See --help command line option for help >>>"
-}
 rmdir "$fbs" 
 
 # --packages
-$BIN/lxp --packages "apache2" --packages "mc" &>/dev/null
-not_ok $? "Verify if a repeated command line option --packages fails"
-$BIN/lxp --packages "apache2" --packages "mc" 2>&1 | {
+not_ok_ "Verify if a repeated command line option --packages fails" $BIN/lxp --packages "apache2" --packages "mc" | \
   ln_is ">>> ERROR: --packages command line option was already specified >>>"
-}
 
-$BIN/lxp --packages &>/dev/null
-not_ok $? "Verify if command line option --packages without argument fails"
-$BIN/lxp --packages 2>&1 | {
+not_ok_ "Verify if command line option --packages without argument fails" $BIN/lxp --packages | \
   ln_like "--packages' requires an argument"
-}
 
-$BIN/lxp --packages "" &>/dev/null
-not_ok $? "Verify if command line option --packages with an empty argument fails"
-$BIN/lxp --packages "" 2>&1 | {
+not_ok_ "Verify if command line option --packages with an empty argument fails" $BIN/lxp --packages "" | \
   ln_like ">>> ERROR: Command line option '--packages' requires an non-empty argument >>>"
-}
 
 rmdir "$BLSS_ENV" # remove the env
 
 # Test Case: Tests for command line only networking options
 export BLSS_ENV=$(mktemp -d) # an empty BLSS_ENV
 
-# --hostname
-$BIN/lxp --hostname "myserver" --hostname "servermy" &>/dev/null
-not_ok $? "Verify if a repeated command line option --hostname fails"
-$BIN/lxp --hostname "myserver" --hostname "servermy" 2>&1 | {
-  ln_is ">>> ERROR: --hostname command line option was already specified >>>"
-}
+# --net-hostname
+not_ok_ "Verify if a repeated command line option --net-hostname fails" $BIN/lxp --net-hostname "myserver" --net-hostname "servermy" | \
+  ln_is ">>> ERROR: --net-hostname command line option was already specified >>>"
 
-$BIN/lxp --hostname &>/dev/null
-not_ok $? "Verify if command line option --hostname without argument fails"
-$BIN/lxp --hostname 2>&1 | {
-  ln_like "--hostname' requires an argument"
-}
+not_ok_ "Verify if command line option --net-hostname without argument fails" $BIN/lxp --net-hostname | \
+  ln_like "--net-hostname' requires an argument"
 
-$BIN/lxp --hostname "" &>/dev/null
-not_ok $? "Verify if command line option --hostname with an empty argument fails"
-$BIN/lxp --hostname "" 2>&1 | {
-  ln_like ">>> ERROR: Command line option '--hostname' requires an non-empty argument >>>"
-}
+not_ok_ "Verify if command line option --net-hostname with an empty argument fails" $BIN/lxp --net-hostname "" | \
+  ln_like ">>> ERROR: Command line option '--net-hostname' requires an non-empty argument >>>"
 
-# TODO: test for invalid argument in --hostname cmd ln opt
+# TODO: test for invalid argument in --net-hostname cmd ln opt
 
-# --dhcp
-$BIN/lxp --dhcp yes --dhcp no &>/dev/null
-not_ok $? "Verify if a repeated command line option --dhcp fails"
-$BIN/lxp --dhcp yes --dhcp no 2>&1 | {
-  ln_is ">>> ERROR: --dhcp command line option was already specified >>>"
-}
+# --net-dhcp
+not_ok_ "Verify if a repeated command line option --net-dhcp fails" $BIN/lxp --net-dhcp yes --net-dhcp no | \
+  ln_is ">>> ERROR: --net-dhcp command line option was already specified >>>"
 
-$BIN/lxp --dhcp &>/dev/null   
-not_ok $? "Verify if command line option '--dhcp' without argument fails"
-$BIN/lxp --dhcp 2>&1 | {
- ln_like "--dhcp' requires an argument"  
-}
+not_ok_ "Verify if command line option '--net-dhcp' without argument fails" $BIN/lxp --net-dhcp | \
+ ln_like "--net-dhcp' requires an argument"  
 
-$BIN/lxp --dhcp "" &>/dev/null   
-not_ok $? "Verify if command line option '--dhcp' with an empty argument fails"
-$BIN/lxp --dhcp "" 2>&1 | {
- ln_like ">>> ERROR: Command line option '--dhcp' requires an non-empty argument >>>"  
-}
+not_ok_ "Verify if command line option '--net-dhcp' with an empty argument fails" $BIN/lxp --net-dhcp "" | \
+ ln_like ">>> ERROR: Command line option '--net-dhcp' requires an non-empty argument >>>"  
 
-$BIN/lxp --dhcp "maybe" &>/dev/null   
-not_ok $? "Verify if command line option --dhcp with an invalid argument fails"
-$BIN/lxp --dhcp "maybe" 2>&1 | {
- lst_ln_is ">>> ERROR: Command line/conf file option --dhcp/dhcp requires a supported argument. See --help command line option for help >>>"
-}
+not_ok_ "Verify if command line option --net-dhcp with an invalid argument fails" $BIN/lxp --net-dhcp "maybe" | \
+ lst_ln_is ">>> ERROR: Command line/conf file option --net-dhcp/net_dhcp requires a supported argument. See --help command line option for help >>>"
 
-# --address
-$BIN/lxp --address 192.168.1.1 --address 192.168.1.1 &>/dev/null
-not_ok $? "Verify if a repeated command line option --address fails"
-$BIN/lxp --address 192.168.1.1 --address 192.168.1.1 2>&1 | {
-  ln_is ">>> ERROR: --address command line option was already specified >>>"
-}
+# --net-address
+not_ok_ "Verify if a repeated command line option --net-address fails" $BIN/lxp --net-address 192.168.1.1 --net-address 192.168.1.1 | \
+  ln_is ">>> ERROR: --net-address command line option was already specified >>>"
 
-$BIN/lxp --address &>/dev/null   
-not_ok $? "Verify if command line option '--address' without argument fails"
-$BIN/lxp --address 2>&1 | {
- ln_like "--address' requires an argument"  
-}
+not_ok_ "Verify if command line option '--net-address' without argument fails" $BIN/lxp --net-address | \
+ ln_like "--net-address' requires an argument"  
 
-$BIN/lxp --address "" &>/dev/null   
-not_ok $? "Verify if command line option '--address' with an empty argument fails"
-$BIN/lxp --address "" 2>&1 | {
- ln_like ">>> ERROR: Command line option '--address' requires an non-empty argument >>>"  
-}
+not_ok_ "Verify if command line option '--net-address' with an empty argument fails" $BIN/lxp --net-address "" | \
+ ln_like ">>> ERROR: Command line option '--net-address' requires an non-empty argument >>>"  
 
-$BIN/lxp --address 192.168.0.256 --dhcp no --network 192.168.0.0 --netmask 255.255.0.0 &>/dev/null   
-not_ok $? "Verify if command line option --address with an invalid argument fails"
-$BIN/lxp --address 192.168.0.256 --dhcp no --network 192.168.0.0 --netmask 255.255.0.0 2>&1 | {
- lst_ln_is ">>> ERROR: Command line/conf file option --address/address requires a supported argument. See --help command line option for help >>>"
-}
+not_ok_ "Verify if command line option --net-address with an invalid argument fails" $BIN/lxp --net-address 192.168.0.256 --net-dhcp no --net-network 192.168.0.0 --net-netmask 255.255.0.0 | \
+ lst_ln_is ">>> ERROR: Command line/conf file option --net-address/net_address requires a supported argument. See --help command line option for help >>>"
 
-# --network
-$BIN/lxp --network 192.168.0.0 --network 192.168.0.0 &>/dev/null
-not_ok $? "Verify if a repeated command line option --network fails"
-$BIN/lxp --network 192.168.0.0 --network 192.168.0.0 2>&1 | {
-  ln_is ">>> ERROR: --network command line option was already specified >>>"
-}
+# --net-network
+not_ok_ "Verify if a repeated command line option --net-network fails" $BIN/lxp --net-network 192.168.0.0 --net-network 192.168.0.0 | \
+  ln_is ">>> ERROR: --net-network command line option was already specified >>>"
 
-$BIN/lxp --network &>/dev/null   
-not_ok $? "Verify if command line option '--network' without argument fails"
-$BIN/lxp --network 2>&1 | {
- ln_like "--network' requires an argument"  
-}
+not_ok_ "Verify if command line option '--net-network' without argument fails" $BIN/lxp --net-network | \
+ ln_like "--net-network' requires an argument"  
 
-$BIN/lxp --network "" &>/dev/null   
-not_ok $? "Verify if command line option '--network' with an empty argument fails"
-$BIN/lxp --network "" 2>&1 | {
- ln_like ">>> ERROR: Command line option '--network' requires an non-empty argument >>>"  
-}
+not_ok_ "Verify if command line option '--net-network' with an empty argument fails" $BIN/lxp --net-network "" | \
+ ln_like ">>> ERROR: Command line option '--net-network' requires an non-empty argument >>>"  
 
-$BIN/lxp --network 192.168.256.256 --dhcp no --address 192.168.1.1 --netmask 255.255.0.0 &>/dev/null   
-not_ok $? "Verify if command line option --network with an invalid argument fails"
-$BIN/lxp --network 192.168.256.256 --dhcp no --address 192.168.1.1 --netmask 255.255.0.0 2>&1 | {
- lst_ln_is ">>> ERROR: Command line/conf file option --network/network requires a supported argument. See --help command line option for help >>>"
-}
+not_ok_ "Verify if command line option --net-network with an invalid argument fails" $BIN/lxp --net-network 192.168.256.256 --net-dhcp no --net-address 192.168.1.1 --net-netmask 255.255.0.0 | \
+ lst_ln_is ">>> ERROR: Command line/conf file option --net-network/net_network requires a supported argument. See --help command line option for help >>>"
 
-# --netmask
-$BIN/lxp --netmask 255.255.0.0 --netmask 255.255.0.0 &>/dev/null
-not_ok $? "Verify if a repeated command line option --netmask fails"
-$BIN/lxp --netmask 255.255.0.0 --netmask 255.255.0.0 2>&1 | {
-  ln_is ">>> ERROR: --netmask command line option was already specified >>>"
-}
+# --net-netmask
+not_ok_ "Verify if a repeated command line option --net-netmask fails" $BIN/lxp --net-netmask 255.255.0.0 --net-netmask 255.255.0.0 | \
+  ln_is ">>> ERROR: --net-netmask command line option was already specified >>>"
 
-$BIN/lxp --netmask &>/dev/null   
-not_ok $? "Verify if command line option '--netmask' without argument fails"
-$BIN/lxp --netmask 2>&1 | {
- ln_like "--netmask' requires an argument"  
-}
+not_ok_ "Verify if command line option '--net-netmask' without argument fails" $BIN/lxp --net-netmask | \
+ ln_like "--net-netmask' requires an argument"  
 
-$BIN/lxp --netmask "" &>/dev/null   
-not_ok $? "Verify if command line option '--netmask' with an empty argument fails"
-$BIN/lxp --netmask "" 2>&1 | {
- ln_like ">>> ERROR: Command line option '--netmask' requires an non-empty argument >>>"  
-}
+not_ok_ "Verify if command line option '--net-netmask' with an empty argument fails" $BIN/lxp --net-netmask "" | \
+ ln_like ">>> ERROR: Command line option '--net-netmask' requires an non-empty argument >>>"  
 
-$BIN/lxp --netmask 255.255.0.256 --dhcp no --network 192.168.0.0 --address 192.168.1.1 &>/dev/null   
-not_ok $? "Verify if command line option --netmask with an invalid argument fails"
-$BIN/lxp --netmask 255.255.0.256 --dhcp no --network 192.168.0.0 --address 192.168.1.1 2>&1 | {
- lst_ln_is ">>> ERROR: Command line/conf file option --netmask/netmask requires a supported argument. See --help command line option for help >>>"
-}
+not_ok_ "Verify if command line option --net-netmask with an invalid argument fails" $BIN/lxp --net-netmask 255.255.0.256 --net-dhcp no --net-network 192.168.0.0 --net-address 192.168.1.1 | \
+ lst_ln_is ">>> ERROR: Command line/conf file option --net-netmask/net_netmask requires a supported argument. See --help command line option for help >>>"
 
-# --broadcast
-$BIN/lxp --broadcast 192.168.255.255 --broadcast 192.168.255.255 &>/dev/null
-not_ok $? "Verify if a repeated command line option --broadcast fails"
-$BIN/lxp --broadcast 192.168.255.255 --broadcast 192.168.255.255 2>&1 | {
-  ln_is ">>> ERROR: --broadcast command line option was already specified >>>"
-}
+# --net-broadcast
+not_ok_ "Verify if a repeated command line option --net-broadcast fails" $BIN/lxp --net-broadcast 192.168.255.255 --net-broadcast 192.168.255.255 | \
+  ln_is ">>> ERROR: --net-broadcast command line option was already specified >>>"
 
-$BIN/lxp --broadcast &>/dev/null   
-not_ok $? "Verify if command line option '--broadcast' without argument fails"
-$BIN/lxp --broadcast 2>&1 | {
- ln_like "--broadcast' requires an argument"  
-}
+not_ok_ "Verify if command line option '--net-broadcast' without argument fails" $BIN/lxp --net-broadcast | \
+ ln_like "--net-broadcast' requires an argument"  
 
-$BIN/lxp --broadcast "" &>/dev/null   
-not_ok $? "Verify if command line option '--broadcast' with an empty argument fails"
-$BIN/lxp --broadcast "" 2>&1 | {
- ln_like ">>> ERROR: Command line option '--broadcast' requires an non-empty argument >>>"  
-}
+not_ok_ "Verify if command line option '--net-broadcast' with an empty argument fails" $BIN/lxp --net-broadcast "" | \
+ ln_like ">>> ERROR: Command line option '--net-broadcast' requires an non-empty argument >>>"  
 
-$BIN/lxp --broadcast 192.168.256.256 --dhcp no --address 192.168.1.1 --network 192.168.0.0 --netmask 255.255.0.0 &>/dev/null   
-not_ok $? "Verify if command line option --broadcast with an invalid argument fails"
-$BIN/lxp --broadcast 192.168.256.256 --dhcp no --address 192.168.1.1 --network 192.168.0.0 --netmask 255.255.0.0 2>&1 | {
- lst_ln_is ">>> ERROR: Command line/conf file option --broadcast/broadcast requires a supported argument. See --help command line option for help >>>"
-}
+not_ok_ "Verify if command line option --net-broadcast with an invalid argument fails" $BIN/lxp --net-broadcast 192.168.256.256 --net-dhcp no --net-address 192.168.1.1 --net-network 192.168.0.0 --net-netmask 255.255.0.0 | \
+ lst_ln_is ">>> ERROR: Command line/conf file option --net-broadcast/net_broadcast requires a supported argument. See --help command line option for help >>>"
 
-# --gateway
-$BIN/lxp --gateway 192.168.0.1 --gateway 192.168.0.1 &>/dev/null
-not_ok $? "Verify if a repeated command line option --gateway fails"
-$BIN/lxp --gateway 192.168.0.1 --gateway 192.168.0.1 2>&1 | {
-  ln_is ">>> ERROR: --gateway command line option was already specified >>>"
-}
+# --net-gateway
+not_ok_ "Verify if a repeated command line option --net-gateway fails" $BIN/lxp --net-gateway 192.168.0.1 --net-gateway 192.168.0.1 | \
+  ln_is ">>> ERROR: --net-gateway command line option was already specified >>>"
 
-$BIN/lxp --gateway &>/dev/null   
-not_ok $? "Verify if command line option '--gateway' without argument fails"
-$BIN/lxp --gateway 2>&1 | {
- ln_like "--gateway' requires an argument"  
-}
+not_ok_ "Verify if command line option '--net-gateway' without argument fails" $BIN/lxp --net-gateway | \
+ ln_like "--net-gateway' requires an argument"  
 
-$BIN/lxp --gateway "" &>/dev/null   
-not_ok $? "Verify if command line option '--gateway' with an empty argument fails"
-$BIN/lxp --gateway "" 2>&1 | {
- ln_like ">>> ERROR: Command line option '--gateway' requires an non-empty argument >>>"  
-}
+not_ok_ "Verify if command line option '--net-gateway' with an empty argument fails" $BIN/lxp --net-gateway "" | \
+ ln_like ">>> ERROR: Command line option '--net-gateway' requires an non-empty argument >>>"  
 
-$BIN/lxp --gateway 192.168.0.256 --dhcp no --address 192.168.1.1 --network 192.168.0.0 --netmask 255.255.0.0 &>/dev/null   
-not_ok $? "Verify if command line option --gateway with an invalid argument fails"
-$BIN/lxp --gateway 192.168.0.256 --dhcp no --address 192.168.1.1 --network 192.168.0.0 --netmask 255.255.0.0 2>&1 | {
- lst_ln_is ">>> ERROR: Command line/conf file option --gateway/gateway requires a supported argument. See --help command line option for help >>>"
-}
+not_ok_ "Verify if command line option --net-gateway with an invalid argument fails" $BIN/lxp --net-gateway 192.168.0.256 --net-dhcp no --net-address 192.168.1.1 --net-network 192.168.0.0 --net-netmask 255.255.0.0 | \
+ lst_ln_is ">>> ERROR: Command line/conf file option --net-gateway/net_gateway requires a supported argument. See --help command line option for help >>>"
 
-# --search
-$BIN/lxp --search "home.dev" --search "work.dev" &>/dev/null
-not_ok $? "Verify if a repeated command line option --search fails"
-$BIN/lxp --search "home.dev" --search "work.dev" 2>&1 | {
-  ln_is ">>> ERROR: --search command line option was already specified >>>"
-}
+# --net-search
+not_ok_ "Verify if a repeated command line option --net-search fails" $BIN/lxp --net-search "home.dev" --net-search "work.dev" | \
+  ln_is ">>> ERROR: --net-search command line option was already specified >>>"
 
-$BIN/lxp --search &>/dev/null
-not_ok $? "Verify if command line option --search without argument fails"
-$BIN/lxp --search 2>&1 | {
-  ln_like "--search' requires an argument"
-}
+not_ok_ "Verify if command line option --net-search without argument fails" $BIN/lxp --net-search | \
+  ln_like "--net-search' requires an argument"
 
-$BIN/lxp --search "" &>/dev/null
-not_ok $? "Verify if command line option --search with an empty argument fails"
-$BIN/lxp --search "" 2>&1 | {
-  ln_like ">>> ERROR: Command line option '--search' requires an non-empty argument >>>"
-}
+not_ok_ "Verify if command line option --net-search with an empty argument fails" $BIN/lxp --net-search "" | \
+  ln_like ">>> ERROR: Command line option '--net-search' requires an non-empty argument >>>"
 
-# TODO: test for invalid argument in --search cmd ln opt
+# TODO: test for invalid argument in --net-search cmd ln opt
 
-# --nameservers
-$BIN/lxp --nameservers 192.168.0.2,192.168.0.3 --nameservers 192.168.0.4,192.168.0.5 &>/dev/null
-not_ok $? "Verify if a repeated command line option --nameservers fails"
-$BIN/lxp --nameservers 192.168.0.2,192.168.0.3 --nameservers 192.168.0.2,192.168.0.3 2>&1 | {
-  ln_is ">>> ERROR: --nameservers command line option was already specified >>>"
-}
+# --net-nameservers
+not_ok_ "Verify if a repeated command line option --net-nameservers fails" $BIN/lxp --net-nameservers 192.168.0.2,192.168.0.3 --net-nameservers 192.168.0.2,192.168.0.3 | \
+  ln_is ">>> ERROR: --net-nameservers command line option was already specified >>>"
 
-$BIN/lxp --nameservers &>/dev/null   
-not_ok $? "Verify if command line option '--nameservers' without argument fails"
-$BIN/lxp --nameservers 2>&1 | {
- ln_like "--nameservers' requires an argument"  
-}
+not_ok_ "Verify if command line option '--net-nameservers' without argument fails" $BIN/lxp --net-nameservers | \
+ ln_like "--net-nameservers' requires an argument"  
 
-$BIN/lxp --nameservers "" &>/dev/null   
-not_ok $? "Verify if command line option '--nameservers' with an empty argument fails"
-$BIN/lxp --nameservers "" 2>&1 | {
- ln_like ">>> ERROR: Command line option '--nameservers' requires an non-empty argument >>>"  
-}
+not_ok_ "Verify if command line option '--net-nameservers' with an empty argument fails" $BIN/lxp --net-nameservers "" | \
+ ln_like ">>> ERROR: Command line option '--net-nameservers' requires an non-empty argument >>>"  
 
-$BIN/lxp --nameservers 192.168.0.2,192.168.0.256 --dhcp no --address 192.168.1.1 --network 192.168.0.0 --netmask 255.255.0.0 &>/dev/null   
-not_ok $? "Verify if command line option --nameservers with an invalid argument fails"
-$BIN/lxp --nameservers 192.168.0.2,192.168.0.256 --dhcp no --address 192.168.1.1 --network 192.168.0.0 --netmask 255.255.0.0 2>&1 | {
- lst_ln_is ">>> ERROR: Command line/conf file option --nameservers/nameservers requires a supported argument. See --help command line option for help >>>"
-}
+not_ok_ "Verify if command line option --net-nameservers with an invalid argument fails" $BIN/lxp --net-nameservers 192.168.0.2,192.168.0.256 --net-dhcp no --net-address 192.168.1.1 --net-network 192.168.0.0 --net-netmask 255.255.0.0 | \
+ lst_ln_is ">>> ERROR: Command line/conf file option --net-nameservers/net_nameservers requires a supported argument. See --help command line option for help >>>"
 
-# --ntpservers
-$BIN/lxp --ntpservers "ntp.home.dev ntp2.home.dev" --ntpservers "ntp3.home.dev ntp4.home.dev" &>/dev/null
-not_ok $? "Verify if a repeated command line option --ntpservers fails"
-$BIN/lxp --ntpservers "ntp.home.dev ntp2.home.dev" --ntpservers "ntp3.home.dev ntp4.home.dev" 2>&1 | {
-  ln_is ">>> ERROR: --ntpservers command line option was already specified >>>"
-}
+# --net-ntpservers
+not_ok_ "Verify if a repeated command line option --net-ntpservers fails" $BIN/lxp --net-ntpservers "ntp.home.dev ntp2.home.dev" --net-ntpservers "ntp3.home.dev ntp4.home.dev" | \
+  ln_is ">>> ERROR: --net-ntpservers command line option was already specified >>>"
 
-$BIN/lxp --ntpservers &>/dev/null   
-not_ok $? "Verify if command line option '--ntpservers' without argument fails"
-$BIN/lxp --ntpservers 2>&1 | {
- ln_like "--ntpservers' requires an argument"  
-}
+not_ok_ "Verify if command line option '--net-ntpservers' without argument fails" $BIN/lxp --net-ntpservers | \
+ ln_like "--net-ntpservers' requires an argument"  
 
-$BIN/lxp --ntpservers "" &>/dev/null   
-not_ok $? "Verify if command line option '--ntpservers' with an empty argument fails"
-$BIN/lxp --ntpservers "" 2>&1 | {
- ln_like ">>> ERROR: Command line option '--ntpservers' requires an non-empty argument >>>"  
-}
+not_ok_ "Verify if command line option '--net-ntpservers' with an empty argument fails" $BIN/lxp --net-ntpservers "" | \
+ ln_like ">>> ERROR: Command line option '--net-ntpservers' requires an non-empty argument >>>"  
 
-# --ip6
-$BIN/lxp --ip6 yes --ip6 no &>/dev/null
-not_ok $? "Verify if a repeated command line option --ip6 fails"
-$BIN/lxp --ip6 yes --ip6 no 2>&1 | {
-  ln_is ">>> ERROR: --ip6 command line option was already specified >>>"
-}
+# --net-ip6
+not_ok_ "Verify if a repeated command line option --net-ip6 fails" $BIN/lxp --net-ip6 yes --net-ip6 no | \
+  ln_is ">>> ERROR: --net-ip6 command line option was already specified >>>"
 
-$BIN/lxp --ip6 &>/dev/null   
-not_ok $? "Verify if command line option '--ip6' without argument fails"
-$BIN/lxp --ip6 2>&1 | {
- ln_like "--ip6' requires an argument"  
-}
+not_ok_ "Verify if command line option '--net-ip6' without argument fails" $BIN/lxp --net-ip6 | \
+ ln_like "--net-ip6' requires an argument"  
 
-$BIN/lxp --ip6 "" &>/dev/null   
-not_ok $? "Verify if command line option '--ip6' with an empty argument fails"
-$BIN/lxp --ip6 "" 2>&1 | {
- ln_like ">>> ERROR: Command line option '--ip6' requires an non-empty argument >>>"  
-}
+not_ok_ "Verify if command line option '--net-ip6' with an empty argument fails" $BIN/lxp --net-ip6 "" | \
+ ln_like ">>> ERROR: Command line option '--net-ip6' requires an non-empty argument >>>"  
 
-$BIN/lxp --ip6 "maybe" &>/dev/null   
-not_ok $? "Verify if command line option --ip6 with an invalid argument fails"
-$BIN/lxp --ip6 "maybe" 2>&1 | {
- lst_ln_is ">>> ERROR: Command line/conf file option --ip6/ip6 requires a supported argument. See --help command line option for help >>>"
-}
+not_ok_ "Verify if command line option --net-ip6 with an invalid argument fails" $BIN/lxp --net-ip6 "maybe" | \
+ lst_ln_is ">>> ERROR: Command line/conf file option --net-ip6/net_ip6 requires a supported argument. See --help command line option for help >>>"
 
 # --various networking cmd ln opts combinations
-$BIN/lxp --dhcp yes --address 192.168.1.1 &>/dev/null
-not_ok $? "Verify if command line option '--dhcp=yes' and command line option '--address 192.168.1.1' fails"
-$BIN/lxp --dhcp yes --address 192.168.1.1 2>&1 | {
-  lst_ln_is ">>> ERROR: --dhcp/dhcp=yes command line/conf file option excludes --address/address, --network/network, --netmask/netmask, --broadcast/broadcast and --gateway/gateway command line/conf file options >>>"
-}
+not_ok_ "Verify if command line option '--net-dhcp=yes' and command line option '--net-address 192.168.1.1' fails" $BIN/lxp --net-dhcp yes --net-address 192.168.1.1 | \
+  lst_ln_is ">>> ERROR: --net-dhcp/net_dhcp=yes command line/conf file option excludes --net-address/net_address, --net-network/net_network, --net-netmask/net_netmask, --net-broadcast/net_broadcast and --net-gateway/net_gateway command line/conf file options >>>"
 
-$BIN/lxp --dhcp yes --network 192.168.0.0 &>/dev/null
-not_ok $? "Verify if command line option '--dhcp=yes' and command line option '--network 192.168.0.0' fails"
-$BIN/lxp --dhcp yes --network 192.168.0.0 2>&1 | {
-  lst_ln_is ">>> ERROR: --dhcp/dhcp=yes command line/conf file option excludes --address/address, --network/network, --netmask/netmask, --broadcast/broadcast and --gateway/gateway command line/conf file options >>>"
-}
+not_ok_ "Verify if command line option '--net-dhcp=yes' and command line option '--net-network 192.168.0.0' fails" $BIN/lxp --net-dhcp yes --net-network 192.168.0.0 | \
+  lst_ln_is ">>> ERROR: --net-dhcp/net_dhcp=yes command line/conf file option excludes --net-address/net_address, --net-network/net_network, --net-netmask/net_netmask, --net-broadcast/net_broadcast and --net-gateway/net_gateway command line/conf file options >>>"
 
-$BIN/lxp --dhcp yes --netmask 255.255.0.0 &>/dev/null
-not_ok $? "Verify if command line option '--dhcp=yes' and command line option '--netmask 255.255.0.0' fails"
-$BIN/lxp --dhcp yes --netmask 255.255.0.0 2>&1 | {
-  lst_ln_is ">>> ERROR: --dhcp/dhcp=yes command line/conf file option excludes --address/address, --network/network, --netmask/netmask, --broadcast/broadcast and --gateway/gateway command line/conf file options >>>"
-}
+not_ok_ "Verify if command line option '--net-dhcp=yes' and command line option '--net-netmask 255.255.0.0' fails" $BIN/lxp --net-dhcp yes --net-netmask 255.255.0.0 | \
+  lst_ln_is ">>> ERROR: --net-dhcp/net_dhcp=yes command line/conf file option excludes --net-address/net_address, --net-network/net_network, --net-netmask/net_netmask, --net-broadcast/net_broadcast and --net-gateway/net_gateway command line/conf file options >>>"
 
-$BIN/lxp --dhcp yes --broadcast 192.168.255.255 &>/dev/null
-not_ok $? "Verify if command line option '--dhcp=yes' and command line option '--broadcast 192.168.255.255' fails"
-$BIN/lxp --dhcp yes --broadcast 192.168.255.255 2>&1 | {
-  lst_ln_is ">>> ERROR: --dhcp/dhcp=yes command line/conf file option excludes --address/address, --network/network, --netmask/netmask, --broadcast/broadcast and --gateway/gateway command line/conf file options >>>"
-}
+not_ok_ "Verify if command line option '--net-dhcp=yes' and command line option '--net-broadcast 192.168.255.255' fails" $BIN/lxp --net-dhcp yes --net-broadcast 192.168.255.255 | \
+  lst_ln_is ">>> ERROR: --net-dhcp/net_dhcp=yes command line/conf file option excludes --net-address/net_address, --net-network/net_network, --net-netmask/net_netmask, --net-broadcast/net_broadcast and --net-gateway/net_gateway command line/conf file options >>>"
 
-$BIN/lxp --dhcp yes --gateway 192.168.0.1 &>/dev/null
-not_ok $? "Verify if command line option '--dhcp=yes' and command line option '---gateway 192.168.0.1' fails"
-$BIN/lxp --dhcp yes --gateway 192.168.0.1 2>&1 | {
-  lst_ln_is ">>> ERROR: --dhcp/dhcp=yes command line/conf file option excludes --address/address, --network/network, --netmask/netmask, --broadcast/broadcast and --gateway/gateway command line/conf file options >>>"
-}
+not_ok_ "Verify if command line option '--net-dhcp=yes' and command line option '---net-gateway 192.168.0.1' fails" $BIN/lxp --net-dhcp yes --net-gateway 192.168.0.1 | \
+  lst_ln_is ">>> ERROR: --net-dhcp/net_dhcp=yes command line/conf file option excludes --net-address/net_address, --net-network/net_network, --net-netmask/net_netmask, --net-broadcast/net_broadcast and --net-gateway/net_gateway command line/conf file options >>>"
 
-$BIN/lxp --dhcp no &>/dev/null
-not_ok $? "Verify if command line option '--dhcp=no' without --address, --network or --netmask command line options fails"
-$BIN/lxp --dhcp no 2>&1 | {
-  lst_ln_is ">>> ERROR: --dhcp/dhcp=no command line/conf file option shall be specified among --address/address, --network/network and --netmask/netmask command line/conf file options >>>"
-}
+not_ok_ "Verify if command line option '--net-dhcp=no' without --net-address, --net-network or --net-netmask command line options fails" $BIN/lxp --net-dhcp no | \
+  lst_ln_is ">>> ERROR: --net-dhcp/net_dhcp=no command line/conf file option shall be specified among --net-address/net_address, --net-network/net_network and --net-netmask/net_netmask command line/conf file options >>>"
 
-$BIN/lxp --dhcp no --address 192.168.1.1 &>/dev/null
-not_ok $? "Verify if command line option '--dhcp=no' and '--address 192.168.1.1' without --network or --netmask command line options fails"
-$BIN/lxp --dhcp no --address 192.168.1.1 2>&1 | {
-  lst_ln_is ">>> ERROR: --dhcp/dhcp=no command line/conf file option shall be specified among --address/address, --network/network and --netmask/netmask command line/conf file options >>>"
-}
+not_ok_ "Verify if command line option '--net-dhcp=no' and '--net-address 192.168.1.1' without --net-network or --net-netmask command line options fails" $BIN/lxp --net-dhcp no --net-address 192.168.1.1 | \
+  lst_ln_is ">>> ERROR: --net-dhcp/net_dhcp=no command line/conf file option shall be specified among --net-address/net_address, --net-network/net_network and --net-netmask/net_netmask command line/conf file options >>>"
 
-$BIN/lxp --dhcp no --network 192.168.0.0 &>/dev/null
-not_ok $? "Verify if command line option '--dhcp=no' and '--network 192.168.0.0' without --address or --netmask command line options fails"
-$BIN/lxp --dhcp no --network 192.168.0.0 2>&1 | {
-  lst_ln_is ">>> ERROR: --dhcp/dhcp=no command line/conf file option shall be specified among --address/address, --network/network and --netmask/netmask command line/conf file options >>>"
-}
+not_ok_ "Verify if command line option '--net-dhcp=no' and '--net-network 192.168.0.0' without --net-address or --net-netmask command line options fails" $BIN/lxp --net-dhcp no --net-network 192.168.0.0 | \
+  lst_ln_is ">>> ERROR: --net-dhcp/net_dhcp=no command line/conf file option shall be specified among --net-address/net_address, --net-network/net_network and --net-netmask/net_netmask command line/conf file options >>>"
 
-$BIN/lxp --dhcp no --netmask 255.255.0.0 &>/dev/null
-not_ok $? "Verify if command line option '--dhcp=no' and '--netmask 255.255.0.0' without --address or --network command line options fails"
-$BIN/lxp --dhcp no --netmask 255.255.0.0 2>&1 | {
-  lst_ln_is ">>> ERROR: --dhcp/dhcp=no command line/conf file option shall be specified among --address/address, --network/network and --netmask/netmask command line/conf file options >>>"
-}
+not_ok_ "Verify if command line option '--net-dhcp=no' and '--net-netmask 255.255.0.0' without --net-address or --net-network command line options fails" $BIN/lxp --net-dhcp no --net-netmask 255.255.0.0 | \
+  lst_ln_is ">>> ERROR: --net-dhcp/net_dhcp=no command line/conf file option shall be specified among --net-address/net_address, --net-network/net_network and --net-netmask/net_netmask command line/conf file options >>>"
 
-$BIN/lxp --dhcp no --address 192.168.1.1 --network 192.168.0.0 &>/dev/null
-not_ok $? "Verify if command line option '--dhcp=no', '--address 192.168.1.1' and '--network 192.168.0.0' without --netmask command line options fails"
-$BIN/lxp --dhcp no --address 192.168.1.1 --network 192.168.0.0 2>&1 | {
-  lst_ln_is ">>> ERROR: --dhcp/dhcp=no command line/conf file option shall be specified among --address/address, --network/network and --netmask/netmask command line/conf file options >>>"
-}
+not_ok_ "Verify if command line option '--net-dhcp=no', '--net-address 192.168.1.1' and '--net-network 192.168.0.0' without --net-netmask command line options fails" $BIN/lxp --net-dhcp no --net-address 192.168.1.1 --net-network 192.168.0.0 | \
+  lst_ln_is ">>> ERROR: --net-dhcp/net_dhcp=no command line/conf file option shall be specified among --net-address/net_address, --net-network/net_network and --net-netmask/net_netmask command line/conf file options >>>"
 
-$BIN/lxp --dhcp no --address 192.168.1.1 --netmask 255.255.0.0 &>/dev/null
-not_ok $? "Verify if command line option '--dhcp=no', '--address 192.168.1.1' and '--netmask 255.255.0.0' without --network command line options fails"
-$BIN/lxp --dhcp no --address 192.168.1.1 --netmask 255.255.0.0 2>&1 | {
-  lst_ln_is ">>> ERROR: --dhcp/dhcp=no command line/conf file option shall be specified among --address/address, --network/network and --netmask/netmask command line/conf file options >>>"
-}
+not_ok_ "Verify if command line option '--net-dhcp=no', '--net-address 192.168.1.1' and '--net-netmask 255.255.0.0' without --net-network command line options fails" $BIN/lxp --net-dhcp no --net-address 192.168.1.1 --net-netmask 255.255.0.0 | \
+  lst_ln_is ">>> ERROR: --net-dhcp/net_dhcp=no command line/conf file option shall be specified among --net-address/net_address, --net-network/net_network and --net-netmask/net_netmask command line/conf file options >>>"
 
-$BIN/lxp --dhcp no --network 192.168.0.0 --netmask 255.255.0.0 &>/dev/null
-not_ok $? "Verify if command line option '--dhcp=no', '--network 192.168.0.0' and '--netmask 255.255.0.0' without --address command line options fails"
-$BIN/lxp --dhcp no --network 192.168.0.0 --netmask 255.255.0.0 2>&1 | {
-  lst_ln_is ">>> ERROR: --dhcp/dhcp=no command line/conf file option shall be specified among --address/address, --network/network and --netmask/netmask command line/conf file options >>>"
-}
+not_ok_ "Verify if command line option '--net-dhcp=no', '--net-network 192.168.0.0' and '--net-netmask 255.255.0.0' without --net-address command line options fails" $BIN/lxp --net-dhcp no --net-network 192.168.0.0 --net-netmask 255.255.0.0 | \
+  lst_ln_is ">>> ERROR: --net-dhcp/net_dhcp=no command line/conf file option shall be specified among --net-address/net_address, --net-network/net_network and --net-netmask/net_netmask command line/conf file options >>>"
 
 rmdir "$BLSS_ENV" # remove the env
 
@@ -582,237 +342,180 @@ conf="$BLSS_ENV"/lxp.conf
 
 # dhcp
 cat > "$conf" << EOT
-dhcp=maybe
+net_dhcp=maybe
 EOT
-$BIN/lxp &>/dev/null   
-not_ok $? "Verify if conf file option dhcp with an invalid argument fails"
-$BIN/lxp 2>&1 | {
- lst_ln_is ">>> ERROR: Command line/conf file option --dhcp/dhcp requires a supported argument. See --help command line option for help >>>"
-}
+not_ok_ "Verify if conf file option dhcp with an invalid argument fails" $BIN/lxp | \
+ lst_ln_is ">>> ERROR: Command line/conf file option --net-dhcp/net_dhcp requires a supported argument. See --help command line option for help >>>"
 rm $conf
 
 # address
 cat > "$conf" << EOT
-address=192.168.0.256
-dhcp=no
-network=192.168.0.0
-netmask=255.255.0.0 
+net_address=192.168.0.256
+net_dhcp=no
+net_network=192.168.0.0
+net_netmask=255.255.0.0 
 EOT
-$BIN/lxp &>/dev/null   
-not_ok $? "Verify if command line option --address with an invalid argument fails"
-$BIN/lxp 2>&1 | {
- lst_ln_is ">>> ERROR: Command line/conf file option --address/address requires a supported argument. See --help command line option for help >>>"
-}
+not_ok_ "Verify if conf file option net_address with an invalid argument fails" $BIN/lxp | \
+ lst_ln_is ">>> ERROR: Command line/conf file option --net-address/net_address requires a supported argument. See --help command line option for help >>>"
 rm $conf
 
 # network
 cat > "$conf" << EOT
-network=192.168.256.256
-dhcp=no
-address=192.168.1.1
-netmask=255.255.0.0  
+net_network=192.168.256.256
+net_dhcp=no
+net_address=192.168.1.1
+net_netmask=255.255.0.0  
 EOT
-$BIN/lxp &>/dev/null   
-not_ok $? "Verify if command line option --network with an invalid argument fails"
-$BIN/lxp 2>&1 | {
- lst_ln_is ">>> ERROR: Command line/conf file option --network/network requires a supported argument. See --help command line option for help >>>"
-}
+not_ok_ "Verify if conf file option net_network with an invalid argument fails" $BIN/lxp | \
+ lst_ln_is ">>> ERROR: Command line/conf file option --net-network/net_network requires a supported argument. See --help command line option for help >>>"
 rm $conf
 
 # netmask
 cat > "$conf" << EOT
-netmask=255.255.0.256
-dhcp=no
-network=192.168.0.0
-address=192.168.1.1
+net_netmask=255.255.0.256
+net_dhcp=no
+net_network=192.168.0.0
+net_address=192.168.1.1
 EOT
-$BIN/lxp &>/dev/null   
-not_ok $? "Verify if command line option --netmask with an invalid argument fails"
-$BIN/lxp 2>&1 | {
- lst_ln_is ">>> ERROR: Command line/conf file option --netmask/netmask requires a supported argument. See --help command line option for help >>>"
-}
+not_ok_ "Verify if conf file option net_netmask with an invalid argument fails" $BIN/lxp | \
+ lst_ln_is ">>> ERROR: Command line/conf file option --net-netmask/net_netmask requires a supported argument. See --help command line option for help >>>"
 rm $conf
 
 # broadcast
 cat > "$conf" << EOT
-broadcast=192.168.256.256
-dhcp=no
-address=192.168.1.1
-network=192.168.0.0
-netmask=255.255.0.0
+net_broadcast=192.168.256.256
+net_dhcp=no
+net_address=192.168.1.1
+net_network=192.168.0.0
+net_netmask=255.255.0.0
 EOT
-$BIN/lxp &>/dev/null   
-not_ok $? "Verify if command line option --broadcast with an invalid argument fails"
-$BIN/lxp 2>&1 | {
- lst_ln_is ">>> ERROR: Command line/conf file option --broadcast/broadcast requires a supported argument. See --help command line option for help >>>"
-}
+not_ok_ "Verify if conf file option net_broadcast with an invalid argument fails" $BIN/lxp | \
+ lst_ln_is ">>> ERROR: Command line/conf file option --net-broadcast/net_broadcast requires a supported argument. See --help command line option for help >>>"
 rm $conf
 
 # gateway
 cat > "$conf" << EOT
-gateway=192.168.0.256
-dhcp=no
-address=192.168.1.1
-network=192.168.0.0
-netmask=255.255.0.0
+net_gateway=192.168.0.256
+net_dhcp=no
+net_address=192.168.1.1
+net_network=192.168.0.0
+net_netmask=255.255.0.0
 EOT
-$BIN/lxp &>/dev/null   
-not_ok $? "Verify if command line option --gateway with an invalid argument fails"
-$BIN/lxp 2>&1 | {
- lst_ln_is ">>> ERROR: Command line/conf file option --gateway/gateway requires a supported argument. See --help command line option for help >>>"
-}
+not_ok_ "Verify if conf file option net_gateway with an invalid argument fails" $BIN/lxp | \
+ lst_ln_is ">>> ERROR: Command line/conf file option --net-gateway/net_gateway requires a supported argument. See --help command line option for help >>>"
 rm $conf
 
 # TODO: test for networking conf file option search
 
 # nameservers
 cat > "$conf" << EOT
-nameservers=192.168.0.2,192.168.0.256
-dhcp=no
-address=192.168.1.1
-network=192.168.0.0
-netmask=255.255.0.0
+net_nameservers=192.168.0.2,192.168.0.256
+net_dhcp=no
+net_address=192.168.1.1
+net_network=192.168.0.0
+net_netmask=255.255.0.0
 EOT
-$BIN/lxp &>/dev/null   
-not_ok $? "Verify if command line option --nameservers with an invalid argument fails"
-$BIN/lxp 2>&1 | {
- lst_ln_is ">>> ERROR: Command line/conf file option --nameservers/nameservers requires a supported argument. See --help command line option for help >>>"
-}
+not_ok_ "Verify if conf file option net_nameservers with an invalid argument fails" $BIN/lxp | \
+ lst_ln_is ">>> ERROR: Command line/conf file option --net-nameservers/net_nameservers requires a supported argument. See --help command line option for help >>>"
 rm $conf
 
 # varios networking conf file opts combinations
 cat > "$conf" << EOT
-dhcp=yes
-address=192.168.1.1
+net_dhcp=yes
+net_address=192.168.1.1
 EOT
-$BIN/lxp &>/dev/null
-not_ok $? "Verify if conf file 'dhcp=yes' and conf file option 'address=192.168.1.1' fails"
-$BIN/lxp 2>&1 | {
-  lst_ln_is ">>> ERROR: --dhcp/dhcp=yes command line/conf file option excludes --address/address, --network/network, --netmask/netmask, --broadcast/broadcast and --gateway/gateway command line/conf file options >>>"
-}
+not_ok_ "Verify if conf file 'net_dhcp=yes' and conf file option 'net_address=192.168.1.1' fails" $BIN/lxp | \
+  lst_ln_is ">>> ERROR: --net-dhcp/net_dhcp=yes command line/conf file option excludes --net-address/net_address, --net-network/net_network, --net-netmask/net_netmask, --net-broadcast/net_broadcast and --net-gateway/net_gateway command line/conf file options >>>"
 rm $conf
 
 cat > "$conf" << EOT
-dhcp=yes
-network=192.168.0.0
+net_dhcp=yes
+net_network=192.168.0.0
 EOT
-$BIN/lxp &>/dev/null
-not_ok $? "Verify if conf file option 'dhcp=yes' and conf file option 'network=192.168.0.0' fails"
-$BIN/lxp 2>&1 | {
-  lst_ln_is ">>> ERROR: --dhcp/dhcp=yes command line/conf file option excludes --address/address, --network/network, --netmask/netmask, --broadcast/broadcast and --gateway/gateway command line/conf file options >>>"
-}
+not_ok_ "Verify if conf file option 'net_dhcp=yes' and conf file option 'net_network=192.168.0.0' fails" $BIN/lxp | \
+  lst_ln_is ">>> ERROR: --net-dhcp/net_dhcp=yes command line/conf file option excludes --net-address/net_address, --net-network/net_network, --net-netmask/net_netmask, --net-broadcast/net_broadcast and --net-gateway/net_gateway command line/conf file options >>>"
 rm $conf
 
 cat > "$conf" << EOT
-dhcp=yes
-netmask=255.255.0.0
+net_dhcp=yes
+net_netmask=255.255.0.0
 EOT
-$BIN/lxp &>/dev/null
-not_ok $? "Verify if conf file option 'dhcp=yes' and conf file option 'netmask=255.255.0.0' fails"
-$BIN/lxp 2>&1 | {
-  lst_ln_is ">>> ERROR: --dhcp/dhcp=yes command line/conf file option excludes --address/address, --network/network, --netmask/netmask, --broadcast/broadcast and --gateway/gateway command line/conf file options >>>"
-}
+not_ok_ "Verify if conf file option 'net_dhcp=yes' and conf file option 'netmask=255.255.0.0' fails" $BIN/lxp | \
+  lst_ln_is ">>> ERROR: --net-dhcp/net_dhcp=yes command line/conf file option excludes --net-address/net_address, --net-network/net_network, --net-netmask/net_netmask, --net-broadcast/net_broadcast and --net-gateway/net_gateway command line/conf file options >>>"
 rm $conf
 
 cat > "$conf" << EOT
-dhcp=yes
-broadcast=192.168.255.255
+net_dhcp=yes
+net_broadcast=192.168.255.255
 EOT
-$BIN/lxp &>/dev/null
-not_ok $? "Verify if conf file option 'dhcp=yes' and conf file option 'broadcast=192.168.255.255' fails"
-$BIN/lxp 2>&1 | {
-  lst_ln_is ">>> ERROR: --dhcp/dhcp=yes command line/conf file option excludes --address/address, --network/network, --netmask/netmask, --broadcast/broadcast and --gateway/gateway command line/conf file options >>>"
-}
+not_ok_ "Verify if conf file option 'net_dhcp=yes' and conf file option 'broadcast=192.168.255.255' fails" $BIN/lxp | \
+  lst_ln_is ">>> ERROR: --net-dhcp/net_dhcp=yes command line/conf file option excludes --net-address/net_address, --net-network/net_network, --net-netmask/net_netmask, --net-broadcast/net_broadcast and --net-gateway/net_gateway command line/conf file options >>>"
 rm $conf
 
 cat > "$conf" << EOT
-dhcp=yes
-gateway=192.168.0.1
+net_dhcp=yes
+net_gateway=192.168.0.1
 EOT
-$BIN/lxp &>/dev/null
-not_ok $? "Verify if conf file option 'dhcp=yes' and conf file option 'gateway=192.168.0.1' fails"
-$BIN/lxp 2>&1 | {
-  lst_ln_is ">>> ERROR: --dhcp/dhcp=yes command line/conf file option excludes --address/address, --network/network, --netmask/netmask, --broadcast/broadcast and --gateway/gateway command line/conf file options >>>"
-}
+not_ok_ "Verify if conf file option 'net_dhcp=yes' and conf file option 'gateway=192.168.0.1' fails" $BIN/lxp | \
+  lst_ln_is ">>> ERROR: --net-dhcp/net_dhcp=yes command line/conf file option excludes --net-address/net_address, --net-network/net_network, --net-netmask/net_netmask, --net-broadcast/net_broadcast and --net-gateway/net_gateway command line/conf file options >>>"
 rm $conf
 
 cat > "$conf" << EOT
-dhcp=no
+net_dhcp=no
 EOT
-$BIN/lxp &>/dev/null
-not_ok $? "Verify if conf file option 'dhcp=no' without address, network or netmask conf file options fails"
-$BIN/lxp 2>&1 | {
-  lst_ln_is ">>> ERROR: --dhcp/dhcp=no command line/conf file option shall be specified among --address/address, --network/network and --netmask/netmask command line/conf file options >>>"
-}
+not_ok_ "Verify if conf file option 'net_dhcp=no' without address, network or netmask conf file options fails" $BIN/lxp | \
+  lst_ln_is ">>> ERROR: --net-dhcp/net_dhcp=no command line/conf file option shall be specified among --net-address/net_address, --net-network/net_network and --net-netmask/net_netmask command line/conf file options >>>"
 rm $conf
 
 cat > "$conf" << EOT
-dhcp=no
-address=192.168.1.1
+net_dhcp=no
+net_address=192.168.1.1
 EOT
-$BIN/lxp &>/dev/null
-not_ok $? "Verify if conf file option 'dhcp=no' and 'address=192.168.1.1' without network or netmask conf file options fails"
-$BIN/lxp 2>&1 | {
-  lst_ln_is ">>> ERROR: --dhcp/dhcp=no command line/conf file option shall be specified among --address/address, --network/network and --netmask/netmask command line/conf file options >>>"
-}
+not_ok_ "Verify if conf file option 'net_dhcp=no' and 'net_address=192.168.1.1' without network or netmask conf file options fails" $BIN/lxp | \
+  lst_ln_is ">>> ERROR: --net-dhcp/net_dhcp=no command line/conf file option shall be specified among --net-address/net_address, --net-network/net_network and --net-netmask/net_netmask command line/conf file options >>>"
 rm $conf
 
 cat > "$conf" << EOT
-dhcp=no
-network=192.168.0.0
+net_dhcp=no
+net_network=192.168.0.0
 EOT
-$BIN/lxp &>/dev/null
-not_ok $? "Verify if conf file option 'dhcp=no' and 'network=192.168.0.0' without address or netmask conf file options fails"
-$BIN/lxp 2>&1 | {
-  lst_ln_is ">>> ERROR: --dhcp/dhcp=no command line/conf file option shall be specified among --address/address, --network/network and --netmask/netmask command line/conf file options >>>"
-}
+not_ok_ "Verify if conf file option 'net_dhcp=no' and 'net_network=192.168.0.0' without address or netmask conf file options fails" $BIN/lxp | \
+  lst_ln_is ">>> ERROR: --net-dhcp/net_dhcp=no command line/conf file option shall be specified among --net-address/net_address, --net-network/net_network and --net-netmask/net_netmask command line/conf file options >>>"
 rm $conf
 
 cat > "$conf" << EOT
-dhcp=no
-netmask=255.255.0.0
+net_dhcp=no
+net_netmask=255.255.0.0
 EOT
-$BIN/lxp &>/dev/null
-not_ok $? "Verify if conf file option 'dhcp=no' and 'netmask=255.255.0.0' without address or network conf file options fails"
-$BIN/lxp 2>&1 | {
-  lst_ln_is ">>> ERROR: --dhcp/dhcp=no command line/conf file option shall be specified among --address/address, --network/network and --netmask/netmask command line/conf file options >>>"
-}
+not_ok_ "Verify if conf file option 'net_dhcp=no' and 'net_netmask=255.255.0.0' without address or network conf file options fails" $BIN/lxp | \
+  lst_ln_is ">>> ERROR: --net-dhcp/net_dhcp=no command line/conf file option shall be specified among --net-address/net_address, --net-network/net_network and --net-netmask/net_netmask command line/conf file options >>>"
 rm $conf
 
 cat > "$conf" << EOT
-dhcp=no
-address=192.168.1.1
-network=192.168.0.0 
+net_dhcp=no
+net_address=192.168.1.1
+net_network=192.168.0.0 
 EOT
-$BIN/lxp &>/dev/null
-not_ok $? "Verify if conf file option 'dhcp=no', 'address=192.168.1.1' and 'network=192.168.0.0' without netmask conf file options fails"
-$BIN/lxp 2>&1 | {
-  lst_ln_is ">>> ERROR: --dhcp/dhcp=no command line/conf file option shall be specified among --address/address, --network/network and --netmask/netmask command line/conf file options >>>"
-}
+not_ok_ "Verify if conf file option 'net_dhcp=no', 'net_address=192.168.1.1' and 'net_network=192.168.0.0' without netmask conf file options fails" $BIN/lxp | \
+  lst_ln_is ">>> ERROR: --net-dhcp/net_dhcp=no command line/conf file option shall be specified among --net-address/net_address, --net-network/net_network and --net-netmask/net_netmask command line/conf file options >>>"
 rm $conf
 
 cat > "$conf" << EOT
-dhcp=no
-address=192.168.1.1
-netmask=255.255.0.0 
+net_dhcp=no
+net_address=192.168.1.1
+net_netmask=255.255.0.0 
 EOT
-$BIN/lxp &>/dev/null
-not_ok $? "Verify if conf file option 'dhcp=no', 'address=192.168.1.1' and 'netmask=255.255.0.0' without network conf file options fails"
-$BIN/lxp 2>&1 | {
-  lst_ln_is ">>> ERROR: --dhcp/dhcp=no command line/conf file option shall be specified among --address/address, --network/network and --netmask/netmask command line/conf file options >>>"
-}
+not_ok_ "Verify if conf file option 'net_dhcp=no', 'net_address=192.168.1.1' and 'net_netmask=255.255.0.0' without network conf file options fails" $BIN/lxp | \
+  lst_ln_is ">>> ERROR: --net-dhcp/net_dhcp=no command line/conf file option shall be specified among --net-address/net_address, --net-network/net_network and --net-netmask/net_netmask command line/conf file options >>>"
 rm $conf
 
 cat > "$conf" << EOT
-dhcp=no
-network=192.168.0.0
-netmask=255.255.0.0 
+net_dhcp=no
+net_network=192.168.0.0
+net_netmask=255.255.0.0 
 EOT
-$BIN/lxp &>/dev/null
-not_ok $? "Verify if conf file option 'dhcp=no', 'network=192.168.0.0' and 'netmask=255.255.0.0' without address conf file options fails"
-$BIN/lxp 2>&1 | {
-  lst_ln_is ">>> ERROR: --dhcp/dhcp=no command line/conf file option shall be specified among --address/address, --network/network and --netmask/netmask command line/conf file options >>>"
-}
+not_ok_ "Verify if conf file option 'net_dhcp=no', 'net_network=192.168.0.0' and 'net_netmask=255.255.0.0' without address conf file options fails" $BIN/lxp | \
+  lst_ln_is ">>> ERROR: --net-dhcp/net_dhcp=no command line/conf file option shall be specified among --net-address/net_address, --net-network/net_network and --net-netmask/net_netmask command line/conf file options >>>"
 rm $conf
 
 rmdir "$BLSS_ENV" # remove the env
@@ -821,43 +524,25 @@ rmdir "$BLSS_ENV" # remove the env
 export BLSS_ENV=$(mktemp -d) # an empty BLSS_ENV
 
 # --admin-user:
-$BIN/lxp --admin-user &>/dev/null   
-not_ok $? "Verify if command line option '--admin-user' without argument fails"
-$BIN/lxp --admin-user 2>&1 | {
+not_ok_ "Verify if command line option '--admin-user' without argument fails" $BIN/lxp --admin-user | \
  ln_like "--admin-user' requires an argument"  
-}
 
-$BIN/lxp --admin-user "" &>/dev/null   
-not_ok $? "Verify if command line option '--admin-user' with an empty argument fails"
-$BIN/lxp --admin-user "" 2>&1 | {
+not_ok_ "Verify if command line option '--admin-user' with an empty argument fails" $BIN/lxp --admin-user "" | \
  ln_like ">>> ERROR: Command line option '--admin-user' requires an non-empty argument >>>"  
-}
 
 # --admin-full-name:
-$BIN/lxp --admin-full-name &>/dev/null   
-not_ok $? "Verify if command line option '--admin-full-name' without argument fails"
-$BIN/lxp --admin-full-name 2>&1 | {
+not_ok_ "Verify if command line option '--admin-full-name' without argument fails" $BIN/lxp --admin-full-name | \
  ln_like "--admin-full-name' requires an argument"  
-}
 
-$BIN/lxp --admin-full-name "" &>/dev/null   
-not_ok $? "Verify if command line option '--admin-full-name' with an empty argument fails"
-$BIN/lxp --admin-full-name "" 2>&1 | {
+not_ok_ "Verify if command line option '--admin-full-name' with an empty argument fails" $BIN/lxp --admin-full-name "" | \
  ln_like ">>> ERROR: Command line option '--admin-full-name' requires an non-empty argument >>>"  
-}
 
 # --admin-password
-$BIN/lxp --admin-password &>/dev/null   
-not_ok $? "Verify if command line option '--admin-password' without argument fails"
-$BIN/lxp --admin-password 2>&1 | {
+not_ok_ "Verify if command line option '--admin-password' without argument fails" $BIN/lxp --admin-password | \
  ln_like "--admin-password' requires an argument"  
-}
 
-$BIN/lxp --admin-password "" &>/dev/null   
-not_ok $? "Verify if command line option '--admin-password' with an empty argument fails"
-$BIN/lxp --admin-password "" 2>&1 | {
+not_ok_ "Verify if command line option '--admin-password' with an empty argument fails" $BIN/lxp --admin-password "" | \
  ln_like ">>> ERROR: Command line option '--admin-password' requires an non-empty argument >>>"  
-}
 
 rmdir "$BLSS_ENV" # remove the env
 
@@ -865,55 +550,31 @@ rmdir "$BLSS_ENV" # remove the env
 export BLSS_ENV=$(mktemp -d) # an empty BLSS_ENV
 
 # --root-password
-$BIN/lxp --root-password &>/dev/null   
-not_ok $? "Verify if command line option '--root-password' without argument fails"
-$BIN/lxp --root-password 2>&1 | {
+not_ok_ "Verify if command line option '--root-password' without argument fails" $BIN/lxp --root-password | \
  ln_like "--root-password' requires an argument"  
-}
 
-$BIN/lxp --root-password "" &>/dev/null   
-not_ok $? "Verify if command line option '--root-password' with an empty argument fails"
-$BIN/lxp --root-password "" 2>&1 | {
+not_ok_ "Verify if command line option '--root-password' with an empty argument fails" $BIN/lxp --root-password "" | \
  ln_like ">>> ERROR: Command line option '--root-password' requires an non-empty argument >>>"  
-}
 
-$BIN/lxp --root-password "xyz" &>/dev/null   
-not_ok $? "Verify if a valid command line option '--root-password' without '--remote-root' command line option fails"
-$BIN/lxp --root-password "xyz" 2>&1 | {
-  lst_ln_is ">>> ERROR: --remote-root/remote_root command line/conf file option is missing >>>"  
-}
+not_ok_ "Verify if a valid command line option '--root-password' without '--root-remote' command line option fails" $BIN/lxp --root-password "xyz" | \
+  lst_ln_is ">>> ERROR: --root-remote/root_remote command line/conf file option is missing >>>"  
 
-# --remote-root
-$BIN/lxp --remote-root &>/dev/null   
-not_ok $? "Verify if command line option '--remote-root' without argument fails"
-$BIN/lxp --remote-root 2>&1 | {
- ln_like "--remote-root' requires an argument"  
-}
+# --root-remote
+not_ok_ "Verify if command line option '--root-remote' without argument fails" $BIN/lxp --root-remote | \
+ ln_like "--root-remote' requires an argument"  
 
-$BIN/lxp --remote-root "" &>/dev/null   
-not_ok $? "Verify if command line option '--remote-root' with an empty argument fails"
-$BIN/lxp --remote-root "" 2>&1 | {
- ln_like ">>> ERROR: Command line option '--remote-root' requires an non-empty argument >>>"  
-}
+not_ok_ "Verify if command line option '--root-remote' with an empty argument fails" $BIN/lxp --root-remote "" | \
+ ln_like ">>> ERROR: Command line option '--root-remote' requires an non-empty argument >>>"  
 
-$BIN/lxp --remote-root "maybe" --root-password - &>/dev/null   
-not_ok $? "Verify if command line option --remote-root with an invalid argument fails"
-$BIN/lxp --remote-root "maybe" --root-password - 2>&1 | {
- lst_ln_is ">>> ERROR: Command line/conf file option --remote-root/remote_root requires a supported argument. See --help command line option for help >>>"
-}
+not_ok_ "Verify if command line option --root-remote with an invalid argument fails" $BIN/lxp --root-remote "maybe" --root-password - | \
+ lst_ln_is ">>> ERROR: Command line/conf file option --root-remote/root_remote requires a supported argument. See --help command line option for help >>>"
 
-$BIN/lxp --remote-root yes &>/dev/null   
-not_ok $? "Verify if a valid command line option '--remote-root' without '--root-password' command line option fails"
-$BIN/lxp --remote-root yes 2>&1 | {
+not_ok_ "Verify if a valid command line option '--root-remote' without '--root-password' command line option fails" $BIN/lxp --root-remote yes | \
   lst_ln_is ">>> ERROR: --root-password/root_password command line/conf file option is missing >>>"  
-}
 
-# --root-password --remote-root
-$BIN/lxp --root-password "-" --remote-root yes &>/dev/null
-not_ok $? "Verify if command line option '--remote-root=yes' and command line option '--root-password=-' fails"
-$BIN/lxp --root-password "-" --remote-root yes 2>&1 | {
-  lst_ln_is ">>> ERROR: --remote-root/remote_root=yes command line/conf file option shall be used with non-empty --root-password/root_password different to the special argument '-' >>>"
-}
+# --root-password --root-remote
+not_ok_ "Verify if command line option '--root-remote=yes' and command line option '--root-password=-' fails" $BIN/lxp --root-password "-" --root-remote yes | \
+  lst_ln_is ">>> ERROR: --root-remote/root_remote=yes command line/conf file option shall be used with non-empty --root-password/root_password different to the special argument '-' >>>"
 
 rmdir "$BLSS_ENV" # remove the env
 
@@ -921,49 +582,37 @@ rmdir "$BLSS_ENV" # remove the env
 export BLSS_ENV=$(mktemp -d) # an empty BLSS_ENV
 conf="$BLSS_ENV"/lxp.conf
 
-# root_password remote_root
+# root_password root_remote
 cat > "$conf" << EOT
-remote_root=maybe
+root_remote=maybe
 root_password=-
 EOT
-$BIN/lxp &>/dev/null   
-not_ok $? "Verify if conf file option remote_root with an invalid argument fails"
-$BIN/lxp 2>&1 | {
- lst_ln_is ">>> ERROR: Command line/conf file option --remote-root/remote_root requires a supported argument. See --help command line option for help >>>"
-}
+not_ok_ "Verify if conf file option root_remote with an invalid argument fails" $BIN/lxp | \
+ lst_ln_is ">>> ERROR: Command line/conf file option --root-remote/root_remote requires a supported argument. See --help command line option for help >>>"
 rm "$conf"
 
 cat > "$conf" << EOT
 root_password=xyz
 EOT
-$BIN/lxp &>/dev/null   
-not_ok $? "Verify if a valid conf file option 'root_password' without 'remote_root' conf file option fails"
-$BIN/lxp 2>&1 | {
-  lst_ln_is ">>> ERROR: --remote-root/remote_root command line/conf file option is missing >>>"  
-}
+not_ok_ "Verify if a valid conf file option 'root_password' without 'root_remote' conf file option fails" $BIN/lxp | \
+  lst_ln_is ">>> ERROR: --root-remote/root_remote command line/conf file option is missing >>>"  
 rm "$conf"
 
-# --remote-root
+# --root-remote
 cat > "$conf" << EOT
-remote_root=yes
+root_remote=yes
 EOT
-$BIN/lxp &>/dev/null   
-not_ok $? "Verify if a valid conf file option 'remote_root' without 'root_password' conf file option fails"
-$BIN/lxp 2>&1 | {
+not_ok_ "Verify if a valid conf file option 'root_remote' without 'root_password' conf file option fails" $BIN/lxp | \
   lst_ln_is ">>> ERROR: --root-password/root_password command line/conf file option is missing >>>"  
-}
 rm "$conf"
 
-# --root-password --remote-root
+# --root-password --root-remote
 cat > "$conf" << EOT
 root_password=-
-remote_root=yes
+root_remote=yes
 EOT
-$BIN/lxp &>/dev/null
-not_ok $? "Verify if conf file option 'remote_root=yes' and conf file option 'root_password=-' fails"
-$BIN/lxp 2>&1 | {
-  lst_ln_is ">>> ERROR: --remote-root/remote_root=yes command line/conf file option shall be used with non-empty --root-password/root_password different to the special argument '-' >>>"
-}
+not_ok_ "Verify if conf file option 'root_remote=yes' and conf file option 'root_password=-' fails" $BIN/lxp | \
+  lst_ln_is ">>> ERROR: --root-remote/root_remote=yes command line/conf file option shall be used with non-empty --root-password/root_password different to the special argument '-' >>>"
 rm "$conf"
 
 rmdir "$BLSS_ENV" # remove the env
@@ -972,26 +621,20 @@ rmdir "$BLSS_ENV" # remove the env
 export BLSS_ENV=$(mktemp -d) # an empty BLSS_ENV
 conf="$BLSS_ENV"/lxp.conf
 
-# --root-password remote_root
+# --root-password root_remote
 cat > "$conf" << EOT
-remote_root=yes
+root_remote=yes
 EOT
-$BIN/lxp --root-password "-" &>/dev/null
-not_ok $? "Verify if conf file option 'remote_root=yes' and command line option '--root-password=-' fails"
-$BIN/lxp --root-password "-" 2>&1 | {
-  lst_ln_is ">>> ERROR: --remote-root/remote_root=yes command line/conf file option shall be used with non-empty --root-password/root_password different to the special argument '-' >>>"
-}
+not_ok_ "Verify if conf file option 'root_remote=yes' and command line option '--root-password=-' fails" $BIN/lxp --root-password "-" | \
+  lst_ln_is ">>> ERROR: --root-remote/root_remote=yes command line/conf file option shall be used with non-empty --root-password/root_password different to the special argument '-' >>>"
 rm "$conf"
 
-# root_password --remote-root
+# root_password --root-remote
 cat > "$conf" << EOT
 root_password=-
 EOT
-$BIN/lxp --remote-root yes &>/dev/null
-not_ok $? "Verify if command line option '--remote-root=yes' and conf file option 'root_password=-' fails"
-$BIN/lxp --remote-root yes 2>&1 | {
-  lst_ln_is ">>> ERROR: --remote-root/remote_root=yes command line/conf file option shall be used with non-empty --root-password/root_password different to the special argument '-' >>>"
-}
+not_ok_ "Verify if command line option '--root-remote=yes' and conf file option 'root_password=-' fails" $BIN/lxp --root-remote yes | \
+  lst_ln_is ">>> ERROR: --root-remote/root_remote=yes command line/conf file option shall be used with non-empty --root-password/root_password different to the special argument '-' >>>"
 rm "$conf"
 
 rmdir "$BLSS_ENV" # remove the env
@@ -1001,26 +644,17 @@ export BLSS_ENV=$(mktemp -d) # an empty BLSS_ENV
 
 # PROTO_ROOT
 pr=$(mktemp -d) && rmdir $pr
-$BIN/lxp "$pr" &>/dev/null
-not_ok $? "Verify if command line option PROTO_ROOT=(non-existing directory) fails"
-$BIN/lxp "$pr" 2>&1 | {
+not_ok_ "Verify if command line option PROTO_ROOT=(non-existing directory) fails" $BIN/lxp "$pr" | \
   lst_ln_is ">>> ERROR: PROTO_ROOT/proto_root command line/conf file option shall be an existing empty directory >>>"
-}
 
 pr=$(mktemp -d) && mkdir "$pr"/someotherdir
-$BIN/lxp "$pr" &>/dev/null
-not_ok $? "Verify if command line option PROTO_ROOT=(non-empty directory) fails"
-$BIN/lxp "$pr" 2>&1 | {
+not_ok_ "Verify if command line option PROTO_ROOT=(non-empty directory) fails" $BIN/lxp "$pr" | \
   lst_ln_is ">>> ERROR: PROTO_ROOT/proto_root command line/conf file option shall be an existing empty directory >>>"
-}
 rm -r "$pr"
 
 pr=$(mktemp)
-$BIN/lxp "$pr" &>/dev/null
-not_ok $? "Verify if command line option PROTO_ROOT=(an existing file) fails"
-$BIN/lxp "$pr" 2>&1 | {
+not_ok_ "Verify if command line option PROTO_ROOT=(an existing file) fails" $BIN/lxp "$pr" | \
   lst_ln_is ">>> ERROR: PROTO_ROOT/proto_root command line/conf file option shall be an existing empty directory >>>"
-}
 rm "$pr"
 
 rmdir "$BLSS_ENV" # remove the env
@@ -1034,33 +668,24 @@ pr=$(mktemp -d) && rmdir $pr
 cat > "$conf" << EOT
 proto_root="${pr}"
 EOT
-$BIN/lxp &>/dev/null
-not_ok $? "Verify if conf file option proto_root=(non-existing directory) fails"
-$BIN/lxp 2>&1 | {
+not_ok_ "Verify if conf file option proto_root=(non-existing directory) fails" $BIN/lxp | \
   lst_ln_is ">>> ERROR: PROTO_ROOT/proto_root command line/conf file option shall be an existing empty directory >>>"
-}
 rm $conf
 
 pr=$(mktemp -d) && mkdir "$pr"/someotherdir
 cat > "$conf" << EOT
 proto_root="${pr}"
 EOT
-$BIN/lxp &>/dev/null
-not_ok $? "Verify if conf file option proto_root=(non-empty directory) fails"
-$BIN/lxp 2>&1 | {
+not_ok_ "Verify if conf file option proto_root=(non-empty directory) fails" $BIN/lxp | \
   lst_ln_is ">>> ERROR: PROTO_ROOT/proto_root command line/conf file option shall be an existing empty directory >>>"
-}
 rm -r "$pr"
 
 pr=$(mktemp)
 cat > "$conf" << EOT
 proto_root="${pr}"
 EOT
-$BIN/lxp &>/dev/null
-not_ok $? "Verify if conf file option proto_root=(an existing file) fails"
-$BIN/lxp 2>&1 | {
+not_ok_ "Verify if conf file option proto_root=(an existing file) fails" $BIN/lxp | \
   lst_ln_is ">>> ERROR: PROTO_ROOT/proto_root command line/conf file option shall be an existing empty directory >>>"
-}
 rm "$conf"
 
 rmdir "$BLSS_ENV" # remove the env
@@ -1070,579 +695,303 @@ rmdir "$BLSS_ENV" # remove the env
 export BLSS_ENV=$(mktemp -d) # an empty BLSS_ENV
 
 # --mod-floppy
-$BIN/lxp --mod-floppy yes --mod-floppy no &>/dev/null
-not_ok $? "Verify if a repeated command line option --mod-floppy fails"
-$BIN/lxp --mod-floppy yes --mod-floppy no 2>&1 | {
+not_ok_ "Verify if a repeated command line option --mod-floppy fails" $BIN/lxp --mod-floppy yes --mod-floppy no | \
   ln_is ">>> ERROR: --mod-floppy command line option was already specified >>>"
-}
 
-$BIN/lxp --mod-floppy &>/dev/null   
-not_ok $? "Verify if command line option '--mod-floppy' without argument fails"
-$BIN/lxp --mod-floppy 2>&1 | {
+not_ok_ "Verify if command line option '--mod-floppy' without argument fails" $BIN/lxp --mod-floppy | \
  ln_like "--mod-floppy' requires an argument"  
-}
 
-$BIN/lxp --mod-floppy "" &>/dev/null   
-not_ok $? "Verify if command line option '--mod-floppy' with an empty argument fails"
-$BIN/lxp --mod-floppy "" 2>&1 | {
+not_ok_ "Verify if command line option '--mod-floppy' with an empty argument fails" $BIN/lxp --mod-floppy "" | \
  ln_like ">>> ERROR: Command line option '--mod-floppy' requires an non-empty argument >>>"  
-}
 
-$BIN/lxp --mod-floppy "maybe" &>/dev/null   
-not_ok $? "Verify if command line option --mod-floppy with an invalid argument fails"
-$BIN/lxp --mod-floppy "maybe" 2>&1 | {
+not_ok_ "Verify if command line option --mod-floppy with an invalid argument fails" $BIN/lxp --mod-floppy "maybe" | \
  lst_ln_is ">>> ERROR: Command line/conf file option --mod-floppy/mod_floppy requires a supported argument. See --help command line option for help >>>"
-}
 
 # --mod-tape
-$BIN/lxp --mod-tape yes --mod-tape no &>/dev/null
-not_ok $? "Verify if a repeated command line option --mod-tape fails"
-$BIN/lxp --mod-tape yes --mod-tape no 2>&1 | {
+not_ok_ "Verify if a repeated command line option --mod-tape fails" $BIN/lxp --mod-tape yes --mod-tape no | \
   ln_is ">>> ERROR: --mod-tape command line option was already specified >>>"
-}
 
-$BIN/lxp --mod-tape &>/dev/null   
-not_ok $? "Verify if command line option '--mod-tape' without argument fails"
-$BIN/lxp --mod-tape 2>&1 | {
+not_ok_ "Verify if command line option '--mod-tape' without argument fails" $BIN/lxp --mod-tape | \
  ln_like "--mod-tape' requires an argument"  
-}
 
-$BIN/lxp --mod-tape "" &>/dev/null   
-not_ok $? "Verify if command line option '--mod-tape' with an empty argument fails"
-$BIN/lxp --mod-tape "" 2>&1 | {
+not_ok_ "Verify if command line option '--mod-tape' with an empty argument fails" $BIN/lxp --mod-tape "" | \
  ln_like ">>> ERROR: Command line option '--mod-tape' requires an non-empty argument >>>"  
-}
 
-$BIN/lxp --mod-tape "maybe" &>/dev/null   
-not_ok $? "Verify if command line option --mod-tape with an invalid argument fails"
-$BIN/lxp --mod-tape "maybe" 2>&1 | {
+not_ok_ "Verify if command line option --mod-tape with an invalid argument fails" $BIN/lxp --mod-tape "maybe" | \
  lst_ln_is ">>> ERROR: Command line/conf file option --mod-tape/mod_tape requires a supported argument. See --help command line option for help >>>"
-}
 
 # --mod-cdrom
-$BIN/lxp --mod-cdrom yes --mod-cdrom no &>/dev/null
-not_ok $? "Verify if a repeated command line option --mod-cdrom fails"
-$BIN/lxp --mod-cdrom yes --mod-cdrom no 2>&1 | {
+not_ok_ "Verify if a repeated command line option --mod-cdrom fails" $BIN/lxp --mod-cdrom yes --mod-cdrom no | \
   ln_is ">>> ERROR: --mod-cdrom command line option was already specified >>>"
-}
 
-$BIN/lxp --mod-cdrom &>/dev/null   
-not_ok $? "Verify if command line option '--mod-cdrom' without argument fails"
-$BIN/lxp --mod-cdrom 2>&1 | {
+not_ok_ "Verify if command line option '--mod-cdrom' without argument fails" $BIN/lxp --mod-cdrom | \
  ln_like "--mod-cdrom' requires an argument"  
-}
 
-$BIN/lxp --mod-cdrom "" &>/dev/null   
-not_ok $? "Verify if command line option '--mod-cdrom' with an empty argument fails"
-$BIN/lxp --mod-cdrom "" 2>&1 | {
+not_ok_ "Verify if command line option '--mod-cdrom' with an empty argument fails" $BIN/lxp --mod-cdrom "" | \
  ln_like ">>> ERROR: Command line option '--mod-cdrom' requires an non-empty argument >>>"  
-}
 
-$BIN/lxp --mod-cdrom "maybe" &>/dev/null   
-not_ok $? "Verify if command line option --mod-cdrom with an invalid argument fails"
-$BIN/lxp --mod-cdrom "maybe" 2>&1 | {
+not_ok_ "Verify if command line option --mod-cdrom with an invalid argument fails" $BIN/lxp --mod-cdrom "maybe" | \
  lst_ln_is ">>> ERROR: Command line/conf file option --mod-cdrom/mod_cdrom requires a supported argument. See --help command line option for help >>>"
-}
 
 # --mod-sound
-$BIN/lxp --mod-sound yes --mod-sound no &>/dev/null
-not_ok $? "Verify if a repeated command line option --mod-sound fails"
-$BIN/lxp --mod-sound yes --mod-sound no 2>&1 | {
+not_ok_ "Verify if a repeated command line option --mod-sound fails" $BIN/lxp --mod-sound yes --mod-sound no | \
   ln_is ">>> ERROR: --mod-sound command line option was already specified >>>"
-}
 
-$BIN/lxp --mod-sound &>/dev/null   
-not_ok $? "Verify if command line option '--mod-sound' without argument fails"
-$BIN/lxp --mod-sound 2>&1 | {
+not_ok_ "Verify if command line option '--mod-sound' without argument fails" $BIN/lxp --mod-sound | \
  ln_like "--mod-sound' requires an argument"  
-}
 
-$BIN/lxp --mod-sound "" &>/dev/null   
-not_ok $? "Verify if command line option '--mod-sound' with an empty argument fails"
-$BIN/lxp --mod-sound "" 2>&1 | {
+not_ok_ "Verify if command line option '--mod-sound' with an empty argument fails" $BIN/lxp --mod-sound "" | \
  ln_like ">>> ERROR: Command line option '--mod-sound' requires an non-empty argument >>>"  
-}
 
-$BIN/lxp --mod-sound "maybe" &>/dev/null   
-not_ok $? "Verify if command line option --mod-sound with an invalid argument fails"
-$BIN/lxp --mod-sound "maybe" 2>&1 | {
+not_ok_ "Verify if command line option --mod-sound with an invalid argument fails" $BIN/lxp --mod-sound "maybe" | \
  lst_ln_is ">>> ERROR: Command line/conf file option --mod-sound/mod_sound requires a supported argument. See --help command line option for help >>>"
-}
 
 # --mod-mouse
-$BIN/lxp --mod-mouse yes --mod-mouse no &>/dev/null
-not_ok $? "Verify if a repeated command line option --mod-mouse fails"
-$BIN/lxp --mod-mouse yes --mod-mouse no 2>&1 | {
+not_ok_ "Verify if a repeated command line option --mod-mouse fails" $BIN/lxp --mod-mouse yes --mod-mouse no | \
   ln_is ">>> ERROR: --mod-mouse command line option was already specified >>>"
-}
 
-$BIN/lxp --mod-mouse &>/dev/null   
-not_ok $? "Verify if command line option '--mod-mouse' without argument fails"
-$BIN/lxp --mod-mouse 2>&1 | {
+not_ok_ "Verify if command line option '--mod-mouse' without argument fails" $BIN/lxp --mod-mouse | \
  ln_like "--mod-mouse' requires an argument"  
-}
 
-$BIN/lxp --mod-mouse "" &>/dev/null   
-not_ok $? "Verify if command line option '--mod-mouse' with an empty argument fails"
-$BIN/lxp --mod-mouse "" 2>&1 | {
+not_ok_ "Verify if command line option '--mod-mouse' with an empty argument fails" $BIN/lxp --mod-mouse "" | \
  ln_like ">>> ERROR: Command line option '--mod-mouse' requires an non-empty argument >>>"  
-}
 
-$BIN/lxp --mod-mouse "maybe" &>/dev/null   
-not_ok $? "Verify if command line option --mod-mouse with an invalid argument fails"
-$BIN/lxp --mod-mouse "maybe" 2>&1 | {
+not_ok_ "Verify if command line option --mod-mouse with an invalid argument fails" $BIN/lxp --mod-mouse "maybe" | \
  lst_ln_is ">>> ERROR: Command line/conf file option --mod-mouse/mod_mouse requires a supported argument. See --help command line option for help >>>"
-}
 
 # --mod-usb
-$BIN/lxp --mod-usb yes --mod-usb no &>/dev/null
-not_ok $? "Verify if a repeated command line option --mod-usb fails"
-$BIN/lxp --mod-usb yes --mod-usb no 2>&1 | {
+not_ok_ "Verify if a repeated command line option --mod-usb fails" $BIN/lxp --mod-usb yes --mod-usb no | \
   ln_is ">>> ERROR: --mod-usb command line option was already specified >>>"
-}
 
-$BIN/lxp --mod-usb &>/dev/null   
-not_ok $? "Verify if command line option '--mod-usb' without argument fails"
-$BIN/lxp --mod-usb 2>&1 | {
+not_ok_ "Verify if command line option '--mod-usb' without argument fails" $BIN/lxp --mod-usb | \
  ln_like "--mod-usb' requires an argument"  
-}
 
-$BIN/lxp --mod-usb "" &>/dev/null   
-not_ok $? "Verify if command line option '--mod-usb' with an empty argument fails"
-$BIN/lxp --mod-usb "" 2>&1 | {
+not_ok_ "Verify if command line option '--mod-usb' with an empty argument fails" $BIN/lxp --mod-usb "" | \
  ln_like ">>> ERROR: Command line option '--mod-usb' requires an non-empty argument >>>"  
-}
 
-$BIN/lxp --mod-usb "maybe" &>/dev/null   
-not_ok $? "Verify if command line option --mod-usb with an invalid argument fails"
-$BIN/lxp --mod-usb "maybe" 2>&1 | {
+not_ok_ "Verify if command line option --mod-usb with an invalid argument fails" $BIN/lxp --mod-usb "maybe" | \
  lst_ln_is ">>> ERROR: Command line/conf file option --mod-usb/mod_usb requires a supported argument. See --help command line option for help >>>"
-}
 
 # --mod-firewire
-$BIN/lxp --mod-firewire yes --mod-firewire no &>/dev/null
-not_ok $? "Verify if a repeated command line option --mod-firewire fails"
-$BIN/lxp --mod-firewire yes --mod-firewire no 2>&1 | {
+not_ok_ "Verify if a repeated command line option --mod-firewire fails" $BIN/lxp --mod-firewire yes --mod-firewire no | \
   ln_is ">>> ERROR: --mod-firewire command line option was already specified >>>"
-}
 
-$BIN/lxp --mod-firewire &>/dev/null   
-not_ok $? "Verify if command line option '--mod-firewire' without argument fails"
-$BIN/lxp --mod-firewire 2>&1 | {
+not_ok_ "Verify if command line option '--mod-firewire' without argument fails" $BIN/lxp --mod-firewire | \
  ln_like "--mod-firewire' requires an argument"  
-}
 
-$BIN/lxp --mod-firewire "" &>/dev/null   
-not_ok $? "Verify if command line option '--mod-firewire' with an empty argument fails"
-$BIN/lxp --mod-firewire "" 2>&1 | {
+not_ok_ "Verify if command line option '--mod-firewire' with an empty argument fails" $BIN/lxp --mod-firewire "" | \
  ln_like ">>> ERROR: Command line option '--mod-firewire' requires an non-empty argument >>>"  
-}
 
-$BIN/lxp --mod-firewire "maybe" &>/dev/null   
-not_ok $? "Verify if command line option --mod-firewire with an invalid argument fails"
-$BIN/lxp --mod-firewire "maybe" 2>&1 | {
+not_ok_ "Verify if command line option --mod-firewire with an invalid argument fails" $BIN/lxp --mod-firewire "maybe" | \
  lst_ln_is ">>> ERROR: Command line/conf file option --mod-firewire/mod_firewire requires a supported argument. See --help command line option for help >>>"
-}
 
 # --mod-atm
-$BIN/lxp --mod-atm yes --mod-atm no &>/dev/null
-not_ok $? "Verify if a repeated command line option --mod-atm fails"
-$BIN/lxp --mod-atm yes --mod-atm no 2>&1 | {
+not_ok_ "Verify if a repeated command line option --mod-atm fails" $BIN/lxp --mod-atm yes --mod-atm no | \
   ln_is ">>> ERROR: --mod-atm command line option was already specified >>>"
-}
 
-$BIN/lxp --mod-atm &>/dev/null   
-not_ok $? "Verify if command line option '--mod-atm' without argument fails"
-$BIN/lxp --mod-atm 2>&1 | {
+not_ok_ "Verify if command line option '--mod-atm' without argument fails" $BIN/lxp --mod-atm | \
  ln_like "--mod-atm' requires an argument"  
-}
 
-$BIN/lxp --mod-atm "" &>/dev/null   
-not_ok $? "Verify if command line option '--mod-atm' with an empty argument fails"
-$BIN/lxp --mod-atm "" 2>&1 | {
+not_ok_ "Verify if command line option '--mod-atm' with an empty argument fails" $BIN/lxp --mod-atm "" | \
  ln_like ">>> ERROR: Command line option '--mod-atm' requires an non-empty argument >>>"  
-}
 
-$BIN/lxp --mod-atm "maybe" &>/dev/null   
-not_ok $? "Verify if command line option --mod-atm with an invalid argument fails"
-$BIN/lxp --mod-atm "maybe" 2>&1 | {
+not_ok_ "Verify if command line option --mod-atm with an invalid argument fails" $BIN/lxp --mod-atm "maybe" | \
  lst_ln_is ">>> ERROR: Command line/conf file option --mod-atm/mod_atm requires a supported argument. See --help command line option for help >>>"
-}
 
 # --mod-auxdisplay
-$BIN/lxp --mod-auxdisplay yes --mod-auxdisplay no &>/dev/null
-not_ok $? "Verify if a repeated command line option --mod-auxdisplay fails"
-$BIN/lxp --mod-auxdisplay yes --mod-auxdisplay no 2>&1 | {
+not_ok_ "Verify if a repeated command line option --mod-auxdisplay fails" $BIN/lxp --mod-auxdisplay yes --mod-auxdisplay no | \
   ln_is ">>> ERROR: --mod-auxdisplay command line option was already specified >>>"
-}
 
-$BIN/lxp --mod-auxdisplay &>/dev/null   
-not_ok $? "Verify if command line option '--mod-auxdisplay' without argument fails"
-$BIN/lxp --mod-auxdisplay 2>&1 | {
+not_ok_ "Verify if command line option '--mod-auxdisplay' without argument fails" $BIN/lxp --mod-auxdisplay | \
  ln_like "--mod-auxdisplay' requires an argument"  
-}
 
-$BIN/lxp --mod-auxdisplay "" &>/dev/null   
-not_ok $? "Verify if command line option '--mod-auxdisplay' with an empty argument fails"
-$BIN/lxp --mod-auxdisplay "" 2>&1 | {
+not_ok_ "Verify if command line option '--mod-auxdisplay' with an empty argument fails" $BIN/lxp --mod-auxdisplay "" | \
  ln_like ">>> ERROR: Command line option '--mod-auxdisplay' requires an non-empty argument >>>"  
-}
 
-$BIN/lxp --mod-auxdisplay "maybe" &>/dev/null   
-not_ok $? "Verify if command line option --mod-auxdisplay with an invalid argument fails"
-$BIN/lxp --mod-auxdisplay "maybe" 2>&1 | {
+not_ok_ "Verify if command line option --mod-auxdisplay with an invalid argument fails" $BIN/lxp --mod-auxdisplay "maybe" | \
  lst_ln_is ">>> ERROR: Command line/conf file option --mod-auxdisplay/mod_auxdisplay requires a supported argument. See --help command line option for help >>>"
-}
 
 # --mod-xen
-$BIN/lxp --mod-xen yes --mod-xen no &>/dev/null
-not_ok $? "Verify if a repeated command line option --mod-xen fails"
-$BIN/lxp --mod-xen yes --mod-xen no 2>&1 | {
+not_ok_ "Verify if a repeated command line option --mod-xen fails" $BIN/lxp --mod-xen yes --mod-xen no | \
   ln_is ">>> ERROR: --mod-xen command line option was already specified >>>"
-}
 
-$BIN/lxp --mod-xen &>/dev/null   
-not_ok $? "Verify if command line option '--mod-xen' without argument fails"
-$BIN/lxp --mod-xen 2>&1 | {
+not_ok_ "Verify if command line option '--mod-xen' without argument fails" $BIN/lxp --mod-xen | \
  ln_like "--mod-xen' requires an argument"  
-}
 
-$BIN/lxp --mod-xen "" &>/dev/null   
-not_ok $? "Verify if command line option '--mod-xen' with an empty argument fails"
-$BIN/lxp --mod-xen "" 2>&1 | {
+not_ok_ "Verify if command line option '--mod-xen' with an empty argument fails" $BIN/lxp --mod-xen "" | \
  ln_like ">>> ERROR: Command line option '--mod-xen' requires an non-empty argument >>>"  
-}
 
-$BIN/lxp --mod-xen "maybe" &>/dev/null   
-not_ok $? "Verify if command line option --mod-xen with an invalid argument fails"
-$BIN/lxp --mod-xen "maybe" 2>&1 | {
+not_ok_ "Verify if command line option --mod-xen with an invalid argument fails" $BIN/lxp --mod-xen "maybe" | \
  lst_ln_is ">>> ERROR: Command line/conf file option --mod-xen/mod_xen requires a supported argument. See --help command line option for help >>>"
-}
 
 # --mod-bluetooth
-$BIN/lxp --mod-bluetooth yes --mod-bluetooth no &>/dev/null
-not_ok $? "Verify if a repeated command line option --mod-bluetooth fails"
-$BIN/lxp --mod-bluetooth yes --mod-bluetooth no 2>&1 | {
+not_ok_ "Verify if a repeated command line option --mod-bluetooth fails" $BIN/lxp --mod-bluetooth yes --mod-bluetooth no | \
   ln_is ">>> ERROR: --mod-bluetooth command line option was already specified >>>"
-}
 
-$BIN/lxp --mod-bluetooth &>/dev/null   
-not_ok $? "Verify if command line option '--mod-bluetooth' without argument fails"
-$BIN/lxp --mod-bluetooth 2>&1 | {
+not_ok_ "Verify if command line option '--mod-bluetooth' without argument fails" $BIN/lxp --mod-bluetooth | \
  ln_like "--mod-bluetooth' requires an argument"  
-}
 
-$BIN/lxp --mod-bluetooth "" &>/dev/null   
-not_ok $? "Verify if command line option '--mod-bluetooth' with an empty argument fails"
-$BIN/lxp --mod-bluetooth "" 2>&1 | {
+not_ok_ "Verify if command line option '--mod-bluetooth' with an empty argument fails" $BIN/lxp --mod-bluetooth "" | \
  ln_like ">>> ERROR: Command line option '--mod-bluetooth' requires an non-empty argument >>>"  
-}
 
-$BIN/lxp --mod-bluetooth "maybe" &>/dev/null   
-not_ok $? "Verify if command line option --mod-bluetooth with an invalid argument fails"
-$BIN/lxp --mod-bluetooth "maybe" 2>&1 | {
+not_ok_ "Verify if command line option --mod-bluetooth with an invalid argument fails" $BIN/lxp --mod-bluetooth "maybe" | \
  lst_ln_is ">>> ERROR: Command line/conf file option --mod-bluetooth/mod_bluetooth requires a supported argument. See --help command line option for help >>>"
-}
 
 # --mod-wolfsonmicro
-$BIN/lxp --mod-wolfsonmicro yes --mod-wolfsonmicro no &>/dev/null
-not_ok $? "Verify if a repeated command line option --mod-wolfsonmicro fails"
-$BIN/lxp --mod-wolfsonmicro yes --mod-wolfsonmicro no 2>&1 | {
+not_ok_ "Verify if a repeated command line option --mod-wolfsonmicro fails" $BIN/lxp --mod-wolfsonmicro yes --mod-wolfsonmicro no | \
   ln_is ">>> ERROR: --mod-wolfsonmicro command line option was already specified >>>"
-}
 
-$BIN/lxp --mod-wolfsonmicro &>/dev/null   
-not_ok $? "Verify if command line option '--mod-wolfsonmicro' without argument fails"
-$BIN/lxp --mod-wolfsonmicro 2>&1 | {
+not_ok_ "Verify if command line option '--mod-wolfsonmicro' without argument fails" $BIN/lxp --mod-wolfsonmicro | \
  ln_like "--mod-wolfsonmicro' requires an argument"  
-}
 
-$BIN/lxp --mod-wolfsonmicro "" &>/dev/null   
-not_ok $? "Verify if command line option '--mod-wolfsonmicro' with an empty argument fails"
-$BIN/lxp --mod-wolfsonmicro "" 2>&1 | {
+not_ok_ "Verify if command line option '--mod-wolfsonmicro' with an empty argument fails" $BIN/lxp --mod-wolfsonmicro "" | \
  ln_like ">>> ERROR: Command line option '--mod-wolfsonmicro' requires an non-empty argument >>>"  
-}
 
-$BIN/lxp --mod-wolfsonmicro "maybe" &>/dev/null   
-not_ok $? "Verify if command line option --mod-wolfsonmicro with an invalid argument fails"
-$BIN/lxp --mod-wolfsonmicro "maybe" 2>&1 | {
+not_ok_ "Verify if command line option --mod-wolfsonmicro with an invalid argument fails" $BIN/lxp --mod-wolfsonmicro "maybe" | \
  lst_ln_is ">>> ERROR: Command line/conf file option --mod-wolfsonmicro/mod_wolfsonmicro requires a supported argument. See --help command line option for help >>>"
-}
 
 # --mod-leds
-$BIN/lxp --mod-leds yes --mod-leds no &>/dev/null
-not_ok $? "Verify if a repeated command line option --mod-leds fails"
-$BIN/lxp --mod-leds yes --mod-leds no 2>&1 | {
+not_ok_ "Verify if a repeated command line option --mod-leds fails" $BIN/lxp --mod-leds yes --mod-leds no | \
   ln_is ">>> ERROR: --mod-leds command line option was already specified >>>"
-}
 
-$BIN/lxp --mod-leds &>/dev/null   
-not_ok $? "Verify if command line option '--mod-leds' without argument fails"
-$BIN/lxp --mod-leds 2>&1 | {
+not_ok_ "Verify if command line option '--mod-leds' without argument fails" $BIN/lxp --mod-leds | \
  ln_like "--mod-leds' requires an argument"  
-}
 
-$BIN/lxp --mod-leds "" &>/dev/null   
-not_ok $? "Verify if command line option '--mod-leds' with an empty argument fails"
-$BIN/lxp --mod-leds "" 2>&1 | {
+not_ok_ "Verify if command line option '--mod-leds' with an empty argument fails" $BIN/lxp --mod-leds "" | \
  ln_like ">>> ERROR: Command line option '--mod-leds' requires an non-empty argument >>>"  
-}
 
-$BIN/lxp --mod-leds "maybe" &>/dev/null   
-not_ok $? "Verify if command line option --mod-leds with an invalid argument fails"
-$BIN/lxp --mod-leds "maybe" 2>&1 | {
+not_ok_ "Verify if command line option --mod-leds with an invalid argument fails" $BIN/lxp --mod-leds "maybe" | \
  lst_ln_is ">>> ERROR: Command line/conf file option --mod-leds/mod_leds requires a supported argument. See --help command line option for help >>>"
-}
 
 # --mod-memstick
-$BIN/lxp --mod-memstick yes --mod-memstick no &>/dev/null
-not_ok $? "Verify if a repeated command line option --mod-memstick fails"
-$BIN/lxp --mod-memstick yes --mod-memstick no 2>&1 | {
+not_ok_ "Verify if a repeated command line option --mod-memstick fails" $BIN/lxp --mod-memstick yes --mod-memstick no | \
   ln_is ">>> ERROR: --mod-memstick command line option was already specified >>>"
-}
 
-$BIN/lxp --mod-memstick &>/dev/null   
-not_ok $? "Verify if command line option '--mod-memstick' without argument fails"
-$BIN/lxp --mod-memstick 2>&1 | {
+not_ok_ "Verify if command line option '--mod-memstick' without argument fails" $BIN/lxp --mod-memstick | \
  ln_like "--mod-memstick' requires an argument"  
-}
 
-$BIN/lxp --mod-memstick "" &>/dev/null   
-not_ok $? "Verify if command line option '--mod-memstick' with an empty argument fails"
-$BIN/lxp --mod-memstick "" 2>&1 | {
+not_ok_ "Verify if command line option '--mod-memstick' with an empty argument fails" $BIN/lxp --mod-memstick "" | \
  ln_like ">>> ERROR: Command line option '--mod-memstick' requires an non-empty argument >>>"  
-}
 
-$BIN/lxp --mod-memstick "maybe" &>/dev/null   
-not_ok $? "Verify if command line option --mod-memstick with an invalid argument fails"
-$BIN/lxp --mod-memstick "maybe" 2>&1 | {
+not_ok_ "Verify if command line option --mod-memstick with an invalid argument fails" $BIN/lxp --mod-memstick "maybe" | \
  lst_ln_is ">>> ERROR: Command line/conf file option --mod-memstick/mod_memstick requires a supported argument. See --help command line option for help >>>"
-}
 
 # --mod-multi-function-device
-$BIN/lxp --mod-multi-function-device yes --mod-multi-function-device no &>/dev/null
-not_ok $? "Verify if a repeated command line option --mod-multi-function-device fails"
-$BIN/lxp --mod-multi-function-device yes --mod-multi-function-device no 2>&1 | {
+not_ok_ "Verify if a repeated command line option --mod-multi-function-device fails" $BIN/lxp --mod-multi-function-device yes --mod-multi-function-device no | \
   ln_is ">>> ERROR: --mod-multi-function-device command line option was already specified >>>"
-}
 
-$BIN/lxp --mod-multi-function-device &>/dev/null   
-not_ok $? "Verify if command line option '--mod-multi-function-device' without argument fails"
-$BIN/lxp --mod-multi-function-device 2>&1 | {
+not_ok_ "Verify if command line option '--mod-multi-function-device' without argument fails" $BIN/lxp --mod-multi-function-device | \
  ln_like "--mod-multi-function-device' requires an argument"  
-}
 
-$BIN/lxp --mod-multi-function-device "" &>/dev/null   
-not_ok $? "Verify if command line option '--mod-multi-function-device' with an empty argument fails"
-$BIN/lxp --mod-multi-function-device "" 2>&1 | {
+not_ok_ "Verify if command line option '--mod-multi-function-device' with an empty argument fails" $BIN/lxp --mod-multi-function-device "" | \
  ln_like ">>> ERROR: Command line option '--mod-multi-function-device' requires an non-empty argument >>>"  
-}
 
-$BIN/lxp --mod-multi-function-device "maybe" &>/dev/null   
-not_ok $? "Verify if command line option --mod-multi-function-device with an invalid argument fails"
-$BIN/lxp --mod-multi-function-device "maybe" 2>&1 | {
+not_ok_ "Verify if command line option --mod-multi-function-device with an invalid argument fails" $BIN/lxp --mod-multi-function-device "maybe" | \
  lst_ln_is ">>> ERROR: Command line/conf file option --mod-multi-function-device/mod_multi_function_device requires a supported argument. See --help command line option for help >>>"
-}
 
 # --mod-multi-media-card
-$BIN/lxp --mod-multi-media-card yes --mod-multi-media-card no &>/dev/null
-not_ok $? "Verify if a repeated command line option --mod-multi-media-card fails"
-$BIN/lxp --mod-multi-media-card yes --mod-multi-media-card no 2>&1 | {
+not_ok_ "Verify if a repeated command line option --mod-multi-media-card fails" $BIN/lxp --mod-multi-media-card yes --mod-multi-media-card no | \
   ln_is ">>> ERROR: --mod-multi-media-card command line option was already specified >>>"
-}
 
-$BIN/lxp --mod-multi-media-card &>/dev/null   
-not_ok $? "Verify if command line option '--mod-multi-media-card' without argument fails"
-$BIN/lxp --mod-multi-media-card 2>&1 | {
+not_ok_ "Verify if command line option '--mod-multi-media-card' without argument fails" $BIN/lxp --mod-multi-media-card | \
  ln_like "--mod-multi-media-card' requires an argument"  
-}
 
-$BIN/lxp --mod-multi-media-card "" &>/dev/null   
-not_ok $? "Verify if command line option '--mod-multi-media-card' with an empty argument fails"
-$BIN/lxp --mod-multi-media-card "" 2>&1 | {
+not_ok_ "Verify if command line option '--mod-multi-media-card' with an empty argument fails" $BIN/lxp --mod-multi-media-card "" | \
  ln_like ">>> ERROR: Command line option '--mod-multi-media-card' requires an non-empty argument >>>"  
-}
 
-$BIN/lxp --mod-multi-media-card "maybe" &>/dev/null   
-not_ok $? "Verify if command line option --mod-multi-media-card with an invalid argument fails"
-$BIN/lxp --mod-multi-media-card "maybe" 2>&1 | {
+not_ok_ "Verify if command line option --mod-multi-media-card with an invalid argument fails" $BIN/lxp --mod-multi-media-card "maybe" | \
  lst_ln_is ">>> ERROR: Command line/conf file option --mod-multi-media-card/mod_multi_media_card requires a supported argument. See --help command line option for help >>>"
-}
 
 # --mod-regulator
-$BIN/lxp --mod-regulator yes --mod-regulator no &>/dev/null
-not_ok $? "Verify if a repeated command line option --mod-regulator fails"
-$BIN/lxp --mod-regulator yes --mod-regulator no 2>&1 | {
+not_ok_ "Verify if a repeated command line option --mod-regulator fails" $BIN/lxp --mod-regulator yes --mod-regulator no | \
   ln_is ">>> ERROR: --mod-regulator command line option was already specified >>>"
-}
 
-$BIN/lxp --mod-regulator &>/dev/null   
-not_ok $? "Verify if command line option '--mod-regulator' without argument fails"
-$BIN/lxp --mod-regulator 2>&1 | {
+not_ok_ "Verify if command line option '--mod-regulator' without argument fails" $BIN/lxp --mod-regulator | \
  ln_like "--mod-regulator' requires an argument"  
-}
 
-$BIN/lxp --mod-regulator "" &>/dev/null   
-not_ok $? "Verify if command line option '--mod-regulator' with an empty argument fails"
-$BIN/lxp --mod-regulator "" 2>&1 | {
+not_ok_ "Verify if command line option '--mod-regulator' with an empty argument fails" $BIN/lxp --mod-regulator "" | \
  ln_like ">>> ERROR: Command line option '--mod-regulator' requires an non-empty argument >>>"  
-}
 
-$BIN/lxp --mod-regulator "maybe" &>/dev/null   
-not_ok $? "Verify if command line option --mod-regulator with an invalid argument fails"
-$BIN/lxp --mod-regulator "maybe" 2>&1 | {
+not_ok_ "Verify if command line option --mod-regulator with an invalid argument fails" $BIN/lxp --mod-regulator "maybe" | \
  lst_ln_is ">>> ERROR: Command line/conf file option --mod-regulator/mod_regulator requires a supported argument. See --help command line option for help >>>"
-}
 
 # --mod-ultra-wide-band
-$BIN/lxp --mod-ultra-wide-band yes --mod-ultra-wide-band no &>/dev/null
-not_ok $? "Verify if a repeated command line option --mod-ultra-wide-band fails"
-$BIN/lxp --mod-ultra-wide-band yes --mod-ultra-wide-band no 2>&1 | {
+not_ok_ "Verify if a repeated command line option --mod-ultra-wide-band fails" $BIN/lxp --mod-ultra-wide-band yes --mod-ultra-wide-band no | \
   ln_is ">>> ERROR: --mod-ultra-wide-band command line option was already specified >>>"
-}
 
-$BIN/lxp --mod-ultra-wide-band &>/dev/null   
-not_ok $? "Verify if command line option '--mod-ultra-wide-band' without argument fails"
-$BIN/lxp --mod-ultra-wide-band 2>&1 | {
+not_ok_ "Verify if command line option '--mod-ultra-wide-band' without argument fails" $BIN/lxp --mod-ultra-wide-band | \
  ln_like "--mod-ultra-wide-band' requires an argument"  
-}
 
-$BIN/lxp --mod-ultra-wide-band "" &>/dev/null   
-not_ok $? "Verify if command line option '--mod-ultra-wide-band' with an empty argument fails"
-$BIN/lxp --mod-ultra-wide-band "" 2>&1 | {
+not_ok_ "Verify if command line option '--mod-ultra-wide-band' with an empty argument fails" $BIN/lxp --mod-ultra-wide-band "" | \
  ln_like ">>> ERROR: Command line option '--mod-ultra-wide-band' requires an non-empty argument >>>"  
-}
 
-$BIN/lxp --mod-ultra-wide-band "maybe" &>/dev/null   
-not_ok $? "Verify if command line option --mod-ultra-wide-band with an invalid argument fails"
-$BIN/lxp --mod-ultra-wide-band "maybe" 2>&1 | {
+not_ok_ "Verify if command line option --mod-ultra-wide-band with an invalid argument fails" $BIN/lxp --mod-ultra-wide-band "maybe" | \
  lst_ln_is ">>> ERROR: Command line/conf file option --mod-ultra-wide-band/mod_ultra_wide_band requires a supported argument. See --help command line option for help >>>"
-}
 
 # --mod-wlan
-$BIN/lxp --mod-wlan yes --mod-wlan no &>/dev/null
-not_ok $? "Verify if a repeated command line option --mod-wlan fails"
-$BIN/lxp --mod-wlan yes --mod-wlan no 2>&1 | {
+not_ok_ "Verify if a repeated command line option --mod-wlan fails" $BIN/lxp --mod-wlan yes --mod-wlan no | \
   ln_is ">>> ERROR: --mod-wlan command line option was already specified >>>"
-}
 
-$BIN/lxp --mod-wlan &>/dev/null   
-not_ok $? "Verify if command line option '--mod-wlan' without argument fails"
-$BIN/lxp --mod-wlan 2>&1 | {
+not_ok_ "Verify if command line option '--mod-wlan' without argument fails" $BIN/lxp --mod-wlan | \
  ln_like "--mod-wlan' requires an argument"  
-}
 
-$BIN/lxp --mod-wlan "" &>/dev/null   
-not_ok $? "Verify if command line option '--mod-wlan' with an empty argument fails"
-$BIN/lxp --mod-wlan "" 2>&1 | {
+not_ok_ "Verify if command line option '--mod-wlan' with an empty argument fails" $BIN/lxp --mod-wlan "" | \
  ln_like ">>> ERROR: Command line option '--mod-wlan' requires an non-empty argument >>>"  
-}
 
-$BIN/lxp --mod-wlan "maybe" &>/dev/null   
-not_ok $? "Verify if command line option --mod-wlan with an invalid argument fails"
-$BIN/lxp --mod-wlan "maybe" 2>&1 | {
+not_ok_ "Verify if command line option --mod-wlan with an invalid argument fails" $BIN/lxp --mod-wlan "maybe" | \
  lst_ln_is ">>> ERROR: Command line/conf file option --mod-wlan/mod_wlan requires a supported argument. See --help command line option for help >>>"
-}
 
 # --mod-media
-$BIN/lxp --mod-media yes --mod-media no &>/dev/null
-not_ok $? "Verify if a repeated command line option --mod-media fails"
-$BIN/lxp --mod-media yes --mod-media no 2>&1 | {
+not_ok_ "Verify if a repeated command line option --mod-media fails" $BIN/lxp --mod-media yes --mod-media no | \
   ln_is ">>> ERROR: --mod-media command line option was already specified >>>"
-}
 
-$BIN/lxp --mod-media &>/dev/null   
-not_ok $? "Verify if command line option '--mod-media' without argument fails"
-$BIN/lxp --mod-media 2>&1 | {
+not_ok_ "Verify if command line option '--mod-media' without argument fails" $BIN/lxp --mod-media | \
  ln_like "--mod-media' requires an argument"  
-}
 
-$BIN/lxp --mod-media "" &>/dev/null   
-not_ok $? "Verify if command line option '--mod-media' with an empty argument fails"
-$BIN/lxp --mod-media "" 2>&1 | {
+not_ok_ "Verify if command line option '--mod-media' with an empty argument fails" $BIN/lxp --mod-media "" | \
  ln_like ">>> ERROR: Command line option '--mod-media' requires an non-empty argument >>>"  
-}
 
-$BIN/lxp --mod-media "maybe" &>/dev/null   
-not_ok $? "Verify if command line option --mod-media with an invalid argument fails"
-$BIN/lxp --mod-media "maybe" 2>&1 | {
+not_ok_ "Verify if command line option --mod-media with an invalid argument fails" $BIN/lxp --mod-media "maybe" | \
  lst_ln_is ">>> ERROR: Command line/conf file option --mod-media/mod_media requires a supported argument. See --help command line option for help >>>"
-}
 
 # --mod-gaming
-$BIN/lxp --mod-gaming yes --mod-gaming no &>/dev/null
-not_ok $? "Verify if a repeated command line option --mod-gaming fails"
-$BIN/lxp --mod-gaming yes --mod-gaming no 2>&1 | {
+not_ok_ "Verify if a repeated command line option --mod-gaming fails" $BIN/lxp --mod-gaming yes --mod-gaming no | \
   ln_is ">>> ERROR: --mod-gaming command line option was already specified >>>"
-}
 
-$BIN/lxp --mod-gaming &>/dev/null   
-not_ok $? "Verify if command line option '--mod-gaming' without argument fails"
-$BIN/lxp --mod-gaming 2>&1 | {
+not_ok_ "Verify if command line option '--mod-gaming' without argument fails" $BIN/lxp --mod-gaming | \
  ln_like "--mod-gaming' requires an argument"  
-}
 
-$BIN/lxp --mod-gaming "" &>/dev/null   
-not_ok $? "Verify if command line option '--mod-gaming' with an empty argument fails"
-$BIN/lxp --mod-gaming "" 2>&1 | {
+not_ok_ "Verify if command line option '--mod-gaming' with an empty argument fails" $BIN/lxp --mod-gaming "" | \
  ln_like ">>> ERROR: Command line option '--mod-gaming' requires an non-empty argument >>>"  
-}
 
-$BIN/lxp --mod-gaming "maybe" &>/dev/null   
-not_ok $? "Verify if command line option --mod-gaming with an invalid argument fails"
-$BIN/lxp --mod-gaming "maybe" 2>&1 | {
+not_ok_ "Verify if command line option --mod-gaming with an invalid argument fails" $BIN/lxp --mod-gaming "maybe" | \
  lst_ln_is ">>> ERROR: Command line/conf file option --mod-gaming/mod_gaming requires a supported argument. See --help command line option for help >>>"
-}
 
 # --mod-parport
-$BIN/lxp --mod-parport yes --mod-parport no &>/dev/null
-not_ok $? "Verify if a repeated command line option --mod-parport fails"
-$BIN/lxp --mod-parport yes --mod-parport no 2>&1 | {
+not_ok_ "Verify if a repeated command line option --mod-parport fails" $BIN/lxp --mod-parport yes --mod-parport no | \
   ln_is ">>> ERROR: --mod-parport command line option was already specified >>>"
-}
 
-$BIN/lxp --mod-parport &>/dev/null   
-not_ok $? "Verify if command line option '--mod-parport' without argument fails"
-$BIN/lxp --mod-parport 2>&1 | {
+not_ok_ "Verify if command line option '--mod-parport' without argument fails" $BIN/lxp --mod-parport | \
  ln_like "--mod-parport' requires an argument"  
-}
 
-$BIN/lxp --mod-parport "" &>/dev/null   
-not_ok $? "Verify if command line option '--mod-parport' with an empty argument fails"
-$BIN/lxp --mod-parport "" 2>&1 | {
+not_ok_ "Verify if command line option '--mod-parport' with an empty argument fails" $BIN/lxp --mod-parport "" | \
  ln_like ">>> ERROR: Command line option '--mod-parport' requires an non-empty argument >>>"  
-}
 
-$BIN/lxp --mod-parport "maybe" &>/dev/null   
-not_ok $? "Verify if command line option --mod-parport with an invalid argument fails"
-$BIN/lxp --mod-parport "maybe" 2>&1 | {
+not_ok_ "Verify if command line option --mod-parport with an invalid argument fails" $BIN/lxp --mod-parport "maybe" | \
  lst_ln_is ">>> ERROR: Command line/conf file option --mod-parport/mod_parport requires a supported argument. See --help command line option for help >>>"
-}
 
 # --mod-extra-networking
-$BIN/lxp --mod-extra-networking yes --mod-extra-networking no &>/dev/null
-not_ok $? "Verify if a repeated command line option --mod-extra-networking fails"
-$BIN/lxp --mod-extra-networking yes --mod-extra-networking no 2>&1 | {
+not_ok_ "Verify if a repeated command line option --mod-extra-networking fails" $BIN/lxp --mod-extra-networking yes --mod-extra-networking no | \
   ln_is ">>> ERROR: --mod-extra-networking command line option was already specified >>>"
-}
 
-$BIN/lxp --mod-extra-networking &>/dev/null   
-not_ok $? "Verify if command line option '--mod-extra-networking' without argument fails"
-$BIN/lxp --mod-extra-networking 2>&1 | {
+not_ok_ "Verify if command line option '--mod-extra-networking' without argument fails" $BIN/lxp --mod-extra-networking | \
  ln_like "--mod-extra-networking' requires an argument"  
-}
 
-$BIN/lxp --mod-extra-networking "" &>/dev/null   
-not_ok $? "Verify if command line option '--mod-extra-networking' with an empty argument fails"
-$BIN/lxp --mod-extra-networking "" 2>&1 | {
+not_ok_ "Verify if command line option '--mod-extra-networking' with an empty argument fails" $BIN/lxp --mod-extra-networking "" | \
  ln_like ">>> ERROR: Command line option '--mod-extra-networking' requires an non-empty argument >>>"  
-}
 
-$BIN/lxp --mod-extra-networking "maybe" &>/dev/null   
-not_ok $? "Verify if command line option --mod-extra-networking with an invalid argument fails"
-$BIN/lxp --mod-extra-networking "maybe" 2>&1 | {
+not_ok_ "Verify if command line option --mod-extra-networking with an invalid argument fails" $BIN/lxp --mod-extra-networking "maybe" | \
  lst_ln_is ">>> ERROR: Command line/conf file option --mod-extra-networking/mod_extra_networking requires a supported argument. See --help command line option for help >>>"
-}
 
 rmdir "$BLSS_ENV" # remove the env
 

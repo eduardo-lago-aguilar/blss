@@ -51,50 +51,32 @@ plan_tests 16
 # Test Case: Test for environment
 
 export BLSS_ENV=$(mktemp -d) && rmdir "$BLSS_ENV"
-$BIN/lxc --address 192.168.1.1 /tmp/cloneitroot &>/dev/null
-not_ok $? "Verify if BLSS_ENV=(non-existing directory) fails"
-$BIN/lxc --address 192.168.1.1 /tmp/cloneitroot 2>&1 | {
+not_ok_ "Verify if BLSS_ENV=(non-existing directory) fails" $BIN/lxc --address 192.168.1.1 /tmp/cloneitroot | \
   ln_is ">>> ERROR: Environment '$BLSS_ENV' doesn't exists or isn't a readable directory >>>"
-}
 unset BLSS_ENV
 
 export BLSS_ENV=$(mktemp)
-$BIN/lxc --address 192.168.1.1 /tmp/cloneitroot &>/dev/null
-not_ok $? "Verify if BLSS_ENV=(non-a-directory) fails"
-$BIN/lxc --address 192.168.1.1 /tmp/cloneitroot 2>&1 | {
+not_ok_ "Verify if BLSS_ENV=(non-a-directory) fails" $BIN/lxc --address 192.168.1.1 /tmp/cloneitroot | \
   ln_is ">>> ERROR: Environment '$BLSS_ENV' doesn't exists or isn't a readable directory >>>"
-}
 rm "$BLSS_ENV"
 unset BLSS_ENV
 
 # Test Case: Tests for proto-root command line option
 export BLSS_ENV=$(mktemp -d) # an empty BLSS_ENV
 
-$BIN/lxc --address 192.168.1.1 /tmp/cloneitroot --proto-root &>/dev/null
-not_ok $? "Verify if command line option '--proto-root' without argument fails"
-$BIN/lxc --address 192.168.1.1 /tmp/cloneitroot --proto-root 2>&1 | {
+not_ok_ "Verify if command line option '--proto-root' without argument fails" $BIN/lxc --address 192.168.1.1 /tmp/cloneitroot --proto-root | \
   ln_like "--proto-root' requires an argument"
-}
 
-$BIN/lxc --address 192.168.1.1 --proto-root "" /tmp/cloneitroot &>/dev/null
-not_ok $? "Verify if command line option '--proto-root' with an empty argument fails"
-$BIN/lxc --address 192.168.1.1 --proto-root "" /tmp/cloneitroot 2>&1 | {
+not_ok_ "Verify if command line option '--proto-root' with an empty argument fails" $BIN/lxc --address 192.168.1.1 --proto-root "" /tmp/cloneitroot | \
   ln_like ">>> ERROR: Command line option '--proto-root' requires an non-empty argument >>>"
-}
 
 PR=$(mktemp -d) && rmdir $PR
-$BIN/lxc --address 192.168.1.1 --proto-root $PR /tmp/cloneitroot &>/dev/null
-not_ok $? "Verify if command line option '--proto-root=(non-existing directory)' fails"
-$BIN/lxc --address 192.168.1.1 --proto-root $PR /tmp/cloneitroot 2>&1 | {
+not_ok_ "Verify if command line option '--proto-root=(non-existing directory)' fails" $BIN/lxc --address 192.168.1.1 --proto-root $PR /tmp/cloneitroot | \
   lst_ln_is ">>> ERROR: --proto-root/proto_root command line/conf file option shall be an existing non-empty directory containing a proto system >>>"
-}
 
 PR=$(mktemp -d)
-$BIN/lxc --address 192.168.1.1 --proto-root $PR /tmp/cloneitroot &>/dev/null
-not_ok $? "Verify if command line option '--proto-root=(empty directory)' fails"
-$BIN/lxc --address 192.168.1.1 --proto-root $PR /tmp/cloneitroot 2>&1 | {
+not_ok_ "Verify if command line option '--proto-root=(empty directory)' fails" $BIN/lxc --address 192.168.1.1 --proto-root $PR /tmp/cloneitroot | \
   lst_ln_is ">>> ERROR: --proto-root/proto_root command line/conf file option shall be an existing non-empty directory containing a proto system >>>"
-}
 rmdir $PR
 
 rmdir "$BLSS_ENV" # remove the env
@@ -106,50 +88,29 @@ proto_root=${PR}
 EOT
 
 # --hostname
-$BIN/lxc --address 192.168.1.1 /tmp/cloneitroot --hostname "myserver" --hostname "servermy" &>/dev/null
-not_ok $? "Verify if a repeated command line option --hostname fails"
-$BIN/lxc --address 192.168.1.1 /tmp/cloneitroot --hostname "myserver" --hostname "servermy" 2>&1 | {
+not_ok_ "Verify if a repeated command line option --hostname fails" $BIN/lxc --address 192.168.1.1 /tmp/cloneitroot --hostname "myserver" --hostname "servermy" | \
   ln_is ">>> ERROR: --hostname command line option was already specified >>>"
-}
 
-$BIN/lxc --address 192.168.1.1 /tmp/cloneitroot --hostname &>/dev/null
-not_ok $? "Verify if command line option --hostname without argument fails"
-$BIN/lxc --address 192.168.1.1 /tmp/cloneitroot --hostname 2>&1 | {
+not_ok_ "Verify if command line option --hostname without argument fails" $BIN/lxc --address 192.168.1.1 /tmp/cloneitroot --hostname | \
   ln_like "--hostname' requires an argument"
-}
 
-$BIN/lxc --address 192.168.1.1 /tmp/cloneitroot --hostname "" &>/dev/null
-not_ok $? "Verify if command line option --hostname with an empty argument fails"
-$BIN/lxc --address 192.168.1.1 /tmp/cloneitroot --hostname "" 2>&1 | {
+not_ok_ "Verify if command line option --hostname with an empty argument fails" $BIN/lxc --address 192.168.1.1 /tmp/cloneitroot --hostname "" | \
   ln_like ">>> ERROR: Command line option '--hostname' requires an non-empty argument >>>"
-}
 
 # TODO: test for invalid hostname cmd ln opt
 
 # --address
-$BIN/lxc /tmp/cloneitroot --address 192.168.1.1 --address 192.168.1.1 &>/dev/null
-not_ok $? "Verify if a repeated command line option --address fails"
-$BIN/lxc /tmp/cloneitroot --address 192.168.1.1 --address 192.168.1.1 2>&1 | {
+not_ok_ "Verify if a repeated command line option --address fails" $BIN/lxc /tmp/cloneitroot --address 192.168.1.1 --address 192.168.1.1 | \
   ln_is ">>> ERROR: --address command line option was already specified >>>"
-}
 
-$BIN/lxc /tmp/cloneitroot --address &>/dev/null   
-not_ok $? "Verify if command line option '--address' without argument fails"
-$BIN/lxc /tmp/cloneitroot --address 2>&1 | {
+not_ok_ "Verify if command line option '--address' without argument fails" $BIN/lxc /tmp/cloneitroot --address | \
  ln_like "--address' requires an argument"  
-}
 
-$BIN/lxc /tmp/cloneitroot --address "" &>/dev/null   
-not_ok $? "Verify if command line option '--address' with an empty argument fails"
-$BIN/lxc /tmp/cloneitroot --address "" 2>&1 | {
+not_ok_ "Verify if command line option '--address' with an empty argument fails" $BIN/lxc /tmp/cloneitroot --address "" | \
  ln_like ">>> ERROR: Command line option '--address' requires an non-empty argument >>>"  
-}
 
-$BIN/lxc /tmp/cloneitroot --address 192.168.0.256 &>/dev/null   
-not_ok $? "Verify if command line option --address with an invalid argument fails"
-$BIN/lxc /tmp/cloneitroot --address 192.168.0.256 2>&1 | {
+not_ok_ "Verify if command line option --address with an invalid argument fails" $BIN/lxc /tmp/cloneitroot --address 192.168.0.256 | \
  lst_ln_is ">>> ERROR: Command line/conf file option --address/address requires a supported argument. See --help command line option for help >>>"
-}
 
 rm -r "$BLSS_ENV" # remove the env
 
@@ -160,26 +121,17 @@ proto_root=${PR}
 EOT
 
 # CLONE_ROOT
-$BIN/lxc --address 192.168.1.1 &>/dev/null
-not_ok $? "Verify if command line option CLONE_ROOT is missing fails"
-$BIN/lxc --address 192.168.1.1 2>&1 | {
+not_ok_ "Verify if command line option CLONE_ROOT is missing fails" $BIN/lxc --address 192.168.1.1 | \
   ln_like ">>> ERROR: Command line option 'CLONE_ROOT' requires an non-empty argument >>>"
-}
 
 cr=$(mktemp -d) && mkdir "$cr"/someotherdir
-$BIN/lxc --address 192.168.1.1 "$cr" &>/dev/null
-not_ok $? "Verify if command line option CLONE_ROOT=(non-empty directory) fails"
-$BIN/lxc --address 192.168.1.1 "$cr" 2>&1 | {
+not_ok_ "Verify if command line option CLONE_ROOT=(non-empty directory) fails" $BIN/lxc --address 192.168.1.1 "$cr" | \
   lst_ln_is ">>> ERROR: CLONE_ROOT command line option shall be an empty directory >>>"
-}
 rm -r "$cr"
 
 cr=$(mktemp)
-$BIN/lxc --address 192.168.1.1 "$cr" &>/dev/null
-not_ok $? "Verify if command line option CLONE_ROOT=(an existing file) fails"
-$BIN/lxc --address 192.168.1.1 "$cr" 2>&1 | {
+not_ok_ "Verify if command line option CLONE_ROOT=(an existing file) fails" $BIN/lxc --address 192.168.1.1 "$cr" | \
   lst_ln_is ">>> ERROR: CLONE_ROOT command line option shall be an empty directory >>>"
-}
 rm "$cr"
 
 rm -r "$BLSS_ENV" # remove the env

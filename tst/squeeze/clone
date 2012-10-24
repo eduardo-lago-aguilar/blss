@@ -21,4 +21,4 @@ EXT="$BLSS_HOME"/ext
 TST="$BLSS_HOME"/tst
 
 sudo rm -rf /tmp/cloneitroot && \
-BLSS_ENV="`realpath "$ENV"/squeeze`" $BIN/lxc --proto-root /tmp/protoitroot --address 192.168.2.111 /tmp/cloneitroot
+BLSS_ENV="`realpath "$ENV"/squeeze`" $BIN/lxc --proto-root /tmp/protoitroot --net-address 192.168.2.111 /tmp/cloneitroot

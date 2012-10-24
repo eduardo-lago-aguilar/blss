@@ -225,7 +225,7 @@ step "Identifying prototype settings"
 # define working root on prototype to extract settings
 wroot=${proot}
 
-verify_dyn
+verify_dhcp
 
 get_net_settings
 

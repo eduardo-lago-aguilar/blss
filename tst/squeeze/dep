@@ -21,4 +21,4 @@ EXT="$BLSS_HOME"/ext
 TST="$BLSS_HOME"/tst
 
 sudo rm -rf /tmp/deproot && \
-BLSS_ENV="`realpath "$ENV"/squeeze`" $BIN/lxd --clone-root /tmp/cloneitroot --address 192.168.3.111 /tmp/deproot
+BLSS_ENV="`realpath "$ENV"/squeeze`" $BIN/lxd --clone-root /tmp/cloneitroot --net-address 192.168.3.111 /tmp/deproot

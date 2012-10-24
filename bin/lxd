@@ -340,7 +340,7 @@ step "Identifying clone settings"
 # define working root on prototype to extract settings
 wroot=${croot}
 
-verify_dyn
+verify_dhcp
 
 get_net_settings
 

@@ -61,7 +61,8 @@ lst_ln_like() {
 # Verify an exit code different of 0 
 not_ok(){
 	local result=${1:?}
-	local name=${2:-''}
+	shift 1
+	local name=${@:-''}
 
 	(( _plan_set == 0 )) && _die "You tried to run a test without a plan!  Gotta have a plan."
 
@@ -119,6 +120,16 @@ not_ok(){
 	fi
 
 	return $result
+}
+
+not_ok_() {
+	local msg=${1:?}
+	shift 1
+	local out=$(mktemp)
+	"$@" &> $out
+	not_ok $? ${msg} 1>&2
+	cat < $out 2>&1	
+	rm $out &>/dev/null 
 }
 
 # Verify if no other line in stdin

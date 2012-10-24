@@ -35,7 +35,8 @@ declare -A SUPPORTED_FILESYSTEMS=(["ext3"]="ext3" ["ext4"]="ext4" ["btrfs"]="btr
 declare -A SUPPORTED_FORMATS=(["raw"]="raw" ["qcow2"]="qcow2" ["vdi"]="vdi" ["vmdk4"]="vmdk4" ["vmdk6"]="vmdk6" ["vpc"]="vpc")
 declare -A SUPPORTED_HYPERVISORS=(["esxi"]="esxi" ["kvm"]="kvm" ["qemu"]="qemu" ["vbox"]="vbox" ["vmserver"]="vmserver" ["vmw6"]="vmw6" ["xen"]="xen")
 SUPPORTED_CPU=$(echo {1..32})
-declare -A MODS_CMDLN_OPTS="--mod-floppy --mod-tape --mod-cdrom --mod-sound --mod-mouse --mod-usb --mod-firewire --mod-atm --mod-auxdisplay --mod-xen --mod-bluetooth --mod-wolfsonmicro --mod-leds --mod-memstick --mod-multi-function-device --mod-multi-media-card --mod-regulator --mod-ultra-wide-band --mod-wlan --mod-media --mod-gaming --mod-parport --mod-extra-networking"
+declare -A PROTO_NET_CMDLN_OPTS="--net-hostname --net-dhcp --net-address --net-network --net-netmask --net-broadcast --net-gateway --net-search --net-nameservers --net-ntpservers --net-ip6"
+declare -A PROTO_MODS_CMDLN_OPTS="--mod-floppy --mod-tape --mod-cdrom --mod-sound --mod-mouse --mod-usb --mod-firewire --mod-atm --mod-auxdisplay --mod-xen --mod-bluetooth --mod-wolfsonmicro --mod-leds --mod-memstick --mod-multi-function-device --mod-multi-media-card --mod-regulator --mod-ultra-wide-band --mod-wlan --mod-media --mod-gaming --mod-parport --mod-extra-networking"
 # Defaults
 declare -A DEF_INSTALL_MIRROR=(["debian"]="http://ftp.debian.org/debian" ["ubuntu"]="http://archive.ubuntu.com/ubuntu")
 
@@ -135,7 +136,7 @@ _lxp() {
   COMPREPLY=()
   cur="${COMP_WORDS[COMP_CWORD]}"
   prev="${COMP_WORDS[COMP_CWORD-1]}"
-  opts="--help --suite --architecture --install-mirror --mirror-file --locale --timezone --first-boot-script --packages --hostname --dhcp --address --network --netmask --broadcast --gateway --search --nameservers --ntpservers --ip6 --admin-user --admin-full-name --admin-password --remote-root --root-password ${MODS_CMDLN_OPTS}"
+  opts="--help --suite --architecture --install-mirror --mirror-file --locale --timezone --first-boot-script --packages ${PROTO_NET_CMDLN_OPTS} --admin-user --admin-full-name --admin-password --remote-root --root-password ${PROTO_MODS_CMDLN_OPTS}"
 
   # Complete the arguments of long/short options
   case "${prev}" in
@@ -161,14 +162,14 @@ _lxp() {
         COMPREPLY=( $(compgen -W "$(_combine_pkgs)" -- ${cur}) ) ;
         _process_quotes
         return 0 ;;
-    --dhcp|--remote-root|--ip6)
+    --net-dhcp|--net-ip6|--remote-root)
         COMPREPLY=( $(compgen -W "yes no" -- ${cur}) ) ;
         return 0 ;;
---install-mirror|--hostname|--address|--network|--netmask|--broadcast|--gateway|--search|--nameservers|--ntpservers|--admin-user|--admin-full-name|--admin-password|--root-password)
+--install-mirror|--net-hostname|--net-address|--net-network|--net-netmask|--net-broadcast|--net-gateway|--net-search|--net-nameservers|--net-ntpservers|--admin-user|--admin-full-name|--admin-password|--root-password)
         COMPREPLY=( $(compgen -W "" -- ${cur}) ) ;
         return 0 ;;
      *)
-        if [[ "${MODS_CMDLN_OPTS[*]}" =~ (\ |^)${prev}(\ |$) ]] ; then
+        if [[ "${PROTO_MODS_CMDLN_OPTS[*]}" =~ (\ |^)${prev}(\ |$) ]] ; then
           COMPREPLY=( $(compgen -W "yes no" -- ${cur}) ) ;
           return 0 ;
         fi

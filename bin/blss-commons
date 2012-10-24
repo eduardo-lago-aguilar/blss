@@ -20,73 +20,1048 @@
 #   Written by Eduardo Lago Aguilar, eduardo.lago.aguilar@gmail.com, 
 #   http://eduardo-lago.blogspot.com
 
+# *** Warning it will only work with bash 3.0 and above only **** #
+_me="${BASH_SOURCE[0]}"
+
 # blss-commons:
 #
 #   Common functionalities for all scripts
 
-## Support 
+##										##
+## Support & defaults ##
+##										##
+
+# distro & suite
 declare -A SUPPORTED_DISTROS=(["debian"]="debian" ["ubuntu"]="ubuntu")
 declare -A SUPPORTED_SUITES=(["squeeze"]="squeeze" ["lenny"]="lenny" ["natty"]="natty" ["maverick"]="maverick" ["lucid"]="lucid")
 declare -A DISTRO_PER_SUITE=(["lenny"]="debian" ["squeeze"]="debian" ["lucid"]="ubuntu" ["maverick"]="ubuntu"  ["natty"]="ubuntu")
 declare -A SUITES_PER_DISTRO=(["debian"]="squeeze, lenny" ["ubuntu"]="natty, maverick, lucid")
+DEF_SUITE=squeeze
+
+# arch
 declare -A SUPPORTED_ARCHS=(["amd64"]="amd64" ["i386"]="i386")
+DEF_ARCHITECTURE="amd64"
+
+# hypervisor
 declare -A SUPPORTED_HYPERVISORS=(["esxi"]="esxi" ["kvm"]="kvm" ["qemu"]="qemu" ["vbox"]="vbox" ["vmserver"]="vmserver" ["vmw6"]="vmw6" ["xen"]="xen")
+DEF_HYPERVISOR=kvm
+
+# cpu & mem
 SUPPORTED_CPU=$(echo {1..32})
+DEF_CPU=1
+DEF_MEMORY=128
+
+# locale
 declare -A DISTRO_LOCALE_GEN_PATH=(["debian"]="/etc/locale.gen" ["ubuntu"]="/var/lib/locales/supported.d/local")
+DEF_LOCALE="en_US.UTF-8 UTF-8"
+
+# fs & disks
 declare -A SUPPORTED_FILESYSTEMS=(["ext3"]="ext3" ["ext4"]="ext4" ["btrfs"]="btrfs" ["jfs"]="jfs" ["xfs"]="xfs" ["reiserfs"]="reiserfs")
 declare -A SUPPORTED_FORMATS=(["raw"]="raw" ["qcow2"]="qcow2" ["vdi"]="vdi" ["vmdk4"]="vmdk4" ["vmdk6"]="vmdk6" ["vpc"]="vpc")
 declare -A EXTS_PER_FORMAT=(["raw"]="img" ["qcow2"]="qcow2" ["vdi"]="vdi" ["vmdk4"]="vmdk" ["vmdk6"]="vmdk" ["vpc"]="vhd")
 declare -A DISKDRIVER_PER_FORMAT=(["raw"]="raw" ["qcow2"]="qcow2" ["vdi"]="vdi" ["vmdk4"]="vmdk" ["vmdk6"]="vmdk"  ["vpc"]="vpc")
 declare -A GRUB_MODS_PER_FILESYSTEM=(["ext3"]="" ["ext4"]="" ["btrfs"]="" ["jfs"]="jfs" ["xfs"]="xfs" ["reiserfs"]="reiserfs")
 declare -A EXTRA_PACKAGES_PER_FILESYSTEM=(["ext3"]="" ["ext4"]="" ["btrfs"]="btrfs-tools" ["jfs"]="jfsutils" ["xfs"]="xfsprogs" ["reiserfs"]="reiserfsprogs")
+DEF_SIZE=1024
+DEF_ROOT_FILESYSTEM=ext3
+DEF_FORMATS="raw"
 
-## Kernel image package per distro and architecture
+# kernel image package per distro & arch
 declare -A DISTRO_LNX_IMG_PKG=(["debian", "amd64"]="linux-image-amd64" ["debian", "i386"]="linux-image-686" ["ubuntu", "amd64"]="linux-image-server" ["ubuntu", "i386"]="linux-image-server")
 
-## Common packages
+# packages per distro & suite
 declare -A EXTRA_PKGS_DISTROS=(["debian"]="" ["ubuntu"]="ubuntu-keyring")
 declare -A EXTRA_PKGS_SUITES=(["squeeze"]="readahead-fedora" ["lenny"]=" insserv readahead dash" ["natty"]="readahead-fedora" ["maverick"]="readahead-fedora" ["lucid"]="readahead-fedora")
+
+# specific packages
 declare -A READAHEAD_PER_SUITE=(["squeeze"]="readahead-fedora" ["lenny"]="readahead" ["natty"]="readahead-fedora" ["maverick"]="readahead-fedora" ["lucid"]="readahead-fedora")
 declare -A ACPI_PER_DISTRO=(["debian"]="acpi-support-base" ["ubuntu"]="acpi")
 
-## Kernel modules
-declare -A MODS_CMDLN_OPTS="--mod-floppy --mod-tape --mod-cdrom --mod-sound --mod-mouse --mod-usb --mod-firewire --mod-atm --mod-auxdisplay --mod-xen --mod-bluetooth --mod-wolfsonmicro --mod-leds --mod-memstick --mod-multi-function-device --mod-multi-media-card --mod-regulator --mod-ultra-wide-band --mod-wlan --mod-media --mod-gaming --mod-parport --mod-extra-networking"
-declare -A MODS_CONF_OPTS
-for cl_opt in ${MODS_CMDLN_OPTS} ; do
-  cf_opt=${cl_opt/--/} ; 
-  cf_opt=${cf_opt//-/_} ;
-  MODS_CONF_OPTS[$cl_opt]=$cf_opt ;
-done
+# packages per stage
+DEF_PACKAGES_DEPLOYMENT=""
+DEF_PACKAGES_PROTOTYPE=""
+DEF_PACKAGES_CLONE=""
 
-# mods description
-declare -A MODS_DESC
+# mirrors per distro
+declare -A DEF_INSTALL_MIRROR=(["debian"]="http://ftp.debian.org/debian" ["ubuntu"]="http://archive.ubuntu.com/ubuntu")
 
-for cl_opt in ${MODS_CMDLN_OPTS} ; do
-  # default description
-  desc=${cl_opt/--mod-/}
-  desc=${desc//-/\ }
-  MODS_DESC[$cl_opt]=$desc
-done
-MODS_DESC["--mod-usb"]="USB"
-MODS_DESC["--mod-atm"]="ATM"
-MODS_DESC["--mod-wolfsonmicro"]="Wolfsonmicro"
-MODS_DESC["--mod-multi-function-device"]="Multi-Function Device"
-MODS_DESC["--mod-multi-media-card"]="Multi Media Card subsystem"
-MODS_DESC["--mod-ultra-wide-band"]="Linux Ultra-Wide-Band stack, as well as drivers for Wireless USB Host Controller drivers"
-MODS_DESC["--mod-wlan"]="IEEE 802.11 wireless local area network"
-MODS_DESC["--mod-media"]="various media related modules"
-MODS_DESC["--mod-gaming"]="various gaming related modules"
-MODS_DESC["--mod-parport"]="parallel port"
-MODS_DESC["--mod-extra-networking"]="some extra networking related modules for Telephony, ISDN, IPX, x25, USB-networking"
+# environment
+DEF_EV=".blss" # Profile mirror files
 
-mods_usage() {
-  for cl_opt in ${!MODS_CONF_OPTS[@]} ; do
-    cat << EOF
+##																				##
+## Utils for strings, numbers and regexps	##
+##																				##
 
-  ${cl_opt} yes|no
-    Support for ${MODS_DESC[$cl_opt]}. Defaults to ${DEF_MODS[$cl_opt]}.
+#/**
+# * trims leading and ending spaces on a string
+# *
+# * @param $1: the string to be trimmed
+# */
+trim_spcs() {
+  printf "${1#"${1%%[![:space:]]*}"}"
+}
+
+#/**
+# * converts a number from hexadecimal to decimal
+# *
+# * @param $1: the number to be converted
+# */
+hx2dc() {
+	local n=${1:?}
+  	bc <<< "ibase=16; ${n^^}"
+}
+
+#/**
+# * matchs a non-zero positive number
+# *
+# * @param $1: the number to match
+# * @return if matchs a zero exit status is returned, otherwise a non-zero exit 
+#	* status is returned
+# */
+match_positive_num() {
+	let local n=${1:?}
+  	[[ $n =~ ^[1-9]+[0-9]*$ ]]
+}
+
+#/**
+# * matchs 'yes'|'no' strings 
+# *
+# * @param $1: the yes/no to match
+# * @return if matchs a zero exit status is returned, otherwise a non-zero exit 
+#	* status is returned
+# */
+match_yesno() {
+  [[ ${1:?} =~ ^(yes|no)$ ]]
+}
+
+#/**
+# * matches a supported locale 
+# *
+# * @param $1: the localed to match
+# * @return if matchs a zero exit status is returned, otherwise a non-zero exit 
+#	* status is returned
+# */
+match_lcl() {
+	local lcl=${1:?}
+	grep -v "^#.*" $CFG/usr/share/i18n/SUPPORTED | egrep -m 1 "^$lcl$"
+}
+
+##											##
+## IP arithmetic	##
+##											##
+
+#/**
+# * converts an IPv4 address to hexadecimal format completing the missing 
+# * leading zero
+# * 
+# * @example:
+# *   $ hxip 10.10.24.203
+# *   0A0A18CB
+# *
+# * @param $1: the IPv4 address 
+# */
+hxip() {
+	local ip=${1:?}
+	bc <<< "obase=16; ${ip//./;}" | sed -r 's/^[0-9A-F]$/0&/' | tr -d '\n'
+}
+
+#/**
+# * converts an IPv4 address to binary format completing the missing 
+# * leading zeros
+# * 
+# * @example:
+# *   $ binip 10.10.24.203
+# *   00001010000010100001100011001011
+# *
+# * @param $1: the IPv4 address 
+# */
+binip() {
+	local ip=${1:?}
+	bc <<< "obase=2; ${ip//./;}" | sed -re 's/^/0000000&/' -e 's/0*([01]{8})$/\1/' | tr -d '\n'
+}
+
+#/**
+# * retrieve a IPv4 address from a CIDR address
+# * 
+# * @example:
+# *   $ cidrnw 172.26.24.101/22
+# *   172.26.24.101
+# *
+# * @param $1: the IPv4 CIDR address 
+# */
+cidrip() {
+  cut -f1 -d/ <<< $1
+}
+
+#/**
+# * retrieve the routing prefix from a CIDR address
+# * 
+# * @example:
+# *   $ cidrpfx 172.26.24.101/22
+# *   22
+# *
+# * @param $1: the IPv4 CIDR address 
+# */
+cidrpfx() {
+  cut -f2 -d/ <<< $1
+}
+
+
+#/**
+# * retrieve a subnet IPv4 address from a CIDR address
+# * 
+# * @example:
+# *   $ cidrnw 172.26.24.101/22
+# *   172.26.24.0
+# *
+# * @param $1: the IPv4 CIDR address 
+# */
+cidrnw() {
+  local ip=$(cidrip $1)
+  local bits=$(cidrpfx $1) 
+  local bip=$(binip $ip)
+  local nw=${bip:0:$bits}"00000000000000000000000000000000"
+  nw=$(bc <<< "ibase=2; "${nw:0:8}";"${nw:8:8}";"${nw:16:8}";"${nw:24:8} | tr '\n' '.')
+  cat <<< ${nw%\.}  
+}
+
+#/**
+# * retrieve a subnet IPv4 mask from a CIDR address
+# * 
+# * @example:
+# *   $ cidrmsk 172.26.24.101/22
+# *   255.255.252.0
+# *
+# * @param $1: the IPv4 CIDR address 
+# */
+cidrmsk() {
+  local bits=$(cut -f2 -d/ <<< $1) 
+  local zero="00000000000000000000000000000000"
+  local one="11111111111111111111111111111111"
+  local msk=${one:0:$bits}${zero:$bits:31}
+  msk=$(bc <<< "ibase=2; "${msk:0:8}";"${msk:8:8}";"${msk:16:8}";"${msk:24:8} | tr '\n' '.')
+  cat <<< ${msk%\.}  
+}
+
+#/**
+# * increments the IP address N times
+# * 
+# * @example:
+# *   $ ipincr 172.26.24.101 1
+# *   172.26.24.102
+# *
+# *   $ ipincr 172.26.24.101 5
+# *   172.26.24.106
+# *
+# * @param $1: the IPv4 address
+# * @param $2: the increment
+# */
+ipincr() {
+  local bip=$(binip ${1:?})
+  local incr=$(bc <<< "obase=2; ${2:?}")
+  bip=$(bc <<< "ibase=2; obase=2; ${bip}+${incr}")
+  local ip=$(bc <<< "ibase=2; "${bip:0:8}";"${bip:8:8}";"${bip:16:8}";"${bip:24:8} | tr '\n' '.')
+  cat <<< ${ip%\.}  
+}
+
+#/**
+# * matchs an IPv4 address
+# *
+# * @param $1: the IPv4 address
+# * @return if matchs a zero exit status is returned, otherwise a non-zero exit 
+# * status is returned
+# *
+# * @author Eduardo Lago Aguilar, <eduardo.lago.aguilar@gmail.com>
+# * @see {http://eduardo-lago.blogspot.com}
+# */
+match_ip() {
+  [[ ${1} =~ ^([01]?[0-9][0-9]?|2[0-4][0-9]|25[0-5])\.([01]?[0-9][0-9]?|2[0-4][0-9]|25[0-5])\.([01]?[0-9][0-9]?|2[0-4][0-9]|25[0-5])\.([01]?[0-9][0-9]?|2[0-4][0-9]|25[0-5])$ ]]
+}
+
+#/**
+# * matchs a comma-separated IPv4 address list
+# *
+# * @param $1: the comma-separated IPv4 address list
+# * @return if matchs a zero exit status is returned, otherwise a non-zero exit 
+# * status is returned
+# *
+# * @author Eduardo Lago Aguilar, <eduardo.lago.aguilar@gmail.com>
+# * @see {http://eduardo-lago.blogspot.com}
+# */
+match_ip_lst() {
+  [[ ${1} =~ ^([01]?[0-9][0-9]?|2[0-4][0-9]|25[0-5])\.([01]?[0-9][0-9]?|2[0-4][0-9]|25[0-5])\.([01]?[0-9][0-9]?|2[0-4][0-9]|25[0-5])\.([01]?[0-9][0-9]?|2[0-4][0-9]|25[0-5])(,([01]?[0-9][0-9]?|2[0-4][0-9]|25[0-5])\.([01]?[0-9][0-9]?|2[0-4][0-9]|25[0-5])\.([01]?[0-9][0-9]?|2[0-4][0-9]|25[0-5])\.([01]?[0-9][0-9]?|2[0-4][0-9]|25[0-5]))*$ ]]
+}
+
+##																			##
+## Utils for logging and error handling	##
+##																			##
+
+#/**
+# * displays an informational message on std output
+# *
+# * @param $1: the message
+# */
+inf() {
+  cat <<< ">>> INFO: $1 >>>"
+}
+
+#/**
+# * displays an warning message on std output
+# *
+# * @param $1: the message
+# */
+warn() {
+  cat <<< ">>> WARN: $1 >>>"
+}
+
+#/**
+# * displays an error message on std output
+# *
+# * @param $1: the message
+# */
+err() {
+  cat <<< ">>> ERROR: $1 >>>"
+}
+
+#/**
+# * displays an error message on std output due to an empty cmd line argument
+# *
+# * @param $1: command line option
+# */
+err_non_empty() {
+  err "Command line option '$1' requires an non-empty argument"
+}
+
+#/**
+# * displays an error message on std output due to an unsupported cmd line/conf 
+# * file argument
+# *
+# * @param $1: command line option
+# */
+err_non_sup() {
+  err "Command line/conf file option ${1}/"$(cl2cf $1)" requires a supported argument. See --help command line option for help"
+}
+
+#/**
+# * displays an error message on std output due to an unreadable file cmd line/
+# * conf file argument
+# *
+# * @param $1: command line option
+# */
+err_non_r() {
+  err "Command line/conf file option ${1}/"$(cl2cf $1)" requires an existing-readable file argument. See --help command line option for help"
+}
+
+#/**
+# * displays an error message on std output due to a repeated value in a cmd 
+# * line/conf file argument
+# *
+# * @param $1: command line option
+# */
+err_rep_value() {
+  err "Command line/conf file option ${1}/"$(cl2cf $1)" contains a repeated value in the argument. See --help command line option for help"
+}
+
+#/**
+# * displays the current step counter on std output and increases the value by 1
+# */
+step() {
+  cat << EOT
+>>> STEP $_stepnum: $1 >>>
+>>>
+EOT
+  _stepnum=$(( $_stepnum + 1 ))
+}
+_stepnum=0
+
+##																						##
+## Utils for command line & config file opts	##
+##																						##
+
+#/**
+# * converts an option from command line format to configuration file format
+# *
+# * @param $1: command line option
+# */
+cl2cf() {
+  local cf=${1##--}
+  cat <<< ${cf//-/_}
+}
+
+#/**
+# * converts an option from command line format to variable format
+# *
+# * @param $1: command line option
+# * @param $2: command line option's prefix
+# */
+cl2var() {
+  local var=${1##$2}
+	var=${var/--/}
+  cat <<< ${var//-/_}
+}
+
+#/**
+# * gets the default description for a command line option
+# *
+# * @param $1: command line option
+# * @param $2: command line option's prefix
+# */
+cmdl_def_desc() {
+  local desc=${1/$2/}
+  cat <<< ${desc//-/\ }
+}
+
+#/**
+# * gets the default suffix for a command line option
+# *
+# * @param $1: command line option
+# * @param $2: command line option's prefix
+# */
+cmdl_def_suffix() {
+  local suffix=${1/$2/}  
+  cat <<< ${suffix^^}  
+}
+
+##										##
+## General commands*	##
+##										##
+
+# *Context-dependant commands: All these commands depend on context variables 
+# like the working root, all the context variables MUST be properly intialized 
+# before using the commands   
+
+#/**
+# * runs command or interactive shell using the working root directory and 
+# * setting a new environment with the contextual variables LANG, LANGUAGE and 
+# * TZ
+# *
+# * sudoer's privileges are required to execute this command
+#	*
+# * @param $@: the command and arguments to run
+# */
+chr() {
+  env \
+-u LC_ALL \
+LANG="$plang" \
+LANGUAGE="$plang_ctry:$pbaselang" \
+TZ="$tzon" \
+  sudo chroot $wroot $@
+}
+
+#/**
+# * When use linux-image-server the command depmod fails due to the path
+# * /var/lib/modules/<kernel name for server version>/.. doesn't exists but
+# * /var/lib/modules/<kernel name for generic version>/.. exists. Seems to be
+# * that the command 'uname -r' doesn't prints the correct kernel info to
+# * STDOUT. For now use the this command instead of 'uname -r'
+# */
+kver() {
+  chr find /boot -maxdepth 1 -type f | grep -m 1 /boot/vmlinuz | sort -r | sed 's/\/boot\/vmlinuz-//'
+}
+
+##											##
+## Package management*	##
+##											##
+
+#/**
+# * resynchronizes the package index files on the working root (see chr). The 
+# * indexes of available packages are fetched from the location(s) specified in 
+# * <working root>/etc/apt/sources.list so that information about new and 
+# * updated packages is available. An update should always be performed before 
+# * an upgrade or dist-upgrade
+# *
+# * sudoer's privileges are required to execute this command
+#	*
+# * Acquire::Check-Valid-Until=false => See 
+# * http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=595801
+# */
+apt_get_update() {
+  chr << EOT
+apt-get -o 'Acquire::Check-Valid-Until=false' update
+EOT
+}
+
+#/**
+# * download only the packages, the files are only retrieved, not unpacked or 
+# * installed on the working root (see chr)
+# *
+# * sudoer's privileges are required to execute this command
+# *
+# * the packages are downloaded to the working root cache: 
+# * <workign root>/var/cache/apt/archives/ 
+#	*
+# * @param $@: packages to download
+# */
+apt_get_download() {
+  chr << EOT
+apt-get --yes --force-yes --no-install-recommends --download-only install $@
+EOT
+}
+
+#/**
+# * install the packages on the working root (see chr)
+# *
+# * sudoer's privileges are required to execute this command
+# * 
+# * some host devices are re-mounted (bounded) on the working root before 
+# * install and released later
+# * 
+# * the install occurs in non-interactive mode
+# * 
+# * a package isn't downloaded if it's already cached on: 
+# * <workign root>/var/cache/apt/archives/  
+#	*
+# * @param $@: packages to install
+# */
+apt_get_install() {
+  bind_dev_proc
+  bind_dev_pts
+  chr << EOT
+export DEBIAN_FRONTEND=noninteractive 
+apt-get --yes --force-yes --no-install-recommends install $@
+EOT
+  unbind_dev_pts
+  unbind_dev_proc
+}
+
+#/**
+# * unpacks but not installs an specific package on the working root (see chr) 
+# * located on the package cache
+# *
+# * sudoer's privileges are required to execute this command
+# * 
+# * the unpack occurs in non-interactive mode 
+#	*
+# * the working root package cache is: <workign root>/var/cache/apt/archives/ 
+#	*
+# * @param $1: package to unpack
+# */
+apt_get_unpack() {
+  chr << EOT
+export DEBIAN_FRONTEND=noninteractive 
+dpkg --unpack /var/cache/apt/archives/${1}_*.deb
+EOT
+}
+
+#/**
+# * unpacks but not installs all cached packages on the working root (see chr) 
+# * 
+# * sudoer's privileges are required to execute this command
+# * 
+# * the unpack occurs in non-interactive mode 
+#	*
+# * the working root package cache is: <workign root>/var/cache/apt/archives/ 
+# */
+apt_get_unpack_all() {
+  chr << EOT
+export DEBIAN_FRONTEND=noninteractive 
+dpkg --unpack /var/cache/apt/archives/*.deb
+EOT
+}
+
+#/**
+# * install the newest versions of all packages currently installed on the 
+# * system on the working root (see chr), a distribution upgraded is also 
+# * performed 
+# *
+# * sudoer's privileges are required to execute this command
+# * 
+# * some host devices are re-mounted (bounded) on the working root before 
+# * install and released later
+#	*
+# * the upgrade occurs in non-interactive mode 
+# */
+apt_get_dist_upgrade() {
+  bind_dev_proc
+  bind_dev_pts
+  chr << EOT
+export DEBIAN_FRONTEND=noninteractive 
+apt-get --yes --force-yes --no-install-recommends dist-upgrade $@
+EOT
+  unbind_dev_pts
+  unbind_dev_proc
+}
+
+#/**
+# * packages are removed and purged (any configuration files are deleted too) on
+# * the working root (see chr)
+# *
+# * sudoer's privileges are required to execute this command
+# * 
+# * some host devices are re-mounted (bounded) on the working root before 
+# * install and released later
+# * 
+# * the install occurs in non-interactive mode
+# * 
+# * @param $@: packages to purge
+# */
+apt_get_purge() {
+  bind_dev_proc
+  bind_dev_pts
+  chr << EOT
+export DEBIAN_FRONTEND=noninteractive 
+apt-get --yes --force-yes purge $@ || true
+EOT
+  unbind_dev_pts
+  unbind_dev_proc
+}
+
+#/**
+# * autoremoves, on the working root (see chr), packages that were automatically
+# * installed to satisfy dependencies for some package and that are no more 
+# * needed 
+# *
+# * sudoer's privileges are required to execute this command
+# * 
+# * some host devices are re-mounted (bounded) on the working root before 
+# * install and released later
+# */
+apt_get_autoremove() {
+  bind_dev_proc
+  bind_dev_pts
+  chr << EOT
+apt-get --yes --force-yes autoremove
+EOT
+  unbind_dev_pts
+  unbind_dev_proc
+}
+
+#/**
+# * clears out the local repository of retrieved package files on the working 
+# * root (see chr)
+# *
+# * sudoer's privileges are required to execute this command
+# * 
+# * the working root package cache is: <workign root>/var/cache/apt/archives/ 
+# */
+apt_get_clean() {
+  chr << EOT
+apt-get --yes --force-yes clean
+EOT
+}
+
+#/**
+# * clears out the local repository of retrieved package files on the on the 
+# * working root (see chr). The difference with clean is that it only removes 
+# * package files that can no longer be downloaded, and are largely useless 
+# * 
+# * sudoer's privileges are required to execute this command
+# * 
+# * the working root package cache is: <workign root>/var/cache/apt/archives/ 
+# */
+apt_get_autoclean() {
+  chr << EOT
+apt-get --yes --force-yes autoclean
+EOT
+}
+
+##										##
+## Device management*	##
+##										##
+
+#/**
+# * re-mounts (binds) /dev on the working root
+# */
+bind_dev() {
+  sudo mount --bind /dev "$wroot"/dev && inf "Bounded '/dev' device"
+}
+
+#/**
+# * umounts (unbinds) /dev on the working root
+# */
+unbind_dev() {
+  sudo umount "$wroot"/dev && inf "Unbounded '/dev' device"
+}
+
+#/**
+# * re-mounts (binds) /dev/proc on the working root
+# */
+bind_dev_proc() {
+  sudo mount -t proc proc "$wroot"/proc && inf "Bounded 'proc' device"
+}
+
+#/**
+# * umounts (unbinds) /dev/proc on the working root
+# */
+unbind_dev_proc() {
+  sudo umount "$wroot"/proc && inf "Unbounded 'proc' device"
+}
+
+#/**
+# * re-mounts (binds) /dev/pts on the working root
+# */
+bind_dev_pts() {
+  sudo mount --bind /dev/pts "$wroot"/dev/pts && inf "Bounded '/dev/pts' device"
+}
+
+#/**
+# * umounts (unbinds) /dev/pts on the working root
+# */
+unbind_dev_pts() {
+  sudo umount "$wroot"/dev/pts && inf "Unbounded '/dev/pts' device"
+}
+
+#/**
+# * re-mounts (binds) "all" devices on the working root
+# */
+bind_devs() {
+  bind_dev
+  bind_dev_proc
+  bind_dev_pts
+}
+
+#/**
+# * umounts (unbinds) "all" devices on the working root
+# */
+unbind_devs() {
+  unbind_dev_pts
+  unbind_dev_proc
+  unbind_dev
+}
+
+#/**
+# * traps command to unbind mounted devices on error
+# * 
+# * @usage: trap _unbind_on_err INT TERM EXIT
+# */
+_unbind_on_err(){
+	local rc=${1:-''}
+	if [[ -z "$rc" ]] ; then
+		rc=$?
+	fi
+  unbind_dev_pts || true
+  unbind_dev_proc || true
+  unbind_dev || true
+	local alt_rc=$?
+	(( alt_rc != 0 )) && rc=$alt_rc
+	trap - INT TERM EXIT
+	exit $rc
+}
+
+##												##
+## Root user management*	##
+##												##
+
+#/**
+# * Disables root remote login through SSH, SCP and SFTP
+# */
+disable_root_remote() {
+  chr << EOT
+sed -ie 's/PermitRootLogin yes/PermitRootLogin no/' /etc/ssh/sshd_config
+EOT
+  inf "Remote root login is disabled"
+}
+
+#/**
+# * Disables root direct loging by changing the login shell
+# */
+disable_root_direct() {
+  chr << EOT
+sed -ie 's/\(root:x:0:0:root:\/root:\)\/bin\/bash/\1\/bin\/false/' /etc/passwd
+EOT
+  inf "Direct root login is disabled"
+}
+
+#/**
+# * Enables root password prompt 
+# */
+enable_root_passwd() {
+  chr su -c chpasswd << EOT
+root:$ROOTPASSWD
+EOT
+  inf "Root password prompt was enabled";
+}
+
+##											##
+## Network management*	##
+##											##
+
+#/**
+# * setups the hostname on the working root 
+# */
+set_hostname() {
+  inf "Setting hostname at '/etc/hosts' and '/etc/hostname'"
+  [ -z "$ip6" ] && ip6=${PROTO_NET_CMDLN_OPTS_DEF["--net-ip6"]} || true
+	local comment 
+  [ $ip6 == "no" ] && comment="## " || unset comment
+  chr << EOT
+cat > /etc/hosts << EOF
+127.0.0.1 localhost.localdomain localhost
+127.0.1.1 ${hostname}${search:+" "$hostname.$search}
+
+# The following lines are desirable for IPv6 capable hosts
+${comment}::1 $hostname${search:+" "$hostname.$search} localhost6.localdomain6 localhost6
+${comment}::1 localhost ip6-localhost ip6-loopback
+${comment}fe00::0 ip6-localnet
+${comment}ff00::0 ip6-mcastprefix
+${comment}ff02::1 ip6-allnodes
+${comment}ff02::2 ip6-allrouters
+${comment}ff02::3 ip6-allhosts
 EOF
-  done
+cat > /etc/hostname << EOF
+$hostname
+EOF
+EOT
+}
+
+#/**
+# * setups the networking on the working root 
+# */
+set_networking() {
+  inf "Configuring the loopback network interface"
+  chr << EOT
+cat > /etc/network/interfaces << EOF
+# The loopback network interface
+auto lo
+iface lo inet loopback
+EOF
+EOT
+
+  inf "Configuring eth0 network interface"
+  if [ "$dhcp" == "yes" ] ; then
+    chr << EOT
+cat >> /etc/network/interfaces << EOF
+
+# The primary network interface
+auto eth0
+iface eth0 inet dhcp
+EOF
+EOT
+  else
+    chr << EOT
+cat >> /etc/network/interfaces << EOF
+
+# The primary network interface
+auto eth0
+iface eth0 inet static
+    address $address
+    network $network
+    netmask $netmask
+EOF
+EOT
+  fi
+
+  if [ -n "$broadcast" ] ; then 
+    chr << EOT
+cat >> /etc/network/interfaces << EOF
+    broadcast $broadcast
+EOF
+EOT
+  fi
+  if [ -n "$gateway" ] ; then
+    chr << EOT
+cat >> /etc/network/interfaces << EOF
+    gateway $gateway
+EOF
+EOT
+  fi
+
+# dns-* options are implemented by the resolvconf package, if installed
+  if [ -n "$nameservers" ] ; then 
+    chr << EOT
+cat >> /etc/network/interfaces << EOF
+    dns-nameservers $nameservers
+EOF
+EOT
+  fi
+  if [ -n "$search" ] ; then 
+    chr << EOT
+cat >> /etc/network/interfaces << EOF
+    dns-search $search
+EOF
+EOT
+  fi
+}
+
+##																												##
+## Prototype command line and configuration file options	##
+##																												##						 
+
+# Networking command line and configuration options
+declare -A PROTO_NET_CMDLN_OPTS="--net-hostname --net-dhcp --net-address --net-network --net-netmask --net-broadcast --net-gateway --net-search --net-nameservers --net-ntpservers --net-ip6"
+declare -A PROTO_NET_CMDLN_OPTS_DESC
+declare -A PROTO_NET_CMDLN_OPTS_SUFFIX
+declare -A PROTO_NET_CMDLN_OPTS_DEF
+declare -A PROTO_NET_CMDLN_OPTS_DEF_MSG
+
+for cl_opt in ${PROTO_NET_CMDLN_OPTS} ; do
+  PROTO_NET_CMDLN_OPTS_DESC[$cl_opt]=$(cmdl_def_desc $cl_opt --net-) ;
+  PROTO_NET_CMDLN_OPTS_SUFFIX[$cl_opt]=$(cmdl_def_suffix $cl_opt --net-) ;
+done
+
+PROTO_NET_CMDLN_OPTS_DESC["--net-hostname"]="The prototype hostname."     
+PROTO_NET_CMDLN_OPTS_DEF_MSG["--net-hostname"]="DISTRO-SUITE-ARCHITECTURE"     
+
+PROTO_NET_CMDLN_OPTS_DESC["--net-dhcp"]="Configure the network with automatic DHCP settings. If the argument is 'yes', then --net-address, --net-network, --net-netmask, --net-broadcast and --net-gateway options are excluded. But can be optinally used among the --net-search and --net-nameservers options. An argument equal to 'no' results in no installation of package 'dhcp3-client'."
+PROTO_NET_CMDLN_OPTS_SUFFIX["--net-dhcp"]="yes|no"
+PROTO_NET_CMDLN_OPTS_DEF["--net-dhcp"]="yes"
+PROTO_NET_CMDLN_OPTS_DEF_MSG["--net-dhcp"]=${PROTO_NET_CMDLN_OPTS_DEF["--net-dhcp"]}
+
+PROTO_NET_CMDLN_OPTS_DESC["--net-address"]="Static IPv4 address. This option shall be specified among --net-network and --net-netmask options, this option excludes --net-dhcp='yes' option. But can be optionally used among the --net-search and/or --net-nameservers options."
+PROTO_NET_CMDLN_OPTS_SUFFIX["--net-address"]="IPv4_ADDRESS"
+PROTO_NET_CMDLN_OPTS_DEF_MSG["--net-address"]="no static IPv4 address assigning"
+
+PROTO_NET_CMDLN_OPTS_DESC["--net-network"]="Static IPv4 sub-network address. This option shall be specified among --net-address and --net-netmask options, this option excludes --net-dhcp='yes' option. But can be optinally used among the --net-search and/or --net-nameservers options."
+PROTO_NET_CMDLN_OPTS_DEF_MSG["--net-network"]="no static IPv4 sub-network address assigning"
+ 
+PROTO_NET_CMDLN_OPTS_DESC["--net-netmask"]="Static IPv4 network mask. This option shall be specified among --net-address and --net-network options, this option excludes --net-dhcp='yes' option. But can be optinally used among the --net-search and/or --net-nameservers options."
+PROTO_NET_CMDLN_OPTS_DEF_MSG["--net-netmask"]="no static IPv4 network mask assigning"
+
+PROTO_NET_CMDLN_OPTS_DESC["--net-broadcast"]="Static IPv4 broadcast address. This option excludes --net-dhcp='yes' option and if specified then the options --net-address, --net-network and --net-netmask shall be present too."  
+PROTO_NET_CMDLN_OPTS_DEF_MSG["--net-broadcast"]="no IPv4 broadcasting address assigning"  
+
+PROTO_NET_CMDLN_OPTS_DESC["--net-gateway"]="Static IPv4 gateway address. This option excludes --net-dhcp='yes' option and if specified then the options --net-address, --net-network and --net-netmask shall be present too."
+PROTO_NET_CMDLN_OPTS_DEF_MSG["--net-gateway"]="no IPv4 gateway address assigning"
+
+PROTO_NET_CMDLN_OPTS_DESC["--net-search"]="Optional DNS search suffix. If specified then either --net-dhcp='yes' option or the group of options --net-address, --net-network and --net-netmask shall be present too."
+PROTO_NET_CMDLN_OPTS_DEF_MSG["--net-search"]="no DNS search suffix"
+
+PROTO_NET_CMDLN_OPTS_DESC["--net-nameservers"]="Optional comma separated list of DNS server IPv4 addresses. If specified then either --net-dhcp='yes' option or the group of options --net-address, --net-network and --net-netmask shall be present too."
+PROTO_NET_CMDLN_OPTS_DEF_MSG["--net-nameservers"]="no nameservers"
+
+PROTO_NET_CMDLN_OPTS_DESC["--net-ntpservers"]="Optional space separated list of NTP server IP addresses or host names."
+PROTO_NET_CMDLN_OPTS_DEF_MSG["--net-ntpservers"]="no ntpservers"
+
+PROTO_NET_CMDLN_OPTS_DESC["--net-ip6"]="Support for IPv6 protocol."
+PROTO_NET_CMDLN_OPTS_SUFFIX["--net-ip6"]="yes|no"
+PROTO_NET_CMDLN_OPTS_DEF["--net-ip6"]="no"
+PROTO_NET_CMDLN_OPTS_DEF_MSG["--net-ip6"]=${PROTO_NET_CMDLN_OPTS_DEF["--net-ip6"]}
+
+#/**
+# * shows usage's description in std output for net-prefixed's command line 
+# * options
+# */
+net_usage() {
+  local opts
+  while IFS=' ' read -ra opts ; do 
+    for cl_opt in ${opts[@]} ; do
+      cat << EOT
+
+  ${cl_opt} ${PROTO_NET_CMDLN_OPTS_SUFFIX[${cl_opt}]}
+    ${PROTO_NET_CMDLN_OPTS_DESC[$cl_opt]} Defaults to ${PROTO_NET_CMDLN_OPTS_DEF_MSG[$cl_opt]}.
+EOT
+    done
+  done <<< "$PROTO_NET_CMDLN_OPTS"
+}
+
+# Admin user command line and configuration options
+declare -A PROTO_ADMIN_CMDLN_OPTS="--admin-user --admin-full-name --admin-password"
+declare -A PROTO_ADMIN_CMDLN_OPTS_DESC
+declare -A PROTO_ADMIN_CMDLN_OPTS_SUFFIX
+declare -A PROTO_ADMIN_CMDLN_OPTS_DEF
+declare -A PROTO_ADMIN_CMDLN_OPTS_DEF_MSG
+
+for cl_opt in ${PROTO_ADMIN_CMDLN_OPTS} ; do
+  PROTO_ADMIN_CMDLN_OPTS_DESC[$cl_opt]=$(cmdl_def_desc $cl_opt --admin-) ;
+  PROTO_ADMIN_CMDLN_OPTS_SUFFIX[$cl_opt]=$(cmdl_def_suffix $cl_opt --admin-) ;
+done
+
+PROTO_ADMIN_CMDLN_OPTS_DESC["--admin-user"]="The account USER is created and added to group admin. USER can execute a command as the superuser via sudo. See '/etc/sudoers'."     
+PROTO_ADMIN_CMDLN_OPTS_DEF_MSG["--admin-user"]="guest distribution id in lowercase (See 'lsb_release' command)"     
+PROTO_ADMIN_CMDLN_OPTS_DEF["--admin-user"]="bozz"
+
+PROTO_ADMIN_CMDLN_OPTS_DESC["--admin-full-name"]="The admin user full name."     
+PROTO_ADMIN_CMDLN_OPTS_DEF_MSG["--admin-full-name"]="guest distribution id in lowercase. See 'lsb_release' command"     
+PROTO_ADMIN_CMDLN_OPTS_DEF["--admin-full-name"]="Box Admin"
+
+PROTO_ADMIN_CMDLN_OPTS_DESC["--admin-password"]="The admin user password."     
+PROTO_ADMIN_CMDLN_OPTS_DEF_MSG["--admin-password"]="guest distribution id in lowercase. See 'lsb_release' command"     
+PROTO_ADMIN_CMDLN_OPTS_DEF["--admin-password"]="bozz"
+
+#/**
+# * shows usage's description in std output for admin-prefixed's command line 
+# * options
+# */
+admin_usage() {
+  local opts
+  while IFS=' ' read -ra opts ; do 
+    for cl_opt in ${opts[@]} ; do
+      cat << EOT
+
+  ${cl_opt} ${PROTO_ADMIN_CMDLN_OPTS_SUFFIX[${cl_opt}]}
+    ${PROTO_ADMIN_CMDLN_OPTS_DESC[$cl_opt]} Defaults to ${PROTO_ADMIN_CMDLN_OPTS_DEF_MSG[$cl_opt]}.
+EOT
+    done
+  done <<< "$PROTO_ADMIN_CMDLN_OPTS"
+}
+
+# Root command line and configuration options
+declare -A PROTO_ROOT_CMDLN_OPTS="--root-password --root-remote"
+declare -A PROTO_ROOT_CMDLN_OPTS_DESC
+declare -A PROTO_ROOT_CMDLN_OPTS_SUFFIX
+declare -A PROTO_ROOT_CMDLN_OPTS_DEF
+declare -A PROTO_ROOT_CMDLN_OPTS_DEF_MSG
+
+for cl_opt in ${PROTO_ROOT_CMDLN_OPTS} ; do
+  PROTO_ROOT_CMDLN_OPTS_DESC[$cl_opt]=$(cmdl_def_desc $cl_opt --root-) ;
+  PROTO_ROOT_CMDLN_OPTS_SUFFIX[$cl_opt]=$(cmdl_def_suffix $cl_opt --root-) ;
+done
+
+PROTO_ROOT_CMDLN_OPTS_DESC["--root-password"]="Setup the root password. When a non-empty value is specified then the password is prompted on login and the --root-remote option can be equal to 'yes' or 'no'. When the special value '-' is specified then the password is never prompted on login, therefore the --root-remote option shall be equal to 'no'. "
+PROTO_ROOT_CMDLN_OPTS_SUFFIX["--root-password"]="ROOT_PASSWORD|-"
+PROTO_ROOT_CMDLN_OPTS_DEF_MSG["--root-password"]="no password, meaning root disabled without remote neither direct login"
+
+PROTO_ROOT_CMDLN_OPTS_DESC["--root-remote"]="Setup the remote login for root. If the value of this option is 'yes' then --root-password shall be a valid password. "
+PROTO_ROOT_CMDLN_OPTS_DEF["--root-remote"]="no"
+PROTO_ROOT_CMDLN_OPTS_SUFFIX["--root-remote"]="yes|no"
+PROTO_ROOT_CMDLN_OPTS_DEF_MSG["--root-remote"]=${PROTO_ROOT_CMDLN_OPTS_DEF["--root-remote"]}
+
+#/**
+# * shows usage's description in std output for root-prefixed's command line 
+# * options
+# */
+root_usage() {
+  local opts
+  while IFS=' ' read -ra opts ; do 
+    for cl_opt in ${opts[@]} ; do
+      cat << EOT
+
+  ${cl_opt} ${PROTO_ROOT_CMDLN_OPTS_SUFFIX[${cl_opt}]}
+    ${PROTO_ROOT_CMDLN_OPTS_DESC[$cl_opt]} Defaults to ${PROTO_ROOT_CMDLN_OPTS_DEF_MSG[$cl_opt]}.
+EOT
+    done
+  done <<< "$PROTO_ROOT_CMDLN_OPTS"
+}
+
+# Kernel modules command line and configuration file options
+declare -A PROTO_MODS_CMDLN_OPTS="--mod-floppy --mod-tape --mod-cdrom --mod-sound --mod-mouse --mod-usb --mod-firewire --mod-atm --mod-auxdisplay --mod-xen --mod-bluetooth --mod-wolfsonmicro --mod-leds --mod-memstick --mod-multi-function-device --mod-multi-media-card --mod-regulator --mod-ultra-wide-band --mod-wlan --mod-media --mod-gaming --mod-parport --mod-extra-networking"
+declare -A PROTO_MODS_CMDLN_OPTS_DESC
+declare -A PROTO_MODS_CMDLN_OPTS_SUFFIX
+declare -A PROTO_MODS_CMDLN_OPTS_DEFS
+
+for cl_opt in ${PROTO_MODS_CMDLN_OPTS} ; do
+  PROTO_MODS_CMDLN_OPTS_DESC[$cl_opt]=$(cmdl_def_desc $cl_opt --mod-) ;
+  PROTO_MODS_CMDLN_OPTS_SUFFIX[$cl_opt]="yes|no" ;
+  PROTO_MODS_CMDLN_OPTS_DEFS[$cl_opt]=no ;
+done
+
+PROTO_MODS_CMDLN_OPTS_DESC["--mod-usb"]="USB"
+PROTO_MODS_CMDLN_OPTS_DESC["--mod-atm"]="ATM"
+PROTO_MODS_CMDLN_OPTS_DESC["--mod-wolfsonmicro"]="Wolfsonmicro"
+PROTO_MODS_CMDLN_OPTS_DESC["--mod-multi-function-device"]="Multi-Function Device"
+PROTO_MODS_CMDLN_OPTS_DESC["--mod-multi-media-card"]="Multi Media Card subsystem"
+PROTO_MODS_CMDLN_OPTS_DESC["--mod-ultra-wide-band"]="Linux Ultra-Wide-Band stack, as well as drivers for Wireless USB Host Controller drivers"
+PROTO_MODS_CMDLN_OPTS_DESC["--mod-wlan"]="IEEE 802.11 wireless local area network"
+PROTO_MODS_CMDLN_OPTS_DESC["--mod-media"]="various media related modules"
+PROTO_MODS_CMDLN_OPTS_DESC["--mod-gaming"]="various gaming related modules"
+PROTO_MODS_CMDLN_OPTS_DESC["--mod-parport"]="parallel port"
+PROTO_MODS_CMDLN_OPTS_DESC["--mod-extra-networking"]="some extra networking related modules for Telephony, ISDN, IPX, x25, USB-networking"
+
+#/**
+# * shows usage's description in std output for mods-prefixed's command line 
+# * options
+# */
+mods_usage() {
+  local opts
+  while IFS=' ' read -ra opts ; do
+    for cl_opt in ${opts[@]} ; do
+      cat << EOF
+
+  ${cl_opt} ${PROTO_MODS_CMDLN_OPTS_SUFFIX[$cl_opt]}
+    Support for ${PROTO_MODS_CMDLN_OPTS_DESC[$cl_opt]}. Defaults to ${PROTO_MODS_CMDLN_OPTS_DEFS[$cl_opt]}.
+EOF
+    done
+  done <<< "$PROTO_MODS_CMDLN_OPTS"
 }
 
 # mods to be purge (removed and blacklisted)
@@ -130,27 +1105,6 @@ declare -A MODS_RMDIR=(\
 ["--mod-extra-networking"]="drivers/telephony drivers/isdn drivers/net/ipx net/ipx drivers/net/x25 net/x25 drivers/net/usb drivers/net/can/usb" \
 )
 
-## Defaults
-declare -A DEF_INSTALL_MIRROR=(["debian"]="http://ftp.debian.org/debian" ["ubuntu"]="http://archive.ubuntu.com/ubuntu")
-DEF_PACKAGES_PROTOTYPE=""
-DEF_PACKAGES_CLONE=""
-DEF_PACKAGES_DEPLOYMENT=""
-DEF_HYPERVISOR=kvm
-DEF_CPU=1
-DEF_MEMORY=128
-DEF_SIZE=1024
-DEF_ROOT_FILESYSTEM=ext3
-DEF_EV=".blss" # Profile mirror files
-DEF_FORMATS="raw"
-DEF_DHCP=yes
-DEF_IP6=no
-
-# Kernel modules defaults
-declare -A DEF_MODS
-for cl_opt in ${MODS_CMDLN_OPTS} ; do
-  DEF_MODS[$cl_opt]=no ;
-done
-
 # process the environment settings
 proc_ev() {
   # environment where conf files are located
@@ -159,172 +1113,6 @@ proc_ev() {
   ( [ -d "$ev" ] && [ -r "$ev" ] ) || (err "Environment '$ev' doesn't exists or isn't a readable directory" >&2 && exit 1)
 }
 
-## Log and error messages
-inf() {
-  cat << EOT
->>> INFO: $1 >>>
-EOT
-}
-warn() {
-  cat << EOT
->>> WARN: $1 >>>
-EOT
-}
-err() {
-  cat << EOT
->>> ERROR: $1 >>>
-EOT
-}
-err_non_empty() {
-  err "Command line option '$1' requires an non-empty argument"
-}
-err_non_sup() {
-  local cl_opt=$1
-  local cf_opt=${cl_opt/--/}
-  cf_opt=${cf_opt//-/_}
-  err "Command line/conf file option $cl_opt/$cf_opt requires a supported argument. See --help command line option for help"
-}
-err_non_r() {
-  local cl_opt=$1
-  local cf_opt=${cl_opt/--/}
-  cf_opt=${cf_opt//-/_}
-  err "Command line/conf file option $cl_opt/$cf_opt requires an existing-readable file argument. See --help command line option for help"
-}
-err_rep_value() {
-  local cl_opt=$1
-  local cf_opt=${cl_opt/--/}
-  cf_opt=${cf_opt//-/_}
-  err "Command line/conf file option $cl_opt/$cf_opt contains a repeated value in the argument. See --help command line option for help"
-}
-_stepnum=0
-step() {
-  cat << EOT
->>> STEP $_stepnum: $1 >>>
->>>
-EOT
-  _stepnum=$(( $_stepnum + 1 ))
-}
-
-## Utils 
-
-# trim leading and ending spaces
-trim_spcs() {
-  printf "${1#"${1%%[![:space:]]*}"}"
-}
-
-# convert form hexadecimal to decimal
-hx2dc() {
-  bc << EOT
-ibase=16; $(echo $1 | tr '[:lower:]' '[:upper:]')
-EOT
-}
-
-## Regex matching
-
-match_ip() {
-  [[ "$1" =~ ^([01]?[[:digit:]][[:digit:]]?|2[0-4][[:digit:]]|25[0-5])\.([01]?[[:digit:]][[:digit:]]?|2[0-4][[:digit:]]|25[0-5])\.([01]?[[:digit:]][[:digit:]]?|2[0-4][[:digit:]]|25[0-5])\.([01]?[[:digit:]][[:digit:]]?|2[0-4][[:digit:]]|25[0-5])$ ]]
-}
-match_ip_lst() {
-  [[ "$1" =~ ^([01]?[[:digit:]][[:digit:]]?|2[0-4][[:digit:]]|25[0-5])\.([01]?[[:digit:]][[:digit:]]?|2[0-4][[:digit:]]|25[0-5])\.([01]?[[:digit:]][[:digit:]]?|2[0-4][[:digit:]]|25[0-5])\.([01]?[[:digit:]][[:digit:]]?|2[0-4][[:digit:]]|25[0-5])(,([01]?[[:digit:]][[:digit:]]?|2[0-4][[:digit:]]|25[0-5])\.([01]?[[:digit:]][[:digit:]]?|2[0-4][[:digit:]]|25[0-5])\.([01]?[[:digit:]][[:digit:]]?|2[0-4][[:digit:]]|25[0-5])\.([01]?[[:digit:]][[:digit:]]?|2[0-4][[:digit:]]|25[0-5]))*$ ]]
-}
-match_positive_num() {
-  [[ "$1" =~ ^[1-9]+[[:digit:]]*$ ]]
-}
-match_yesno() {
-  [[ "$1" =~ ^(yes|no)$ ]]
-}
-
-## Chroot based commands
-
-chr() {
-  env \
--u LC_ALL \
-LANG="$plang" \
-LANGUAGE="$plang_ctry:$pbaselang" \
-TZ="$tzon" \
-  sudo chroot $wroot $@
-}
-# Acquire::Check-Valid-Until=false => See http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=595801
-apt_get_update() {
-  chr << EOT
-apt-get -o 'Acquire::Check-Valid-Until=false' update
-EOT
-}
-apt_get_download() {
-  chr << EOT
-apt-get --yes --force-yes --no-install-recommends --download-only install $@
-EOT
-}
-apt_get_install() {
-  bind_dev_proc
-  bind_dev_pts
-  chr << EOT
-export DEBIAN_FRONTEND=noninteractive 
-apt-get --yes --force-yes --no-install-recommends install $@
-EOT
-  unbind_dev_pts
-  unbind_dev_proc
-}
-apt_get_unpack() {
-  chr << EOT
-export DEBIAN_FRONTEND=noninteractive 
-dpkg --unpack /var/cache/apt/archives/${1}_*.deb
-EOT
-}
-apt_get_unpack_all() {
-  chr << EOT
-export DEBIAN_FRONTEND=noninteractive 
-dpkg --unpack /var/cache/apt/archives/*.deb
-EOT
-}
-apt_get_dist_upgrade() {
-  bind_dev_proc
-  bind_dev_pts
-  chr << EOT
-export DEBIAN_FRONTEND=noninteractive 
-apt-get --yes --force-yes --no-install-recommends dist-upgrade $@
-EOT
-  unbind_dev_pts
-  unbind_dev_proc
-}
-apt_get_purge() {
-  bind_dev_proc
-  bind_dev_pts
-  chr << EOT
-export DEBIAN_FRONTEND=noninteractive 
-apt-get --yes --force-yes purge $@ || true
-EOT
-  unbind_dev_pts
-  unbind_dev_proc
-}
-apt_get_autoremove() {
-  bind_dev_proc
-  bind_dev_pts
-  chr << EOT
-apt-get --yes --force-yes autoremove
-EOT
-  unbind_dev_pts
-  unbind_dev_proc
-}
-apt_get_clean() {
-  chr << EOT
-apt-get --yes --force-yes clean
-EOT
-}
-apt_get_autoclean() {
-  chr << EOT
-apt-get --yes --force-yes autoclean
-EOT
-}
-
-# When use linux-image-server the command depmod fails due to the path
-# /var/lib/modules/<kernel name for server version>/.. doesn't exists but
-# /var/lib/modules/<kernel name for generic version>/.. exists. Seems to be
-# that the command 'uname -r' doesn't prints the correct kernel info to
-# STDOUT. For now use the this command instead of 'uname -r'
-kver() {
-  chr find /boot -maxdepth 1 -type f | grep -m 1 /boot/vmlinuz | sort -r | sed 's/\/boot\/vmlinuz-//'
-}
 
 # Copies a first boot script to the bootstrapped system a places an script call
 # in /etc/rc.local
@@ -370,122 +1158,6 @@ EOT
   fi
 }
 
-# Disables root remote login through SSH, SCP and SFTP
-disable_root_remote() {
-  chr << EOT
-sed -ie 's/PermitRootLogin yes/PermitRootLogin no/' /etc/ssh/sshd_config
-EOT
-  inf "Remote root login is disabled"
-}
-
-# Disables root direct loging by changing the login shell
-disable_root_direct() {
-  chr << EOT
-sed -ie 's/\(root:x:0:0:root:\/root:\)\/bin\/bash/\1\/bin\/false/' /etc/passwd
-EOT
-  inf "Direct root login is disabled"
-}
-
-# Enables root password prompt 
-enable_root_passwd() {
-  chr su -c chpasswd << EOT
-root:$ROOTPASSWD
-EOT
-  inf "Root password prompt was enabled";
-}
-
-# setup the hostname
-set_hostname() {
-  inf "Setting hostname at '/etc/hosts' and '/etc/hostname'"
-  [ -z "$ip6" ] && ip6=$DEF_IP6 || true 
-  [ $ip6 == "no" ] && comment="## " || unset comment
-  chr << EOT
-cat > /etc/hosts << EOF
-127.0.0.1 localhost.localdomain localhost
-127.0.1.1 ${hn}${srch:+" "$hn.$srch}
-
-# The following lines are desirable for IPv6 capable hosts
-${comment}::1 $hn${srch:+" "$hn.$srch} localhost6.localdomain6 localhost6
-${comment}::1 localhost ip6-localhost ip6-loopback
-${comment}fe00::0 ip6-localnet
-${comment}ff00::0 ip6-mcastprefix
-${comment}ff02::1 ip6-allnodes
-${comment}ff02::2 ip6-allrouters
-${comment}ff02::3 ip6-allhosts
-EOF
-cat > /etc/hostname << EOF
-$hn
-EOF
-EOT
-}
-
-# setup networking
-set_networking() {
-  inf "Configuring the loopback network interface"
-  chr << EOT
-cat > /etc/network/interfaces << EOF
-# The loopback network interface
-auto lo
-iface lo inet loopback
-EOF
-EOT
-
-  inf "Configuring eth0 network interface"
-  if [ "$dyn" == "yes" ] ; then
-    chr << EOT
-cat >> /etc/network/interfaces << EOF
-
-# The primary network interface
-auto eth0
-iface eth0 inet dhcp
-EOF
-EOT
-  else
-    chr << EOT
-cat >> /etc/network/interfaces << EOF
-
-# The primary network interface
-auto eth0
-iface eth0 inet static
-    address $ip
-    network $nw
-    netmask $msk
-EOF
-EOT
-  fi
-
-  if [ -n "$bcst" ] ; then 
-    chr << EOT
-cat >> /etc/network/interfaces << EOF
-    broadcast $bcst
-EOF
-EOT
-  fi
-  if [ -n "$gw" ] ; then
-    chr << EOT
-cat >> /etc/network/interfaces << EOF
-    gateway $gw
-EOF
-EOT
-  fi
-
-# dns-* options are implemented by the resolvconf package, if installed
-  if [ -n "$dns" ] ; then 
-    chr << EOT
-cat >> /etc/network/interfaces << EOF
-    dns-nameservers $dns
-EOF
-EOT
-  fi
-  if [ -n "$srch" ] ; then 
-    chr << EOT
-cat >> /etc/network/interfaces << EOF
-    dns-search $srch
-EOF
-EOT
-  fi
-}
-
 # install user specified packages
 install_user_pkgs() {
   step "Install user specified packages"
@@ -497,17 +1169,12 @@ install_user_pkgs() {
   fi
 }
 
-# process locale
-proc_lcl() {
-  if [ -z "$lcl" ]; then
-    host_lang=$(cat /etc/default/locale);
-    host_lang=${host_lang#LANG=\"};
-    lcl=${host_lang%\"};
-  fi
-  lcl=$(grep -v "^#.*" /usr/share/i18n/SUPPORTED | egrep -m 1 "$lcl") || ( err_non_sup --locale >&2 && exit 1 )
-  plang=${lcl/ */}
-  plang_ctry=${plang/.*}
-  pbaselang=${plang_ctry/_*/}
+# get host locale
+host_lcl() {
+	local host_lang=$(grep LANG= /etc/default/locale);
+	host_lang=${host_lang#LANG=\"};
+	local lcl=${host_lang%\"};
+	grep -v "^#.*" $CFG/usr/share/i18n/SUPPORTED | egrep -m 1 "$lcl"
 }
 
 # process timezone
@@ -537,50 +1204,6 @@ tmp_rm() {
   sudo rm -rf "$_tmp" && inf "Deleted '$_tmp' directory"
 }
 
-## Device handling
-
-bind_dev() {
-  sudo mount --bind /dev "$wroot"/dev && inf "Bounded '/dev' device"
-}
-unbind_dev() {
-  sudo umount "$wroot"/dev && inf "Unbounded '/dev' device"
-}
-bind_dev_proc() {
-  sudo mount -t proc proc "$wroot"/proc && inf "Bounded 'proc' device"
-}
-unbind_dev_proc() {
-  sudo umount "$wroot"/proc && inf "Unbounded 'proc' device"
-}
-bind_dev_pts() {
-  sudo mount --bind /dev/pts "$wroot"/dev/pts && inf "Bounded '/dev/pts' device"
-}
-unbind_dev_pts() {
-  sudo umount "$wroot"/dev/pts && inf "Unbounded '/dev/pts' device"
-}
-bind_devs() {
-  bind_dev
-  bind_dev_proc
-  bind_dev_pts
-}
-unbind_devs() {
-  unbind_dev_pts
-  unbind_dev_proc
-  unbind_dev
-}
-# trap cmd to unbind mounted devices on error
-_unbind_on_err(){
-	local rc=${1:-''}
-	if [[ -z "$rc" ]] ; then
-		rc=$?
-	fi
-  unbind_dev_pts || true
-  unbind_dev_proc || true
-  unbind_dev || true
-	local alt_rc=$?
-	(( alt_rc != 0 )) && rc=$alt_rc
-	trap - INT TERM EXIT
-	exit $rc
-}
 
 ## Module handling
 
@@ -626,7 +1249,7 @@ cat >> /etc/modprobe.d/floppy.conf << EOF
 EOF
 EOT
 
-  for mod in $MODS_CMDLN_OPTS ; do
+  for mod in $PROTO_MODS_CMDLN_OPTS ; do
     if [ ${mods[$mod]} == "no" ] ; then
       if [ -n "${MODS_PURGE[$mod]}" ] ; then
         chr << EOT
@@ -666,82 +1289,242 @@ EOT
 _get_hostname() {
   chr cat /etc/hostname
 }
-_get_dyn() {
-  local dyn=$(chr egrep '^[[:space:]]*iface[[:space:]]+eth0[[:space:]]+inet[[:space:]]+dhcp' /etc/network/interfaces | sed -r 's/iface[[:space:]]+eth0[[:space:]]+inet[[:space:]]+dhcp/yes/')
-  echo ${dyn:-no}
+_get_dhcp() {
+  local dhcp=$(chr egrep '^[[:space:]]*iface[[:space:]]+eth0[[:space:]]+inet[[:space:]]+dhcp' /etc/network/interfaces | sed -r 's/iface[[:space:]]+eth0[[:space:]]+inet[[:space:]]+dhcp/yes/')
+  echo ${dhcp:-no}
 }
-_get_ip() {
+_get_address() {
   chr egrep '^[[:space:]]*address[[:space:]]+.*' /etc/network/interfaces | sed -r 's/[[:space:]]*address[[:space:]]+(.*)/\1/'
 }
-_get_nw() {
+_get_network() {
   chr egrep '^[[:space:]]*network[[:space:]]+.*' /etc/network/interfaces | sed -r 's/[[:space:]]*network[[:space:]]+(.*)/\1/'
 }
-_get_msk() {
+_get_netmask() {
   chr egrep '^[[:space:]]*netmask[[:space:]]+.*' /etc/network/interfaces | sed -r 's/[[:space:]]*netmask[[:space:]]+(.*)/\1/'
 }
-_get_bcst() {
+_get_broadcast() {
   chr egrep '^[[:space:]]*broadcast[[:space:]]+.*' /etc/network/interfaces | sed -r 's/[[:space:]]*broadcast[[:space:]]+(.*)/\1/'
 }
-_get_gw() {
+_get_gateway() {
   chr egrep '^[[:space:]]*gateway[[:space:]]+.*' /etc/network/interfaces | sed -r 's/[[:space:]]*gateway[[:space:]]+(.*)/\1/'
 }
-_get_dns() {
+_get_nameservers() {
   chr egrep '^[[:space:]]*dns-nameservers[[:space:]]+.*' /etc/network/interfaces | sed -r 's/[[:space:]]*dns-nameservers[[:space:]]+(.*)/\1/'
 }
-_get_srch() {
+_get_search() {
   chr egrep '^[[:space:]]*dns-search[[:space:]]+.*' /etc/network/interfaces | sed -r 's/[[:space:]]*dns-search[[:space:]]+(.*)/\1/'
 }
-verify_dyn() {
-  if [ $(_get_dyn) == "yes" ]; then
-   [ -n "$ip" ] && err "--address/address command line/conf file options cannot be specified with DHCP configured" >&2 && exit 1 || true
+verify_dhcp() {
+  if [ $(_get_dhcp) == "yes" ]; then
+   [ -n "$address" ] && err "--address/address command line/conf file options cannot be specified with DHCP configured" >&2 && exit 1 || true
 #  else
 #    # --address is mandatory if DHCP is not configured
 #    c_address=${c_address:?$(err_non_empty --address)}
   fi
 }
 get_net_settings() {
-  _hn=$(_get_hostname)
-  _dyn=$(_get_dyn)
-  _ip=$(_get_ip)
-  _nw=$(_get_nw)
-  _msk=$(_get_msk)
-  _bcst=$(_get_bcst)
-  _gw=$(_get_gw)
-  _dns=$(_get_dns)
-  _srch=$(_get_srch)
+  _hostname=$(_get_hostname)
+  _dhcp=$(_get_dhcp)
+  _address=$(_get_address)
+  _network=$(_get_network)
+  _netmask=$(_get_netmask)
+  _broadcast=$(_get_broadcast)
+  _gateway=$(_get_gateway)
+  _nameservers=$(_get_nameservers)
+  _search=$(_get_search)
 
-  inf "Detected hostname = '$_hn'"
-  inf "Detected dhcp = '$_dyn'"
-  inf "Detected address = '$_ip'"
-  inf "Detected network = '$_nw'"
-  inf "Detected netmask = '$_msk'"
-  inf "Detected broadcast = '$_bcst'"
-  inf "Detected gateway = '$_gw'"
-  inf "Detected search = '$_srch'"
-  inf "Detected nameservers = '$_dns'"
+  inf "Detected hostname = '$_hostname'"
+  inf "Detected dhcp = '$_dhcp'"
+  inf "Detected address = '$_address'"
+  inf "Detected network = '$_network'"
+  inf "Detected netmask = '$_netmask'"
+  inf "Detected broadcast = '$_broadcast'"
+  inf "Detected gateway = '$_gateway'"
+  inf "Detected search = '$_search'"
+  inf "Detected nameservers = '$_nameservers'"
 }
 
 proc_net_settings() {
   step "Hostname and network configuration"
 
   # preserve these settings for the clone
-  nw=$_nw
-  msk=$_msk
-  bcst=$_bcst
-  gw=$_gw
-  dns=$_dns
-  srch=$_srch
+  network=$_network
+  netmask=$_netmask
+  broadcast=$_broadcast
+  gateway=$_gateway
+  nameservers=$_nameservers
+  search=$_search
 
-  if [ -n "$hn" ] ; then
+  if [ -n "$hostname" ] ; then
     set_hostname
   fi
 
-  if [ -n "$ip" ] ; then 
+  if [ -n "$address" ] ; then 
     set_networking
   fi
 }
 
-## Libvirt
+##                                                    ##
+## Active network settings retrieval  ##
+##                                                    ##
+
+#/**
+# * retrieves the list of IP network interfaces, excluding loopback
+# * 
+# * @example:
+# *   $ iplinks
+# *   eth0
+# *   wlan0
+# *   virbr0
+# */
+iplinks() {
+  ip link show | egrep -v ^[0-9]+:\ lo | egrep ^[0-9]+:\ \.* | cut -d":" -f2 | tr -d " "
+}
+
+#/**
+# * retrieves the list of IP network interfaces, excluding loopback. Also prints 
+# * MAC address
+# * 
+# * @example:
+# *   $ iplinks_mac
+# *   eth0 00:1c:c4:e1:b4:b4
+# *   br0 ff:ff:ff:ff:ff:ff
+# *   virbr0 ff:ff:ff:ff:ff:ff
+# *   vnet0 fe:54:00:c2:b9:f1
+# */
+iplinks_mac() {
+  ip link show | awk '{line=$0; getline; NF=NF; print line" "$0}' | egrep -v ^[0-9]+:\ lo | awk '{sub(/:/,"",$2); print $2" "$13}'  
+}
+
+#/**
+# * retrieves the MAC address for a given network interfaces
+# * 
+# * @example:
+# *   $ if_mac eth0
+# *   00:1c:c4:e1:b4:b4
+# */
+if_mac() {
+  iplinks_mac | grep ^$1[[:space:]] | cut -d" " -f2
+}
+
+#/**
+# * retrieves the CIDR address for a given network interface
+# * 
+# * @example:
+# *   $ cidr eth0
+# *   172.26.24.101/22
+# *
+# *   $ cidr virbr0
+# *   192.168.122.1/24
+# *
+# * @param $1: the IPv4 address 
+# */
+cidr() {
+  ip addr show $1 | grep -v inet6 | grep inet | awk '{print $2}'
+}
+
+#/**
+# * retrieves the broadcasting address for a given network interface
+# * 
+# * @example:
+# *   $ cidr_bcst eth0
+# *   172.26.27.255
+# *
+# *   $ cidr_bcst virbr0
+# *   192.168.122.255
+# *
+# * @param $1: the IPv4 address 
+# */
+cidr_bcst() {
+  ip addr show $1 | grep -v inet6 | grep inet | awk '{print $4}'
+}
+
+#/**
+# * cats to STDOUT a line per remote hosts at /etc/hosts excluding loopback 
+# * addresses
+# * 
+# * @example:
+# *   $ get_remote_hosts
+# *   node1
+# *   node2
+# *   node3
+# */
+get_remote_hosts() {
+  while read L; do 
+    local ip=$(awk '{print $1}' <<< $L) ;
+    match_ip $ip \
+      && [ "$ip" != 127.0.0.1 ] \
+      && [ "$ip" != 127.0.1.1 ] \
+      && awk '{print $2}' <<< $L; 
+  done < /etc/hosts 
+}
+
+#/**
+# * cats to STDOUT a single line with a list of space separated remote hosts at 
+# * /etc/hosts excluding loopback addresses
+# * 
+# * @example:
+# *   $ get_remote_hosts_list
+# *   node1 node2  node3
+# */
+get_remote_hosts_list() {
+  local sep
+  get_remote_hosts | while read L; do 
+      cat <<< "${sep}"${L} | tr -d "\\n";
+      sep=" ";
+  done
+}
+
+#/**
+# * checks whether the current host is included in /etc/hosts, prints 1 to 
+# * STDOUT in case of inclusion, 0 otherwhise
+# * 
+# * @example:
+# *   $ himself_included
+# *   1
+# */
+himself_included() {
+  local hn=$(hostname)
+  node_included $hn
+}
+
+#/**
+# * checks whether an node is included in /etc/hosts, prints 1 to 
+# * STDOUT in case of inclusion, 0 otherwhise
+# * 
+# * @example:
+# *   $ node_included node1
+# *   1
+# */
+node_included() {
+  local hn=${1:-?}
+  local match=$(get_remote_hosts | grep ^$hn$)
+  [[ "$match" == $hn ]] && echo 1 || echo 0
+}
+
+#/**
+# * cats to STDOUT a line per remote hosts at /etc/hosts excluding loopback 
+# * addresses, also prints the IP address
+# * 
+# * @example:
+# *   $ get_remote_host_entries
+# *   172.26.24.101 node1
+# *   172.26.24.102 node2
+# *   172.26.24.103 node3
+# */
+get_remote_host_entries() {
+  while read L; do 
+    local ip=$(awk '{print $1}' <<< $L) ;
+    match_ip $ip \
+      && [ "$ip" != 127.0.0.1 ] \
+      && [ "$ip" != 127.0.1.1 ] \
+      && awk '{print $1" "$2}' <<< $L; 
+  done < /etc/hosts 
+}
+
+##              ##
+##  Libvirt ##
+##              ##
 
 libvirt() {
   step "Generates libvirt domain XML defininion file"
@@ -753,7 +1536,7 @@ libvirt() {
   mem_kb=$(( $mem * 1024))
   cat > "$droot"/libvirt.xml << EOT
 <domain type='${hyv}'>
-  <name>${hn}</name>
+  <name>${hostname}</name>
   <memory>$mem_kb</memory>
   <vcpu>${vcpu}</vcpu>
   <os>

@@ -41,6 +41,7 @@ BIN="$BLSS_HOME"/bin
 ENV="$BLSS_HOME"/env
 EXT="$BLSS_HOME"/ext
 TST="$BLSS_HOME"/tst
+CFG="$BLSS_HOME"/cfg
 
 . "$BIN"/blss-commons
 
@@ -56,7 +57,7 @@ SYNOPSIS
 DESCRIPTION
   BLSS stands for Bootstrap Linux Server System, it can be used to Bootstraps a Linux Server system with a reduced size and small memory footprint requirements for servicing purposes. It uses Debian debootstrap script to automatically install the system from a repository or closer mirror without any user interaction to a target directory called PROTO_ROOT. To save disk space, additional cleanup is performed once the system has been installed. When the installation is finished, the prototype an be cloned and later used to create a virtual appliance.
 
-  PROTO_ROOT command line/conf file options is mandatory and shall be an existing empty directory.
+x  PROTO_ROOT command line/conf file options is mandatory and shall be an existing empty directory.
 
 NOTES
   i) The script performs several sudo <command> executions, you can append, AT YOUR OWN RISK, entries to the host '/etc/sudoers' archive and avoid repeatedly password typing during execution. It can be also useful when the script is executed with a daemon/service account. Example content appended to host '/etc/sudoers':
@@ -120,88 +121,54 @@ GENERAL OPTIONS
 NETWORKING OPTIONS
   Networking is mandatory for servicing, therefore there are serveral possible options combinations for networking configuration. See the list below:   
 
----------------------------------------------------------------------------
- command line                                           |NC|AA|DS|SS|BC|GW|
----------------------------------------------------------------------------
- --dhcp yes                                             |y |y |? |? |? |? | 
----------------------------------------------------------------------------
- --dhcp yes (named)                                     |y |y |y |? |? |? |
----------------------------------------------------------------------------
- --dhcp yes (named) (suffixed)                          |y |y |y |y |? |? |
----------------------------------------------------------------------------
- --dhcp no (fixed)                                      |y |n |n |n |n |n |
----------------------------------------------------------------------------
- --dhcp no (fixed) (named)                              |y |n |y |n |n |n |
----------------------------------------------------------------------------
- --dhcp no (fixed) (named) (suffixed)                   |y |n |y |y |n |n |
----------------------------------------------------------------------------
- --dhcp no (fixed) (casted)                             |y |n |n |n |y |n |
----------------------------------------------------------------------------
- --dhcp no (fixed) (routed)                             |y |n |n |n |n |y |
----------------------------------------------------------------------------
- --dhcp no (fixed) (casted) (routed)                    |y |n |n |n |y |y |
----------------------------------------------------------------------------
- --dhcp no (fixed) (named) (casted)                     |y |n |y |n |y |n |
----------------------------------------------------------------------------
- --dhcp no (fixed) (named) (routed)                     |y |n |y |n |n |y |
----------------------------------------------------------------------------
- --dhcp no (fixed) (named) (casted) (routed)            |y |n |y |n |y |y |
----------------------------------------------------------------------------
- --dhcp no (fixed) (named) (suffixed) (casted)          |y |n |y |y |y |n |
----------------------------------------------------------------------------
- --dhcp no (fixed) (named) (suffixed) (routed)          |y |n |y |y |y |n |
----------------------------------------------------------------------------
- --dhcp no (fixed) (named) (suffixed) (casted) (routed) |y |n |y |y |y |y |
----------------------------------------------------------------------------
+-------------------------------------------------------------------------------
+ command line                                               |NC|AA|DS|SS|BC|GW|
+-------------------------------------------------------------------------------
+ --net-dhcp yes                                             |y |y |? |? |? |? | 
+-------------------------------------------------------------------------------
+ --net-dhcp yes (named)                                     |y |y |y |? |? |? |
+-------------------------------------------------------------------------------
+ --net-dhcp yes (named) (suffixed)                          |y |y |y |y |? |? |
+-------------------------------------------------------------------------------
+ --net-dhcp no (fixed)                                      |y |n |n |n |n |n |
+-------------------------------------------------------------------------------
+ --net-dhcp no (fixed) (named)                              |y |n |y |n |n |n |
+-------------------------------------------------------------------------------
+ --net-dhcp no (fixed) (named) (suffixed)                   |y |n |y |y |n |n |
+-------------------------------------------------------------------------------
+ --net-dhcp no (fixed) (casted)                             |y |n |n |n |y |n |
+-------------------------------------------------------------------------------
+ --net-dhcp no (fixed) (routed)                             |y |n |n |n |n |y |
+-------------------------------------------------------------------------------
+ --net-dhcp no (fixed) (casted) (routed)                    |y |n |n |n |y |y |
+-------------------------------------------------------------------------------
+ --net-dhcp no (fixed) (named) (casted)                     |y |n |y |n |y |n |
+-------------------------------------------------------------------------------
+ --net-dhcp no (fixed) (named) (routed)                     |y |n |y |n |n |y |
+-------------------------------------------------------------------------------
+ --net-dhcp no (fixed) (named) (casted) (routed)            |y |n |y |n |y |y |
+-------------------------------------------------------------------------------
+ --net-dhcp no (fixed) (named) (suffixed) (casted)          |y |n |y |y |y |n |
+-------------------------------------------------------------------------------
+ --net-dhcp no (fixed) (named) (suffixed) (routed)          |y |n |y |y |y |n |
+-------------------------------------------------------------------------------
+ --net-dhcp no (fixed) (named) (suffixed) (casted) (routed) |y |n |y |y |y |y |
+-------------------------------------------------------------------------------
 
-  fixed:--address 192.168.1.1 --network 192.168.0.0 --netmask 255.255.0.0, named:--nameservers 192.168.0.2, suffixed:--search home.dev, routed:--gateway 192.168.0.1, casted:--broadcast 192.168.255.255
+  fixed:--net-address 192.168.1.1 --net-network 192.168.0.0 --net-netmask 255.255.0.0, named:--net-nameservers 192.168.0.2, suffixed:--net-search home.dev, routed:--net-gateway 192.168.0.1, casted:--net-broadcast 192.168.255.255
 
   NC:network configured, AA:configured for automatic address assigning via DHCP, DS:DNS server configured for queriying domain names, SS:configured for suffixing names in domain name queries, BC: broadcasting configured, GW: gateway configured
 
   y:yes, n:no, x:does not matter, ?:depends on the settings of the DHCP server available in the network
-  
-  --hostname HOSTNAME
-    The proto hostname. Defaults to DISTRO-SUITE-ARCHITECTURE. The hostname can be changed later.     
 
-  --dhcp yes|no
-    Configure the network with automatic DHCP settings. If the argument is 'yes', then  --address, --network, --netmask, --broadcast and --gateway options are excluded. But can be optinally used among the --search and --nameservers options. An argument equal to 'no' results in no installation of package 'dhcp3-client'. Defaults to ${DEF_DHCP}.
-
-  --address IPADDRESS
-    Static IP address. This option shall be specified among --network and --netmask options, this option excludes --dhcp option. But can be optinally used among the --search and/or --nameservers options. Defaults no static IP address assigning.     
-
-  --network NETWORK
-    Static network address. This option shall be specified among --address and --netmask options, this option excludes --dhcp option. But can be optinally used among the --search and/or --nameservers options. Defaults to no static network address assigning.     
-
-  --netmask NETMASK
-    Static network mask. This option shall be specified among --address and --network options, this option excludes --dhcp option. But can be optinally used among the --search and/or --nameservers options. Defaults to no static netmask assigning.     
-
-  --broadcast BROADCAST
-    Static broadcast address. This option excludes --dhcp option and if specified then the options --address, --network and --netmask shall be present too. Defaults to no broadcasting.     
-
-  --gateway GATEWAY
-    Static gateway IP address. This option excludes --dhcp option and if specified then the options --address, --network and --netmask shall be present too. Defaults to no gateway.
-
-  --search SEARCH
-    Optional DNS search suffix. If specified then either --dhcp option or the group of options --address, --network and --netmask shall be present too. Defaults to no DNS search suffix.  
-
-  --nameservers NAMESERVERS
-    Optional comma separated list of DNS server IP addresses. If specified then either --dhcp option or the group of options --address, --network and --netmask shall be present too. Defaults to no nameservers.
-
-  --ntpservers NTPSERVERS
-    Optional space separated list of NTP server IP addresses or host names. Defaults to no ntpservers.
-
-  --ip6 yes|no
-    Support for IPv6 protocol. Defaults to ${DEF_IP6}.
+EOF
+  net_usage
+cat << EOF
 
 ADMIN USER OPTIONS
-  --admin-user ADMIN_USER
-    The account ADMIN_USER is created and added to group admin. ADMIN_USER defaults to guest distribution id in lowercase (See 'lsb_release' command). ADMIN_USER can execute a command as the superuser via sudo. See '/etc/sudoers'.
-
-  --admin-full-name ADMIN_FULL_NAME
-    The adim user full name. ADMIN_FULL_NAME defaults to guest distribution id in lowercase. See 'lsb_release' command.
-
-  --admin-password ADMIN_PASSWORD
-    The admin user password. ADMIN_PASSWORD defaults to guest distribution id in lowercase. See 'lsb_release' command.
+EOF
+  admin_usage
+cat << EOF
 
 ROOT OPTIONS
   By disabling both root remote login (trougth SSH, SCP and SFTP) and direct login you can avoid brute force attacks. But, if you really need root remote/direct login, then password prompt is another security issue to take into account. This command provides four possible combinations for root remote/direct login with/without password:
@@ -211,11 +178,11 @@ ROOT OPTIONS
 ----------------------------------------------------
  (nothing)                             |no |no |X  |
 ----------------------------------------------------
- --root-password xyz --remote-root no  |no |yes|yes|
+ --root-password xyz --root-remote no  |no |yes|yes|
 ----------------------------------------------------
- --root-password -   --remote-root no  |no |yes|no |
+ --root-password -   --root-remote no  |no |yes|no |
 ----------------------------------------------------
- --root-password xyz --remote-root yes |yes|yes|yes|
+ --root-password xyz --root-remote yes |yes|yes|yes|
 ----------------------------------------------------
 
   or the equivalent in a conf file:
@@ -226,27 +193,27 @@ ROOT OPTIONS
  (nothing)         |no |no |x  |
 --------------------------------
  root_password=xyz |no |yes|yes|
- remote_root=no    |   |   |   |
+ root_remote=no    |   |   |   |
 --------------------------------
  root_password=-   |no |yes|no |
- remote_root=no    |   |   |   |
+ root_remote=no    |   |   |   |
 --------------------------------
  root_password=xyz |yes|yes|yes|
- remote_root=yes   |   |   |   |
+ root_remote=yes   |   |   |   |
 --------------------------------
 
   RL:remote login, DL:direct login, PP:password prompt, x:does not matter, -: an special value to indicate no password prompt
 
     Note that remote login wihtout password prompt is not permitted. It is recommended to use the root default options (both remote and direct login disabled) and setup another user that will have root capabilities to perform admin tasks. See ADMIN USER OPTIONS.
 
-  --root-password [ROOT_PASSWORD]
-    Setup the root password. When a valid value is specified then the password is prompted on login and the --remote-root option can be should be equal to 'yes' or 'no'. When the special value '-' is specified then the password is never prompted on login, therefore the --remote-root option shall be equal to 'no'. 
-      
-  --remote-root yes|no
-    Setup the remote login for root. If the value of this option is 'yes' then --root-password shall be a valid password. 
+EOF
+  root_usage
+cat << EOF
 
 MODULES OPTIONS
-$(mods_usage)
+EOF
+  mods_usage
+cat << EOF
 
     More about modules at: https://bitbucket.org/eduardo_lago_aguilar/blss/wiki/Modules
 
@@ -254,15 +221,15 @@ EXAMPLES
 
   1- An Ubuntu Maverick proto with amd64 architecture, locale English US, timezone in New York and DHCP network configuration:
  
-    \$ lxp --suite maverick --architecture amd64 --locale "en_US.UTF-8 UTF-8" --timezone America/New_York --hostname ny-server --dhcp yes /tmp/ny-server-proto
+    \$ lxp --suite maverick --architecture amd64 --locale "en_US.UTF-8 UTF-8" --timezone America/New_York --net-hostname ny-server --net-dhcp yes /tmp/ny-server-proto
 
   2- An Ubuntu Maverick proto with amd64 architecture, locale Netherlands, timezone in Amsterdam and static network configuration
  
-    \$ lxp --suite maverick --architecture amd64 --locale "nl_NL.UTF-8 UTF-8" --timezone Europe/Amsterdam --hostname nl-server --dhcp no --address 192.168.0.111 --network 192.168.0.0 --netmask 255.255.0.0 --broadcast 192.168.255.255 --gateway 192.168.0.1  /tmp/nl-server-proto
+    \$ lxp --suite maverick --architecture amd64 --locale "nl_NL.UTF-8 UTF-8" --timezone Europe/Amsterdam --net-hostname nl-server --net-dhcp no --net-address 192.168.0.111 --net-network 192.168.0.0 --net-netmask 255.255.0.0 --net-broadcast 192.168.255.255 --net-gateway 192.168.0.1  /tmp/nl-server-proto
 
   3- A Debian Lenny proto with host architecture, host locale, host timezone, DHCP network configuration and specific user settings:
  
-    \$ lxp --suite lenny --dhcp yes --admin-user adm --admin-full-name Administrator --admin-password adm  /tmp/debian-server-proto
+    \$ lxp --suite lenny --net-dhcp yes --admin-user adm --admin-full-name Administrator --admin-password adm  /tmp/debian-server-proto
 
   More examples of usage on the wiki: https://bitbucket.org/eduardo_lago_aguilar/blss/wiki/Home
 
@@ -293,22 +260,22 @@ locale:,\
 timezone:,\
 first-boot-script:,\
 packages:,\
-hostname:,\
-dhcp:,\
-address:,\
-network:,\
-netmask:,\
-broadcast:,\
-gateway:,\
-search:,\
-nameservers:,\
-ntpservers:,\
-ip6:,\
+net-hostname:,\
+net-dhcp:,\
+net-address:,\
+net-network:,\
+net-netmask:,\
+net-broadcast:,\
+net-gateway:,\
+net-search:,\
+net-nameservers:,\
+net-ntpservers:,\
+net-ip6:,\
 admin-user:,\
 admin-full-name:,\
 admin-password:,\
 root-password:,\
-remote-root:,\
+root-remote:,\
 mod-floppy:,\
 mod-tape:,\
 mod-cdrom:,\
@@ -352,28 +319,21 @@ unset \
   c_timezone \
   c_first_boot_script \
   c_packages \
-  c_hostname \
-  c_dhcp \
-  c_address \
-  c_network \
-  c_netmask \
-  c_broadcast \
-  c_gateway \
-  c_search \
-  c_nameservers \
-  c_ntpservers \
-  c_ip6 \
-  c_admin_user \
-  c_admin_full_name \
-  c_admin_password \
-  c_root_password \
-  c_remote_root \
+  c_admins \
+  c_roots \
+  c_nets \
   c_mods \
   c_proto_root
 
-declare -A c_mods 
-declare -A c_os 
+declare -A \
+	c_admins \
+	c_nets \
+	c_mods \
+	c_roots \
+	c_os 
+
 root_defaults_flag=1
+
 while true; do
   # flags an option if appears in the command line, options can be specified 
   # only once
@@ -406,62 +366,23 @@ while true; do
   --packages)
       c_packages=${2:?$(err_non_empty $1)} ; 
       shift 2 ;;
-  --hostname)
-      c_hostname=${2:?$(err_non_empty $1)} ;
-      shift 2 ;;
-  --dhcp)
-      c_dhcp=${2:?$(err_non_empty $1)} ;
-      shift 2 ;;
-  --address)
-      c_address=${2:?$(err_non_empty $1)} ;
-      shift 2 ;;
-  --network)
-      c_network=${2:?$(err_non_empty $1)} ;
-      shift 2 ;;
-  --netmask)
-      c_netmask=${2:?$(err_non_empty $1)} ;
-      shift 2 ;;
-  --broadcast)
-      c_broadcast=${2:?$(err_non_empty $1)} ;
-      shift 2 ;;
-  --gateway)
-      c_gateway=${2:?$(err_non_empty $1)} ;
-      shift 2 ;;
-  --search)
-      c_search=${2:?$(err_non_empty $1)} ;
-      shift 2 ;;
-  --nameservers)
-      c_nameservers=${2:?$(err_non_empty $1)} ;
-      shift 2 ;;
-  --ntpservers)
-      c_ntpservers=${2:?$(err_non_empty $1)} ;
-      shift 2 ;;
-  --ip6)
-      c_ip6=${2:?$(err_non_empty $1)} ;
-      shift 2 ;;
-  --admin-user)
-      c_admin_user=${2:?$(err_non_empty $1)} ;
-      shift 2 ;;
-  --admin-full-name)
-      c_admin_full_name=${2:?$(err_non_empty $1)} ;
-      shift 2 ;;
-  --admin-password)
-      c_admin_password=${2:?$(err_non_empty $1)} ;
-      shift 2 ;;
-  --root-password)
-      c_root_password=${2:?$(err_non_empty $1)} ; 
-      shift 2 ; # In quoted mode an empty parameter will be generated if its optional argument is not found.
-      unset root_defaults_flag ;;
-  --remote-root)
-      c_remote_root=${2:?$(err_non_empty $1)} ;
-      shift 2 ;
-      unset root_defaults_flag ;;
   --) 
     shift ; 
     break ;;
   *) 
-    if [ -n "${MODS_CONF_OPTS[$1]}" ] ; then
+    if [[ ${PROTO_NET_CMDLN_OPTS} =~ (\ |^)$1(\ |$) ]] ; then
+      # networking options
+      c_nets[$1]=${2:?$(err_non_empty $1)}
+    elif [[ ${PROTO_ADMIN_CMDLN_OPTS} =~ (\ |^)$1(\ |$) ]] ; then
+      # admin user options
+      c_admins[$1]=${2:?$(err_non_empty $1)}
+    elif [[ ${PROTO_MODS_CMDLN_OPTS} =~ (\ |^)$1(\ |$) ]] ; then
+      # kernel modules options
       c_mods[$1]=${2:?$(err_non_empty $1)}
+    elif [[ ${PROTO_ROOT_CMDLN_OPTS} =~ (\ |^)$1(\ |$) ]] ; then
+      # root options
+      c_roots[$1]=${2:?$(err_non_empty $1)} ;
+			unset root_defaults_flag ;
     else
       err "Error parsing arguments" && usage >&2 && exit 1
     fi
@@ -487,26 +408,15 @@ unset \
   timezone \
   first_boot_script \
   packages \
-  hostname \
-  dhcp \
-  address \
-  network \
-  netmask \
-  broadcast \
-  gateway \
-  search \
-  nameservers \
-  ntpservers \
-  ip6 \
   admin_user \
   admin_full_name \
   admin_password \
   root_password \
-  remote_root \
+  root_remote \
   proto_root 
 
-for cf_opt in ${MODS_CONF_OPTS[*]} ; do 
-  eval "unset $cf_opt" 
+for opt in ${PROTO_NET_CMDLN_OPTS} ${PROTO_MODS_CMDLN_OPTS}; do 
+  eval "unset "$(cl2cf $opt) 
 done
 
 # import general env opts
@@ -516,7 +426,7 @@ imp_conf "$ev"/lxp.conf
 # the option is missing use the host value, finally verify if the value is 
 # supported.
 st=${c_suite:-$suite}
-st=${st:-$(lsb_release -cs)}
+st=${st:-$DEF_SUITE}
 st=${SUPPORTED_SUITES[$st]}
 st=${st:?$(err_non_sup --suite)}
 
@@ -559,9 +469,13 @@ fi
 #     plang_ctry = "en_US"
 #     pbaselang = "en"
 lcl=${c_locale:-$locale}
-proc_lcl
+lcl=${lcl:-$DEF_LOCALE}
+match_lcl "$lcl" || ( err_non_sup --locale >&2 && exit 1 )
+plang=${lcl/ */}
+plang_ctry=${plang/.*}
+pbaselang=${plang_ctry/_*/}
 
-# locale: command line may override the value imported from the environment, if 
+# timezone: command line may override the value imported from the environment, if 
 # the option is missing use the host value, finally verify if the value is 
 # supported.
 tzon=${c_timezone:-$timezone}
@@ -580,93 +494,111 @@ fi
 pkgs=${c_packages:-$packages}
 pkgs=${pkgs:-${DEF_PACKAGES_PROTOTYPE}}
 
-# hostname: command line may override the value imported from the environment, 
-# if the option is missing use the default value based on distro, suite and 
-# architecture
-hn=${c_hostname:-$hostname}
-hn=${hn:-${dtr}"-"${st}"-"${arch}}
+## process networking command line and configuration file options
+declare -A nets
+for opt in $PROTO_NET_CMDLN_OPTS ; do 
 
-# dhcp, address, network, netmask, broadcast, gateway, search, nameservers and 
-# ntpservers cmd line may override the values imported from the environment, 
-# finally verify the invalid networking combinations. dhcp defaults to 'yes' if 
-# no specified
-dyn=${c_dhcp:-$dhcp}
-if [ -n "$dyn" ] ; then 
-  dyn=${dyn,,} ;
-  match_yesno $dyn || ( err_non_sup --dhcp >&2 && exit 1 );
-else
-  dyn=$DEF_DHCP
+  # take command line and configuration file values
+  val=${c_nets[$opt]}
+  eval "cf_val=$"$(cl2cf $opt)
+
+  # command line may override the value imported from the environment (conf file)
+  val=${val:-$cf_val}
+    
+  if [ -z "$val" ] && [ -n "${PROTO_NET_CMDLN_OPTS_DEF[$opt]}" ] ; then 
+    # if no value was supplied via cmd line / conf file and a default value was defined, use it
+    val=${PROTO_NET_CMDLN_OPTS_DEF[$opt]}
+  fi
+
+  # fill nets array and corresponding variable with the value
+  nets[$opt]=$val
+  eval $(cl2var $opt --net-)"=\""${val}"\""
+done
+
+# hostname: if the option is missing use the default value based on distro, 
+# suite and architecture
+hostname=${hostname:-${dtr}"-"${st}"-"${arch}}
+
+# dhcp: verify supported values 
+dhcp=${dhcp,,}
+if [ -n "$dhcp" ] ; then 
+  match_yesno $dhcp || ( err_non_sup --net-dhcp >&2 && exit 1 )
 fi
-ip=${c_address:-$address}
-nw=${c_network:-$network}
-msk=${c_netmask:-$netmask}
-bcst=${c_broadcast:-$broadcast}
-gw=${c_gateway:-$gateway}
-srch=${c_search:-$search}
-dns=${c_nameservers:-$nameservers}
-ntp=${c_ntpservers:-$ntpservers}
 
-# ip6: command line may override the value imported from the environment, 
-# if the option is missing use the default value 
-ip6=${c_ip6:-$ip6}
+# dhcp: verify supported values 
+ip6=${ip6,,}
 if [ -n "$ip6" ] ; then 
-  ip6=${ip6,,} ;
-  match_yesno $ip6 || ( err_non_sup --ip6 >&2 && exit 1 );
-else
-  ip6=$DEF_IP6
+  match_yesno $ip6 || ( err_non_sup --net-ip6 >&2 && exit 1 )
 fi
 
-if [ $dyn == "yes" ] ; then
+# finally verify the invalid networking combinations. 
+if [ $dhcp == "yes" ] ; then
   ( \
-     [ -n "$ip" ] \
-  || [ -n "$nw" ] \
-  || [ -n "$msk" ] \
-  || [ -n "$bcst" ] \
-  || [ -n "$gw" ] \
-  ) && err "--dhcp/dhcp=yes command line/conf file option excludes --address/address, --network/network, --netmask/netmask, --broadcast/broadcast and --gateway/gateway command line/conf file options" >&2 && exit 1 || true
+     [ -n "$address" ] \
+  || [ -n "$network" ] \
+  || [ -n "$netmask" ] \
+  || [ -n "$broadcast" ] \
+  || [ -n "$gateway" ] \
+  ) && err "--net-dhcp/net_dhcp=yes command line/conf file option excludes --net-address/net_address, --net-network/net_network, --net-netmask/net_netmask, --net-broadcast/net_broadcast and --net-gateway/net_gateway command line/conf file options" >&2 && exit 1 || true
 else
   ( \
-     [ -z "$ip" ] \
-  || [ -z "$nw" ] \
-  || [ -z "$msk" ] \
-  ) && err "--dhcp/dhcp=no command line/conf file option shall be specified among --address/address, --network/network and --netmask/netmask command line/conf file options" >&2 && exit 1 || true ;
-  match_ip $ip || ( err_non_sup --address >&2 && exit 1 ) ;
-  match_ip $nw || ( err_non_sup --network >&2 && exit 1 ) ;
-  match_ip $msk || ( err_non_sup --netmask >&2 && exit 1 ) ;
+     [ -z "$address" ] \
+  || [ -z "$network" ] \
+  || [ -z "$netmask" ] \
+  ) && err "--net-dhcp/net_dhcp=no command line/conf file option shall be specified among --net-address/net_address, --net-network/net_network and --net-netmask/net_netmask command line/conf file options" >&2 && exit 1 || true ;
+  match_ip $address || ( err_non_sup --net-address >&2 && exit 1 ) ;
+  match_ip $network || ( err_non_sup --net-network >&2 && exit 1 ) ;
+  match_ip $netmask || ( err_non_sup --net-netmask >&2 && exit 1 ) ;
 fi
-[ -n "$bcst" ] && ! match_ip $bcst && err_non_sup --broadcast >&2 && exit 1 || true
-[ -n "$gw" ] && ! match_ip $gw && err_non_sup --gateway >&2 && exit 1 || true
-[ -n "$dns" ] && ! match_ip_lst $dns && err_non_sup --nameservers >&2 && exit 1 || true
+[ -n "$broadcast" ] && ! match_ip $broadcast && err_non_sup --net-broadcast >&2 && exit 1 || true
+[ -n "$gateway" ] && ! match_ip $gateway && err_non_sup --net-gateway >&2 && exit 1 || true
+[ -n "$nameservers" ] && ! match_ip_lst $nameservers && err_non_sup --net-nameservers >&2 && exit 1 || true
 
 # admin_user, admin_full_name & admin_password: command line may override the 
 # values imported from the environment, if the options are missing use the 
-# default value based on the distro
-admusr=${c_admin_user:-$admin_user}
-admusr=${admusr:-$dtr}
-admname=${c_admin_full_name:-$admin_full_name}
-admname=${admname:-${dtr^}}
-admpwd=${c_admin_password:-$admin_password}
-admpwd=${admpwd:-$dtr}
+# default values
+declare -A admins
+for opt in $PROTO_ADMIN_CMDLN_OPTS ; do 
 
-# root_password / remote_root: command line may override the values imported 
+  # take command line and configuration file values
+  val=${c_admins[$opt]}
+  eval "cf_val=$"$(cl2cf $opt)
+
+  # command line may override the value imported from the environment (conf file)
+  val=${val:-$cf_val}
+    
+  if [ -z "$val" ] && [ -n "${PROTO_ADMIN_CMDLN_OPTS_DEF[$opt]}" ] ; then 
+    # if no value was supplied via cmd line / conf file and a default value was defined, use it
+    val=${PROTO_ADMIN_CMDLN_OPTS_DEF[$opt]}
+  fi
+
+  # fill nets array and corresponding variable with the value
+  admins[$opt]=$val
+  eval $(cl2var $opt --admin-)"=\""${val}"\""
+done
+
+# root_password / root_remote: command line may override the values imported 
 # from the environment, finally verify the invalid root combinations
-( [ -n "$root_password" ] || [ -n "$remote_root" ] ) && unset root_defaults_flag || true
+declare -A roots
+( [ -n "$root_password" ] || [ -n "$root_remote" ] ) && unset root_defaults_flag || true
 
 if ! (( root_defaults_flag == 1 )) ; then
   
-  rootpwd=${c_root_password:-$root_password}      
+  rootpwd=${c_roots["--root-password"]:-$root_password}
   [ -z "$rootpwd" ] && err "--root-password/root_password command line/conf file option is missing" >&2 && exit 1 || true 
 
-  remroot=${c_remote_root:-$remote_root}
-  [ -z "$remroot" ] && err "--remote-root/remote_root command line/conf file option is missing" >&2 && exit 1 || true 
+  rootrem=${c_roots["--root-remote"]:-$root_remote}
+  [ -z "$rootrem" ] && err "--root-remote/root_remote command line/conf file option is missing" >&2 && exit 1 || true 
 
-  if [ -n "$remroot" ] ; then 
-    remroot=${remroot,,} ;
-    [ "$remroot" != "yes" ] && [ "$remroot" != "no" ] && err_non_sup --remote-root >&2 && exit 1 || true ;
+  if [ -n "$rootrem" ] ; then 
+    rootrem=${rootrem,,} ;
+    ! match_yesno "$rootrem" && err_non_sup --root-remote >&2 && exit 1 || true ;
   fi  
 
-  [ $remroot == "yes" ] && [ $rootpwd = "-" ] && err "--remote-root/remote_root=yes command line/conf file option shall be used with non-empty --root-password/root_password different to the special argument '-'" >&2 && exit 1 || true
+  [ $rootrem == "yes" ] && [ $rootpwd = "-" ] && err "--root-remote/root_remote=yes command line/conf file option shall be used with non-empty --root-password/root_password different to the special argument '-'" >&2 && exit 1 || true
 fi
+roots["--root-password"]=$rootpwd
+roots["--root-remote"]=$rootrem
 
 # proto_root: command line may override the values imported from the 
 # environment, finally whether the directory exists or not
@@ -679,21 +611,26 @@ proot=${c_proto_root:-$proto_root}
 # mods: command line may override the value imported from the environment, 
 # if the option is missing use the default value 
 declare -A mods
-for cl_opt in ${!MODS_CONF_OPTS[*]} ; do 
-  cf_opt=${MODS_CONF_OPTS[$cl_opt]}
-  
-  val_cl_opt=${c_mods[$cl_opt]}
-  eval "val_cf_opt=$"${cf_opt}
+for opt in ${PROTO_MODS_CMDLN_OPTS} ; do 
 
-  val_opt=${val_cl_opt:-$val_cf_opt}
-  if [ -n "$val_opt" ] ; then 
-    val_opt=${val_opt,,} ;
-    match_yesno $val_opt || ( err_non_sup $cl_opt >&2 && exit 1 );
+  # take command line and configuration file values
+  val=${c_mods[$opt]}
+  eval "cf_val=$"$(cl2cf $opt)
+
+  # command line may override the value imported from the environment (conf file)
+  val=${val:-$cf_val}
+  val=${val,,}
+
+  if [ -n "$val" ] ; then
+    # verify supported values 
+    match_yesno $val || ( err_non_sup $opt >&2 && exit 1 )
   else
-    val_opt=${DEF_MODS[$cl_opt]}
+    # if no value was supplied via cmd line / conf file take default value
+    val=${PROTO_MODS_CMDLN_OPTS_DEFS[$opt]}
   fi
 
-  mods[$cl_opt]=$val_opt 
+  # fill mods array with the value
+  mods[$opt]=$val 
 done
 
 # define working root
@@ -711,25 +648,25 @@ inf "langcountry = '$plang_ctry'"
 inf "baselang = '$pbaselang'"
 inf "timezone = '$tzon'"
 inf "packages = '$pkgs'"
-inf "hostname = '$hn'"
-inf "dhcp = '$dyn'"
-inf "address = '$ip'"
-inf "network = '$nw'"
-inf "netmask = '$msk'"
-inf "broadcast = '$bcst'"
-inf "gateway = '$gw'"
-inf "search = '$srch'"
-inf "nameservers = '$dns'"
-inf "ntpservers = '$ntp'"
-inf "ip6 = '$ip6'"
-inf "admin_user = '$admusr'"
-inf "admin_full_name = '$admname'"
-inf "admin_password = '*****'"
-inf "root_password = '******'"
-inf "remote_root = '$remroot'"
-for cl_opt in ${!MODS_CONF_OPTS[*]} ; do 
-  cf_opt=${MODS_CONF_OPTS[$cl_opt]}
-  inf "$cf_opt = '"${mods[$cl_opt]}"'"
+
+inf "NETWORKING OPTIONS"
+for opt in $PROTO_NET_CMDLN_OPTS ; do 
+  echo $(cl2var $opt --net-)"='"${nets[$opt]}"'"
+done
+
+inf "ADMIN USER OPTIONS"
+for opt in $PROTO_ADMIN_CMDLN_OPTS ; do 
+  echo $(cl2var $opt --admin-)"='"${admins[$opt]}"'"
+done
+
+inf "ROOT OPTIONS"
+for opt in $PROTO_ROOT_CMDLN_OPTS ; do 
+  echo $(cl2var $opt --root-)"='"${roots[$opt]}"'"
+done
+
+inf "KERNEL MODULES OPTIONS"
+for opt in $PROTO_MODS_CMDLN_OPTS ; do 
+  echo $(cl2var $opt --mod-)"='"${mods[$opt]}"'"
 done
 inf "proto_root = '$proot'"
     
@@ -870,9 +807,8 @@ extra_pkgs="gpgv gnupg localepurge "
 #   networking.
 useful_pkgs="netbase sudo openssh-server ngetty resolvconf chkconfig"
 
-# If --dhcp/dhcp command line/conf file option was specified then also include 
-# dhcp3-client package on the list 
-[ $dyn == "yes" ] && useful_pkgs="dhcp3-client ${useful_pkgs}" || true
+# If --net-dhcp/net_dhcp='yes' then include dhcp3-client package on the list 
+[ $dhcp == "yes" ] && useful_pkgs="dhcp3-client ${useful_pkgs}" || true
 
 # ifupdown: High level tools to configure network interfaces. Provides the tools
 #   ifup and ifdown which may be used to configure and deconfigure network
@@ -881,7 +817,7 @@ useful_pkgs="netbase sudo openssh-server ngetty resolvconf chkconfig"
 [ $dtr == "debian" ] && useful_pkgs="ifupdown adduser ${useful_pkgs}" || true
 
 # NTP related packages
-[ -n $ntp ] && useful_pkgs="ntpdate ${useful_pkgs}" || true
+[ -n $ntpservers ] && useful_pkgs="ntpdate ${useful_pkgs}" || true
  
 apt_get_download $purge_pkgs $extra_pkgs ${EXTRA_PKGS_DISTROS[$dtr]} ${EXTRA_PKGS_SUITES[$st]} $useful_pkgs    
 
@@ -1176,8 +1112,8 @@ set_hostname
 set_networking
 
 # NTP servers configuration
-if [ -n "$ntp" ] ; then 
-  chr sed -ie "s/^NTPSERVERS=.*/NTPSERVERS=\"${ntp}\"/" /etc/default/ntpdate
+if [ -n "$ntpservers" ] ; then 
+  chr sed -ie "s/^NTPSERVERS=.*/NTPSERVERS=\"${ntpservers}\"/" /etc/default/ntpdate
 fi
 
 step "Remove unnecessary packages and cleanup cache"
@@ -1258,11 +1194,11 @@ EOT
 # Also fix permissions on user home folder
 inf "Creating the user, adding it to admin group and setting the password"
 chr << EOT
-adduser --disabled-password --ingroup admin --gecos $admname $admusr
-chown $admusr:admin /home/$admusr
+adduser --disabled-password --ingroup admin --gecos $admname $user
+chown $user:admin /home/$user
 EOT
 chr su -c chpasswd << EOT
-$admusr:$admpwd
+$user:$password
 EOT
 
 # Setup permissions and group so only members of admin group (wheel for others)
@@ -1284,7 +1220,7 @@ if (( root_defaults_flag == 1 )) ; then
   disable_root_direct
 else
   # No defaults
-  if [ $remroot == "yes" ] ; then
+  if [ $rootrem == "yes" ] ; then
     # Remote login implies password prompt
     enable_root_passwd
   else

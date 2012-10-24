@@ -50,18 +50,12 @@ plan_tests 47
 
 ### Test Case: Tests for DEPLOYMENT_ROOT command line option
 
-$BIN/lxd &>/dev/null
-not_ok $? "Verify if command line option 'DEPLOYMENT_ROOT' missing fails"
-$BIN/lxd 2>&1 | {
+not_ok_ "Verify if command line option 'DEPLOYMENT_ROOT' missing fails" $BIN/lxd | \
   ln_like "DEPLOYMENT_ROOT' requires an non-empty argument"
-}
 
 DR=$(mktemp -d) && touch $DR/xfile
-$BIN/lxd $DR &>/dev/null
-not_ok $? "Verify if command line option 'DEPLOYMENT_ROOT=(non-empty directory)' fails"
-$BIN/lxd $DR 2>&1 | {
+not_ok_ "Verify if command line option 'DEPLOYMENT_ROOT=(non-empty directory)' fails" $BIN/lxd $DR | \
   lst_ln_is ">>> ERROR: DEPLOYMENT_ROOT command line option shall be an existing empty directory or a non-existing directory >>>"
-}
 rm -rf $DR
 unset DR
 
@@ -71,19 +65,13 @@ unset DR
 DR=$(mktemp -d)
 
 export BLSS_ENV=$(mktemp -d) && rmdir "$BLSS_ENV"
-$BIN/lxd $DR &>/dev/null
-not_ok $? "Verify if BLSS_ENV=(non-existing directory) fails"
-$BIN/lxd $DR 2>&1 | {
+not_ok_ "Verify if BLSS_ENV=(non-existing directory) fails" $BIN/lxd $DR | \
   ln_is ">>> ERROR: Environment '$BLSS_ENV' doesn't exists or isn't a readable directory >>>"
-}
 unset BLSS_ENV
 
 export BLSS_ENV=$(mktemp)
-$BIN/lxd $DR &>/dev/null
-not_ok $? "Verify if BLSS_ENV=(non-a-directory) fails"
-$BIN/lxd $DR 2>&1 | {
+not_ok_ "Verify if BLSS_ENV=(non-a-directory) fails" $BIN/lxd $DR | \
   ln_is ">>> ERROR: Environment '$BLSS_ENV' doesn't exists or isn't a readable directory >>>"
-}
 rm $BLSS_ENV
 unset BLSS_ENV
 
@@ -94,38 +82,23 @@ unset DR
 ### Test Case: Tests for clone-root command line option
 export BLSS_ENV=$(mktemp -d) && DR=$(mktemp -d)
 
-$BIN/lxd $DR &>/dev/null
-not_ok $? "Verify if command line option '--clone-root' is missing fails"
-$BIN/lxd $DR 2>&1 | {
+not_ok_ "Verify if command line option '--clone-root' is missing fails" $BIN/lxd $DR | \
   ln_like "clone-root' requires an non-empty argument"
-}
 
-$BIN/lxd $DR --clone-root &>/dev/null
-not_ok $? "Verify if command line option '--clone-root' without argument fails"
-$BIN/lxd $DR --clone-root 2>&1 | {
+not_ok_ "Verify if command line option '--clone-root' without argument fails" $BIN/lxd $DR --clone-root | \
   ln_like "--clone-root' requires an argument"
-}
 
-$BIN/lxd $DR --clone-root "" &>/dev/null
-not_ok $? "Verify if command line option '--clone-root' with an empty argument fails"
-$BIN/lxd $DR --clone-root "" 2>&1 | {
+not_ok_ "Verify if command line option '--clone-root' with an empty argument fails" $BIN/lxd $DR --clone-root "" | \
   ln_like ">>> ERROR: Command line option '--clone-root' requires an non-empty argument >>>"
-}
 
 CR=$(mktemp -d) && rmdir $CR
-$BIN/lxd $DR --clone-root $CR &>/dev/null
-not_ok $? "Verify if command line option '--clone-root=(non-existing directory)' fails"
-$BIN/lxd $DR --clone-root $CR 2>&1 | {
+not_ok_ "Verify if command line option '--clone-root=(non-existing directory)' fails" $BIN/lxd $DR --clone-root $CR | \
   lst_ln_is ">>> ERROR: --clone-root/clone_root command line/conf file option shall be an existing non-empty directory containing a clone system >>>"
-}
 unset CR
 
 CR=$(mktemp -d)
-$BIN/lxd $DR --clone-root $CR &>/dev/null
-not_ok $? "Verify if command line option '--clone-root=(empty directory)' fails"
-$BIN/lxd $DR --clone-root $CR 2>&1 | {
+not_ok_ "Verify if command line option '--clone-root=(empty directory)' fails" $BIN/lxd $DR --clone-root $CR | \
   lst_ln_is ">>> ERROR: --clone-root/clone_root command line/conf file option shall be an existing non-empty directory containing a clone system >>>"
-}
 rmdir $CR
 unset CR
 
@@ -136,28 +109,16 @@ unset BLSS_ENV DR
 ### Test Case: Tests for hypervisor command line option
 export BLSS_ENV=$(mktemp -d) && CR=$(mktemp -d) && touch $CR/xfile && DR=$(mktemp -d)
 
-$BIN/lxd $DR --clone-root $CR --hypervisor "kvm" --hypervisor "kvm" &>/dev/null
-not_ok $? "Verify if a repeated command line option --hypervisor fails"
-$BIN/lxd $DR --clone-root $CR --hypervisor "kvm" --hypervisor "kvm" 2>&1 | {
+not_ok_ "Verify if a repeated command line option --hypervisor fails" $BIN/lxd $DR --clone-root $CR --hypervisor "kvm" --hypervisor "kvm" | \
   ln_is ">>> ERROR: --hypervisor command line option was already specified >>>"
-}
-$BIN/lxd $DR --clone-root $CR --hypervisor &>/dev/null
-not_ok $? "Verify if command line option --hypervisor without argument fails"
-$BIN/lxd $DR --clone-root $CR --hypervisor 2>&1 | {
+not_ok_ "Verify if command line option --hypervisor without argument fails" $BIN/lxd $DR --clone-root $CR --hypervisor | \
   ln_like "--hypervisor' requires an argument"
-}
 
-$BIN/lxd $DR --clone-root $CR --hypervisor "" &>/dev/null
-not_ok $? "Verify if command line option --hypervisor with an empty argument fails"
-$BIN/lxd $DR --clone-root $CR --hypervisor "" 2>&1 | {
+not_ok_ "Verify if command line option --hypervisor with an empty argument fails" $BIN/lxd $DR --clone-root $CR --hypervisor "" | \
   ln_like ">>> ERROR: Command line option '--hypervisor' requires an non-empty argument >>>"
-}
 
-$BIN/lxd $DR --clone-root $CR --hypervisor "unknown" &>/dev/null
-not_ok $? "Verify if command line option --hypervisor with an unsupported argument fails"
-$BIN/lxd $DR --clone-root $CR --hypervisor "unknown" 2>&1 | {
+not_ok_ "Verify if command line option --hypervisor with an unsupported argument fails" $BIN/lxd $DR --clone-root $CR --hypervisor "unknown" | \
   lst_ln_like ">>> ERROR: Command line/conf file option --hypervisor/hypervisor requires a supported argument. See --help command line option for help >>>"
-}
 
 rm -r $BLSS_ENV $CR $DR
 unset BLSS_ENV CR DR
@@ -166,35 +127,20 @@ unset BLSS_ENV CR DR
 ### Test Case: Tests for cpu command line option
 export BLSS_ENV=$(mktemp -d) && CR=$(mktemp -d) && touch $CR/xfile && DR=$(mktemp -d)
 
-$BIN/lxd $DR --clone-root $CR --cpu 2 --cpu 4 &>/dev/null
-not_ok $? "Verify if a repeated command line option --cpu fails"
-$BIN/lxd $DR --clone-root $CR --cpu 2 --cpu 4 2>&1 | {
+not_ok_ "Verify if a repeated command line option --cpu fails" $BIN/lxd $DR --clone-root $CR --cpu 2 --cpu 4 | \
   ln_is ">>> ERROR: --cpu command line option was already specified >>>"
-}
 
-$BIN/lxd $DR --clone-root $CR --cpu &>/dev/null
-not_ok $? "Verify if command line option --cpu without argument fails"
-$BIN/lxd $DR --clone-root $CR --cpu 2>&1 | {
+not_ok_ "Verify if command line option --cpu without argument fails" $BIN/lxd $DR --clone-root $CR --cpu | \
   ln_like "--cpu' requires an argument"
-}
 
-$BIN/lxd $DR --clone-root $CR --cpu "" &>/dev/null
-not_ok $? "Verify if command line option --cpu with an empty argument fails"
-$BIN/lxd $DR --clone-root $CR --cpu "" 2>&1 | {
+not_ok_ "Verify if command line option --cpu with an empty argument fails" $BIN/lxd $DR --clone-root $CR --cpu "" | \
   ln_like ">>> ERROR: Command line option '--cpu' requires an non-empty argument >>>"
-}
 
-$BIN/lxd $DR --clone-root $CR --cpu NaN &>/dev/null
-not_ok $? "Verify if command line option --cpu with an unsupported argument fails"
-$BIN/lxd $DR --clone-root $CR --cpu NaN 2>&1 | {
+not_ok_ "Verify if command line option --cpu with an unsupported argument fails" $BIN/lxd $DR --clone-root $CR --cpu NaN | \
   lst_ln_like ">>> ERROR: Command line/conf file option --cpu/cpu requires a supported argument. See --help command line option for help >>>"
-}
 
-$BIN/lxd $DR --clone-root $CR --cpu 0 &>/dev/null
-not_ok $? "Verify if command line option --cpu=0 fails"
-$BIN/lxd $DR --clone-root $CR --cpu 0 2>&1 | {
+not_ok_ "Verify if command line option --cpu=0 fails" $BIN/lxd $DR --clone-root $CR --cpu 0 | \
   lst_ln_like ">>> ERROR: Command line/conf file option --cpu/cpu requires a supported argument. See --help command line option for help >>>"
-}
 
 rm -r $BLSS_ENV $CR $DR
 unset BLSS_ENV CR DR
@@ -203,35 +149,20 @@ unset BLSS_ENV CR DR
 ### Test Case: Tests for memory command line option
 export BLSS_ENV=$(mktemp -d) && CR=$(mktemp -d) && touch $CR/xfile && DR=$(mktemp -d)
 
-$BIN/lxd $DR --clone-root $CR --memory 128 --memory 256 &>/dev/null
-not_ok $? "Verify if a repeated command line option --memory fails"
-$BIN/lxd $DR --clone-root $CR --memory 128 --memory 256 2>&1 | {
+not_ok_ "Verify if a repeated command line option --memory fails" $BIN/lxd $DR --clone-root $CR --memory 128 --memory 256 | \
   ln_is ">>> ERROR: --memory command line option was already specified >>>"
-}
 
-$BIN/lxd $DR --clone-root $CR --memory &>/dev/null
-not_ok $? "Verify if command line option --memory without argument fails"
-$BIN/lxd $DR --clone-root $CR --memory 2>&1 | {
+not_ok_ "Verify if command line option --memory without argument fails" $BIN/lxd $DR --clone-root $CR --memory | \
   ln_like "--memory' requires an argument"
-}
 
-$BIN/lxd $DR --clone-root $CR --memory "" &>/dev/null
-not_ok $? "Verify if command line option --memory with an empty argument fails"
-$BIN/lxd $DR --clone-root $CR --memory "" 2>&1 | {
+not_ok_ "Verify if command line option --memory with an empty argument fails" $BIN/lxd $DR --clone-root $CR --memory "" | \
   ln_like ">>> ERROR: Command line option '--memory' requires an non-empty argument >>>"
-}
 
-$BIN/lxd $DR --clone-root $CR --memory NaN &>/dev/null
-not_ok $? "Verify if command line option --memory with an unsupported argument fails"
-$BIN/lxd $DR --clone-root $CR --memory NaN 2>&1 | {
+not_ok_ "Verify if command line option --memory with an unsupported argument fails" $BIN/lxd $DR --clone-root $CR --memory NaN | \
   lst_ln_like ">>> ERROR: Command line/conf file option --memory/memory requires a supported argument. See --help command line option for help >>>"
-}
 
-$BIN/lxd $DR --clone-root $CR --memory 0 &>/dev/null
-not_ok $? "Verify if command line option --memory=0 fails"
-$BIN/lxd $DR --clone-root $CR --memory 0 2>&1 | {
+not_ok_ "Verify if command line option --memory=0 fails" $BIN/lxd $DR --clone-root $CR --memory 0 | \
   lst_ln_like ">>> ERROR: Command line/conf file option --memory/memory requires a supported argument. See --help command line option for help >>>"
-}
 
 rm -r $BLSS_ENV $CR $DR
 unset BLSS_ENV CR DR
@@ -240,35 +171,20 @@ unset BLSS_ENV CR DR
 ### Test Case: Tests for size command line option
 export BLSS_ENV=$(mktemp -d) && CR=$(mktemp -d) && touch $CR/xfile && DR=$(mktemp -d)
 
-$BIN/lxd $DR --clone-root $CR --size 1024 --size 2048 &>/dev/null
-not_ok $? "Verify if a repeated command line option --size fails"
-$BIN/lxd $DR --clone-root $CR --size 1024 --size 2048 2>&1 | {
+not_ok_ "Verify if a repeated command line option --size fails" $BIN/lxd $DR --clone-root $CR --size 1024 --size 2048 | \
   ln_is ">>> ERROR: --size command line option was already specified >>>"
-}
 
-$BIN/lxd $DR --clone-root $CR --size &>/dev/null
-not_ok $? "Verify if command line option --size without argument fails"
-$BIN/lxd $DR --clone-root $CR --size 2>&1 | {
+not_ok_ "Verify if command line option --size without argument fails" $BIN/lxd $DR --clone-root $CR --size | \
   ln_like "--size' requires an argument"
-}
 
-$BIN/lxd $DR --clone-root $CR --size "" &>/dev/null
-not_ok $? "Verify if command line option --size with an empty argument fails"
-$BIN/lxd $DR --clone-root $CR --size "" 2>&1 | {
+not_ok_ "Verify if command line option --size with an empty argument fails" $BIN/lxd $DR --clone-root $CR --size "" | \
   ln_like ">>> ERROR: Command line option '--size' requires an non-empty argument >>>"
-}
 
-$BIN/lxd $DR --clone-root $CR --size NaN &>/dev/null
-not_ok $? "Verify if command line option --size with an unsupported argument fails"
-$BIN/lxd $DR --clone-root $CR --size NaN 2>&1 | {
+not_ok_ "Verify if command line option --size with an unsupported argument fails" $BIN/lxd $DR --clone-root $CR --size NaN | \
   lst_ln_like ">>> ERROR: Command line/conf file option --size/size requires a supported argument. See --help command line option for help >>>"
-}
 
-$BIN/lxd $DR --clone-root $CR --size 0 &>/dev/null
-not_ok $? "Verify if command line option --size=0 fails"
-$BIN/lxd $DR --clone-root $CR --size 0 2>&1 | {
+not_ok_ "Verify if command line option --size=0 fails" $BIN/lxd $DR --clone-root $CR --size 0 | \
   lst_ln_like ">>> ERROR: Command line/conf file option --size/size requires a supported argument. See --help command line option for help >>>"
-}
 
 rm -r $BLSS_ENV $CR $DR
 unset BLSS_ENV CR DR
@@ -277,28 +193,16 @@ unset BLSS_ENV CR DR
 ### Test Case: Tests for root-filesystem command line option
 export BLSS_ENV=$(mktemp -d) && CR=$(mktemp -d) && touch $CR/xfile && DR=$(mktemp -d)
 
-$BIN/lxd $DR --clone-root $CR --root-filesystem "ext3" --root-filesystem "ext3" &>/dev/null
-not_ok $? "Verify if a repeated command line option --root-filesystem fails"
-$BIN/lxd $DR --clone-root $CR --root-filesystem "ext3" --root-filesystem "ext3" 2>&1 | {
+not_ok_ "Verify if a repeated command line option --root-filesystem fails" $BIN/lxd $DR --clone-root $CR --root-filesystem "ext3" --root-filesystem "ext3" | \
   ln_is ">>> ERROR: --root-filesystem command line option was already specified >>>"
-}
-$BIN/lxd $DR --clone-root $CR --root-filesystem &>/dev/null
-not_ok $? "Verify if command line option --root-filesystem without argument fails"
-$BIN/lxd $DR --clone-root $CR --root-filesystem 2>&1 | {
+not_ok_ "Verify if command line option --root-filesystem without argument fails" $BIN/lxd $DR --clone-root $CR --root-filesystem | \
   ln_like "--root-filesystem' requires an argument"
-}
 
-$BIN/lxd $DR --clone-root $CR --root-filesystem "" &>/dev/null
-not_ok $? "Verify if command line option --root-filesystem with an empty argument fails"
-$BIN/lxd $DR --clone-root $CR --root-filesystem "" 2>&1 | {
+not_ok_ "Verify if command line option --root-filesystem with an empty argument fails" $BIN/lxd $DR --clone-root $CR --root-filesystem "" | \
   ln_like ">>> ERROR: Command line option '--root-filesystem' requires an non-empty argument >>>"
-}
 
-$BIN/lxd $DR --clone-root $CR --root-filesystem "unknown" &>/dev/null
-not_ok $? "Verify if command line option --root-filesystem with an unsupported argument fails"
-$BIN/lxd $DR --clone-root $CR --root-filesystem "unknown" 2>&1 | {
+not_ok_ "Verify if command line option --root-filesystem with an unsupported argument fails" $BIN/lxd $DR --clone-root $CR --root-filesystem "unknown" | \
   lst_ln_like ">>> ERROR: Command line/conf file option --root-filesystem/root_filesystem requires a supported argument. See --help command line option for help >>>"
-}
 
 rm -r $BLSS_ENV $CR $DR
 unset BLSS_ENV CR DR
@@ -308,31 +212,16 @@ unset BLSS_ENV CR DR
 ### Test Case: Tests for formats command line option
 export BLSS_ENV=$(mktemp -d) && CR=$(mktemp -d) && touch $CR/xfile && DR=$(mktemp -d)
 
-$BIN/lxd $DR --clone-root $CR --formats "raw qcow2" --formats "raw qcow2" &>/dev/null
-not_ok $? "Verify if a repeated command line option --formats fails"
-$BIN/lxd $DR --clone-root $CR --formats "raw qcow2" --formats "raw qcow2" 2>&1 | {
+not_ok_ "Verify if a repeated command line option --formats fails" $BIN/lxd $DR --clone-root $CR --formats "raw qcow2" --formats "raw qcow2" | \
   ln_is ">>> ERROR: --formats command line option was already specified >>>"
-}
-$BIN/lxd $DR --clone-root $CR --formats &>/dev/null
-not_ok $? "Verify if command line option --formats without argument fails"
-$BIN/lxd $DR --clone-root $CR --formats 2>&1 | {
+not_ok_ "Verify if command line option --formats without argument fails" $BIN/lxd $DR --clone-root $CR --formats | \
   ln_like "--formats' requires an argument"
-}
-$BIN/lxd $DR --clone-root $CR --formats "" &>/dev/null
-not_ok $? "Verify if command line option --formats with an empty argument fails"
-$BIN/lxd $DR --clone-root $CR --formats "" 2>&1 | {
+not_ok_ "Verify if command line option --formats with an empty argument fails" $BIN/lxd $DR --clone-root $CR --formats "" | \
   ln_like ">>> ERROR: Command line option '--formats' requires an non-empty argument >>>"
-}
-$BIN/lxd $DR --clone-root $CR --formats "unknown" &>/dev/null
-not_ok $? "Verify if command line option --formats with an unsupported argument fails"
-$BIN/lxd $DR --clone-root $CR --formats "unknown" 2>&1 | {
+not_ok_ "Verify if command line option --formats with an unsupported argument fails" $BIN/lxd $DR --clone-root $CR --formats "unknown" | \
   lst_ln_like ">>> ERROR: Command line/conf file option --formats/formats requires a supported argument. See --help command line option for help >>>"
-}
-$BIN/lxd $DR --clone-root $CR --formats "raw qcow2 raw" &>/dev/null
-not_ok $? "Verify if command line option --formats with a repeated format in the argument fails"
-$BIN/lxd $DR --clone-root $CR --formats "raw qcow2 raw" 2>&1 | {
+not_ok_ "Verify if command line option --formats with a repeated format in the argument fails" $BIN/lxd $DR --clone-root $CR --formats "raw qcow2 raw" | \
   ln_like ">>> ERROR: Command line/conf file option --formats/formats contains a repeated value in the argument. See --help command line option for help >>>"
-}
 
 rm -r $BLSS_ENV $CR $DR
 unset BLSS_ENV CR DR
@@ -341,23 +230,14 @@ unset BLSS_ENV CR DR
 ### Test Case: Tests for --packages command line option
 export BLSS_ENV=$(mktemp -d) && CR=$(mktemp -d) && touch $CR/xfile && DR=$(mktemp -d)
 
-$BIN/lxd --packages "apache2" --packages "mc" &>/dev/null
-not_ok $? "Verify if a repeated command line option --packages fails"
-$BIN/lxd --packages "apache2" --packages "mc" 2>&1 | {
+not_ok_ "Verify if a repeated command line option --packages fails" $BIN/lxd --packages "apache2" --packages "mc" | \
   ln_is ">>> ERROR: --packages command line option was already specified >>>"
-}
 
-$BIN/lxd --packages &>/dev/null
-not_ok $? "Verify if command line option --packages without argument fails"
-$BIN/lxd --packages 2>&1 | {
+not_ok_ "Verify if command line option --packages without argument fails" $BIN/lxd --packages | \
   ln_like "--packages' requires an argument"
-}
 
-$BIN/lxd --packages "" &>/dev/null
-not_ok $? "Verify if command line option --packages with an empty argument fails"
-$BIN/lxd --packages "" 2>&1 | {
+not_ok_ "Verify if command line option --packages with an empty argument fails" $BIN/lxd --packages "" | \
   ln_like ">>> ERROR: Command line option '--packages' requires an non-empty argument >>>"
-}
 
 rm -r $BLSS_ENV $CR $DR
 unset BLSS_ENV CR DR
@@ -366,23 +246,14 @@ unset BLSS_ENV CR DR
 ### Test Case: Tests for --hostname command line option
 export BLSS_ENV=$(mktemp -d) && CR=$(mktemp -d) && touch $CR/xfile && DR=$(mktemp -d)
 
-$BIN/lxd $DR --clone-root $CR --hostname "myserver" --hostname "servermy" &>/dev/null
-not_ok $? "Verify if a repeated command line option --hostname fails"
-$BIN/lxd $DR --clone-root $CR --hostname "myserver" --hostname "servermy" 2>&1 | {
+not_ok_ "Verify if a repeated command line option --hostname fails" $BIN/lxd $DR --clone-root $CR --hostname "myserver" --hostname "servermy" | \
   ln_is ">>> ERROR: --hostname command line option was already specified >>>"
-}
 
-$BIN/lxd $DR --clone-root $CR --hostname &>/dev/null
-not_ok $? "Verify if command line option --hostname without argument fails"
-$BIN/lxd $DR --clone-root $CR --hostname 2>&1 | {
+not_ok_ "Verify if command line option --hostname without argument fails" $BIN/lxd $DR --clone-root $CR --hostname | \
   ln_like "--hostname' requires an argument"
-}
 
-$BIN/lxd $DR --clone-root $CR --hostname "" &>/dev/null
-not_ok $? "Verify if command line option --hostname with an empty argument fails"
-$BIN/lxd $DR --clone-root $CR --hostname "" 2>&1 | {
+not_ok_ "Verify if command line option --hostname with an empty argument fails" $BIN/lxd $DR --clone-root $CR --hostname "" | \
   ln_like ">>> ERROR: Command line option '--hostname' requires an non-empty argument >>>"
-}
 
 # TODO: test for invalid argument in --hostname cmd ln opt
 
@@ -394,29 +265,17 @@ unset BLSS_ENV CR DR
 ### Test Case: Tests for --address command line option
 export BLSS_ENV=$(mktemp -d) && CR=$(mktemp -d) && touch $CR/xfile && DR=$(mktemp -d)
 
-$BIN/lxd $DR --clone-root $CR --address 192.168.1.1 --address 192.168.1.1 &>/dev/null
-not_ok $? "Verify if a repeated command line option --address fails"
-$BIN/lxd $DR --clone-root $CR --address 192.168.1.1 --address 192.168.1.1 2>&1 | {
+not_ok_ "Verify if a repeated command line option --address fails" $BIN/lxd $DR --clone-root $CR --address 192.168.1.1 --address 192.168.1.1 | \
   ln_is ">>> ERROR: --address command line option was already specified >>>"
-}
 
-$BIN/lxd $DR --clone-root $CR --address &>/dev/null   
-not_ok $? "Verify if command line option '--address' without argument fails"
-$BIN/lxd $DR --clone-root $CR --address 2>&1 | {
+not_ok_ "Verify if command line option '--address' without argument fails" $BIN/lxd $DR --clone-root $CR --address | \
  ln_like "--address' requires an argument"  
-}
 
-$BIN/lxd $DR --clone-root $CR --address "" &>/dev/null   
-not_ok $? "Verify if command line option '--address' with an empty argument fails"
-$BIN/lxd $DR --clone-root $CR --address "" 2>&1 | {
+not_ok_ "Verify if command line option '--address' with an empty argument fails" $BIN/lxd $DR --clone-root $CR --address "" | \
  ln_like ">>> ERROR: Command line option '--address' requires an non-empty argument >>>"  
-}
 
-$BIN/lxd $DR --clone-root $CR --address 192.168.0.256 &>/dev/null   
-not_ok $? "Verify if command line option --address with an invalid argument fails"
-$BIN/lxd $DR --clone-root $CR --address 192.168.0.256 2>&1 | {
+not_ok_ "Verify if command line option --address with an invalid argument fails" $BIN/lxd $DR --clone-root $CR --address 192.168.0.256 | \
  lst_ln_is ">>> ERROR: Command line/conf file option --address/address requires a supported argument. See --help command line option for help >>>"
-}
 
 rm -r $BLSS_ENV $CR $DR
 unset BLSS_ENV CR DR
